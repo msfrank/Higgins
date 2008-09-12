@@ -1,0 +1,146 @@
+#!/usr/bin/env python
+
+#
+# Portions of this script (the multipart form uploading) come from:
+# http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/146306
+#
+
+from sys import argv, exit
+from getopt import gnu_getopt
+import magic
+import httplib, urllib
+from os import stat
+from os.path import abspath
+
+#
+#
+#
+def encode_preamble(boundary, file, metadata):
+    preamble = []
+    for (key, value) in metadata.items():
+        preamble.append('--' + boundary)
+        preamble.append('Content-Disposition: form-data; name="%s"' % key)
+        preamble.append('')
+        preamble.append(value)
+    return '\r\n'.join(preamble)
+
+#
+#
+#
+def do_upload(host, file, metadata, local_mode):
+    boundary = '----------ThIs_Is_tHe_bouNdaRY_$'
+    preamble = encode_preamble(boundary, file, metadata)
+    request = httplib.HTTPConnection(host)
+    if local_mode:
+        selector = "/manage/create/?is_local=true"
+    else:
+        selector = "/manage/create/"
+    request.putrequest('POST', selector)
+    request.putheader('User-Agent', 'higgins-uploader')
+    request.putheader('Content-Type', 'multipart/form-data; boundary=%s' % boundary)
+    request.putheader('Content-Length', len(preamble))
+#    st = stat(file)
+#    request.putheader('Content-Length', len(preamble) + st.st_size)
+    request.endheaders()
+    request.send(preamble)
+#    preamble.append('--' + boundary)
+#    preamble.append('Content-Disposition: form-data; name="file"; filename="%s"' % file)
+#    preamble.append('Content-Type: %s' % metadata['mimetype'])
+#    preamble.append('')
+#    nread = len(preamble)
+#    f = open(file, 'rb')
+#    buffer = f.read(4096)
+#    request.send(buffer)
+#    nread += len(buffer)
+#    while not buffer == "":
+#        buffer = f.read(4096)
+#        request.send(buffer)
+#        nread += len(buffer)
+#    f.close()
+#    print "wrote %i bytes" % nread
+    response = request.getresponse()
+    print "Server returned status %s: %s" % (response.status,response.read())
+#    print "----"
+#    print response.read()
+#    print "----"
+    return response.status  
+
+#
+#
+#
+def get_metadata(path, mimetype):
+    metadata = { 'mimetype': mimetype }
+    if mimetype == 'audio/mpeg':
+        from mutagen import mp3
+        tags = mp3.Open(path)
+        metadata['artist'] = str(tags['TPE1'])
+        metadata['album'] = str(tags['TALB'])
+        metadata['title'] = str(tags['TIT2'])
+        metadata['genre'] = str(tags['TCON'])
+        metadata['length'] = str(int(tags.info.length*1000))
+        metadata['bitrate'] = str(tags.info.bitrate)
+        metadata['samplerate'] = str(tags.info.sample_rate)
+        # hack to deal with TRCK tags formatted as numerator/denominator
+        try:
+            track_num = int(tags['TRCK'])
+        except:
+            a = str(tags['TRCK']).split('/')
+            metadata['track'] = str(a[0])
+        else:
+            metadata['track'] = str(tags['TRCK'])
+        return metadata
+    print "can't handle file with type %s" % mimetype
+    return None
+
+def print_help():
+    print "Usage: higgins-upload [-h HOST] [-d] FILE..."
+    print ""
+    print "  -h HOST       The host to upload to.  Default is 'localhost:8000'"
+    print "  -l            Enables local mode (File itself will not be uploaded)"
+    print "  -v            Increase verbosity"
+    print "  -q            Decrease verbosity"
+    print ""
+
+if __name__ == '__main__':
+    host = 'localhost:8000'
+
+    if len(argv) == 1:
+        print_help()
+        exit(1)
+    opts,args = gnu_getopt(argv[1:], 'h:lvq')
+    if len(args) == 0:
+        print_help()
+        exit(1)
+
+    local_mode = False
+    verbosity = 0
+    for opt,arg in opts:
+        if opt == '-h':
+            host = arg
+        if opt == '-l':
+            local_mode = True
+        if opt == '-v':
+            verbosity = 1
+        if opt == '-q':
+            verbosity = -1
+        
+    cookie = magic.open(magic.MAGIC_MIME)
+    if cookie.load('/usr/share/file/magic') == -1:
+        print "Error: failed to load 'magic' database at /usr/share/file/magic"
+        exit(1)
+    print "========================================"
+    for path in args:
+        path = abspath(path)
+        print "Reading meta-data from %s ..." % path
+        mimetype = cookie.file(path)
+        metadata = get_metadata(path, mimetype)
+        if local_mode:
+            metadata['local_path'] = path
+        for datum in metadata.items():
+            print "    %s: %s" % datum
+        print "----------------------------------------"
+        print "Uploading file to media server at %s ..." % host
+        result = do_upload(host, path, metadata, local_mode)
+        print "========================================"
+    cookie.close()
+    exit(0)
