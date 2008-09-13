@@ -1,6 +1,7 @@
 from twisted.web2 import http, resource, http_headers
 from twisted.internet import defer
 from twisted.web2.stream import BufferedStream
+from higgins.logging import log_error, log_debug
 
 class ContentDisposition:
     def __init__(self, type, params):
@@ -71,13 +72,10 @@ class PostableResource(resource.Resource):
 
         # Write data to opaque handle instance.
         def _writeToHandle(handle, data):
-            if isinstance(handle, file):
-                handle.write(data)
-            elif isinstance(handle, list):
+            if isinstance(handle, list):
                 handle.append(data)
-            else:
-                from sys import stdout
-                stdout.write(data)
+            elif isinstance(handle, file):
+                handle.write(data)
 
         # Clean up handle after we are done with it.
         def _closeHandle(handle):
@@ -100,8 +98,8 @@ class PostableResource(resource.Resource):
                     data = data.getResult()
                 data = data.strip()
                 if not data == "--" + request.boundary:
-                    print "boundary error: expected '%s'" % (request.boundary)
-                    print "     `--------> received '%s'" % (data)
+                    log_debug("boundary error: expected '%s'" % (request.boundary))
+                    log_debug("     `--------> received '%s'" % (data))
                 request.ctxt.state = Context.STATE_READ_HEADERS
 
             ##########################################################
@@ -122,7 +120,7 @@ class PostableResource(resource.Resource):
                         name, value = namevalue
                         request.ctxt.headers.addRawHeader(name, value.strip())
                     else:
-                        print "header error: failed to parse '%s'" % data
+                        log_debug("header error: failed to parse '%s'" % data)
 
             ##########################################################
             # STATE_PROCESS_HEADERS                                  #
@@ -141,8 +139,12 @@ class PostableResource(resource.Resource):
                 if 'filename' in content_disposition.params:
                     try:
                         from os.path import abspath
-                        request.ctxt.filename = abspath(self.acceptFile(request.ctxt.headers))
-                        request.ctxt.handle = open(request.ctxt.filename, "w")
+                        path = self.acceptFile(request.ctxt.headers)
+                        if not path == None:
+                            request.ctxt.filename = abspath(path)
+                            request.ctxt.handle = open(request.ctxt.filename, "w")
+                        else:
+                            request.ctxt.handle = None
                     except:
                         request.ctxt.handle = None
                 else:
@@ -198,13 +200,8 @@ class PostableResource(resource.Resource):
                     request.files.append((request.ctxt.name, request.ctxt.filename, request.ctxt.mimetype))
                 # add the form data to the http.Request.post dictionary
                 elif isinstance(request.ctxt.handle, list):
-                    value = ""
-                    for datum in request.ctxt.handle:
-                        value = value + datum
-                    if request.ctxt.name in request.post:
-                        request.post[request.ctxt.name].append(value)
-                    else: 
-                        request.post[request.ctxt.name] = [value,]
+                    value = u''.join(request.ctxt.handle)
+                    request.post[request.ctxt.name] = value
                 # reset the context
                 request.ctxt.headers = http_headers.Headers()
                 request.ctxt.leftover = None

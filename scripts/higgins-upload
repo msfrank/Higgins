@@ -10,59 +10,78 @@ from getopt import gnu_getopt
 import magic
 import httplib, urllib
 from os import stat
-from os.path import abspath
+from os.path import abspath,basename
+
+boundary = '----------ThIs_Is_tHe_bouNdaRY_$'
 
 #
 #
 #
-def encode_preamble(boundary, file, metadata):
-    preamble = []
+def do_upload(host, file, metadata):
+    st = stat(file)
+
+    lines = []
+    print "sending preamble.."
     for (key, value) in metadata.items():
-        preamble.append('--' + boundary)
-        preamble.append('Content-Disposition: form-data; name="%s"' % key)
-        preamble.append('')
-        preamble.append(value)
-    return '\r\n'.join(preamble)
+        lines.append('--' + boundary)
+        lines.append('Content-Disposition: form-data; name="%s"' % key)
+        lines.append('')
+        lines.append(value)
+        print "form-data: '%s' => '%s' (%i bytes)" % (key,value,len(value))
+    lines.append('--' + boundary)
+    lines.append('Content-Disposition: form-data; name="file"; filename="%s"' % basename(file))
+    lines.append('Content-Type: %s' % metadata['mimetype'])
+    lines.append('')
+    lines.append('')
+    output = '\r\n'.join(lines)
 
-#
-#
-#
-def do_upload(host, file, metadata, local_mode):
-    boundary = '----------ThIs_Is_tHe_bouNdaRY_$'
-    preamble = encode_preamble(boundary, file, metadata)
     request = httplib.HTTPConnection(host)
-    if local_mode:
-        selector = "/manage/create/?is_local=true"
-    else:
-        selector = "/manage/create/"
-    request.putrequest('POST', selector)
+    request.putrequest('POST', "/manage/create/")
     request.putheader('User-Agent', 'higgins-uploader')
     request.putheader('Content-Type', 'multipart/form-data; boundary=%s' % boundary)
-    request.putheader('Content-Length', len(preamble))
-#    st = stat(file)
-#    request.putheader('Content-Length', len(preamble) + st.st_size)
+    request.putheader('Content-Length', len(output) + st.st_size)
     request.endheaders()
-    request.send(preamble)
-#    preamble.append('--' + boundary)
-#    preamble.append('Content-Disposition: form-data; name="file"; filename="%s"' % file)
-#    preamble.append('Content-Type: %s' % metadata['mimetype'])
-#    preamble.append('')
-#    nread = len(preamble)
-#    f = open(file, 'rb')
-#    buffer = f.read(4096)
-#    request.send(buffer)
-#    nread += len(buffer)
-#    while not buffer == "":
-#        buffer = f.read(4096)
-#        request.send(buffer)
-#        nread += len(buffer)
-#    f.close()
-#    print "wrote %i bytes" % nread
+    request.send(output)
+
+    nread = len(output)
+    f = open(file, 'rb')
+    output = f.read(4096)
+    request.send(output)
+    nread += len(output)
+    while not output == "":
+        output = f.read(4096)
+        request.send(output)
+        nread += len(output)
+    f.close()
+    print "wrote %i bytes" % nread
     response = request.getresponse()
     print "Server returned status %s: %s" % (response.status,response.read())
-#    print "----"
-#    print response.read()
-#    print "----"
+    return response.status  
+
+#
+#
+#
+def do_local_upload(host, file, metadata):
+    lines = []
+    print "sending preamble.."
+    for (key, value) in metadata.items():
+        lines.append('--' + boundary)
+        lines.append('Content-Disposition: form-data; name="%s"' % key)
+        lines.append('')
+        lines.append(value)
+        print "form-data: '%s' => '%s' (%i bytes)" % (key,value,len(value))
+    output = '\r\n'.join(lines)
+
+    request = httplib.HTTPConnection(host)
+    selector = "/manage/create/?is_local=true"
+    request.putrequest('POST', selector)
+    request.putheader('Content-Length', len(output))
+    request.putheader('User-Agent', 'higgins-uploader')
+    request.putheader('Content-Type', 'multipart/form-data; boundary=%s' % boundary)
+    request.endheaders()
+    request.send(output)
+    response = request.getresponse()
+    print "Server returned status %s: %s" % (response.status,response.read())
     return response.status  
 
 #
@@ -73,21 +92,20 @@ def get_metadata(path, mimetype):
     if mimetype == 'audio/mpeg':
         from mutagen import mp3
         tags = mp3.Open(path)
-        metadata['artist'] = str(tags['TPE1'])
-        metadata['album'] = str(tags['TALB'])
-        metadata['title'] = str(tags['TIT2'])
-        metadata['genre'] = str(tags['TCON'])
+        metadata['artist'] = u''.join(tags['TPE1'].text)
+        metadata['album'] = u''.join(tags['TALB'].text)
+        metadata['title'] = u''.join(tags['TIT2'].text)
+        metadata['genre'] = u''.join(tags['TCON'].text)
         metadata['length'] = str(int(tags.info.length*1000))
         metadata['bitrate'] = str(tags.info.bitrate)
         metadata['samplerate'] = str(tags.info.sample_rate)
         # hack to deal with TRCK tags formatted as numerator/denominator
         try:
             track_num = int(tags['TRCK'])
+            metadata['track'] = u''.join(tags['TRCK'].text)
         except:
             a = str(tags['TRCK']).split('/')
             metadata['track'] = str(a[0])
-        else:
-            metadata['track'] = str(tags['TRCK'])
         return metadata
     print "can't handle file with type %s" % mimetype
     return None
@@ -140,7 +158,10 @@ if __name__ == '__main__':
             print "    %s: %s" % datum
         print "----------------------------------------"
         print "Uploading file to media server at %s ..." % host
-        result = do_upload(host, path, metadata, local_mode)
+        if local_mode:
+            result = do_local_upload(host, path, metadata)
+        else:
+            result = do_upload(host, path, metadata)
         print "========================================"
     cookie.close()
     exit(0)

@@ -6,6 +6,7 @@ higginscore_PYTHON = \
   	manager.py \
   	models.py \
   	postable_resource.py \
+	search.py \
   	settings.py \
   	urls.py
 
