@@ -21,13 +21,11 @@ def do_upload(host, file, metadata):
     st = stat(file)
 
     lines = []
-    print "sending preamble.."
     for (key, value) in metadata.items():
         lines.append('--' + boundary)
         lines.append('Content-Disposition: form-data; name="%s"' % key)
         lines.append('')
         lines.append(value)
-        print "form-data: '%s' => '%s' (%i bytes)" % (key,value,len(value))
     lines.append('--' + boundary)
     lines.append('Content-Disposition: form-data; name="file"; filename="%s"' % basename(file))
     lines.append('Content-Type: %s' % metadata['mimetype'])

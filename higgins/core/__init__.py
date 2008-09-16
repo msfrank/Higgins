@@ -1,7 +1,11 @@
 from twisted.application import internet
 from twisted.web2 import resource, wsgi
+from twisted.web2.server import StopTraversal
+from twisted.web2.static import File
 from higgins.logging import log_debug, log_error
+from higgins.conf import conf
 from higgins.core.manager import ManagerResource
+from os.path import join
 
 class BrowserResource(wsgi.WSGIResource):
     def __init__(self):
@@ -11,11 +15,12 @@ class BrowserResource(wsgi.WSGIResource):
 class StaticResource(resource.Resource):
     def allowedMethods(self):
         return ("GET",)
+    def locateChild(self, request, segments):
+        self.path = join(conf.get("STATIC_DATA_PATH"), *segments)
+        return self, []
     def render(self, request):
-        from twisted.web2.static import File
-        from os.path import join
-        from higgins.conf import conf
-        return File(join(conf.get("STATIC_DATA_PATH"), *self.segments))
+        log_debug("[core] GET static file %s" % self.path)
+        return File(self.path)
 
 class RootResource(resource.Resource):
     def __init__(self):

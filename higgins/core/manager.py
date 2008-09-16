@@ -1,50 +1,74 @@
-from twisted.web2 import http, resource
+from twisted.web2 import resource, http_headers
+from twisted.web2.http import Response as HttpResponse
 from higgins.core.models import File, Artist, Album, Song, Genre
 from higgins.core.postable_resource import PostableResource
 from higgins.logging import log_debug, log_error
+import os
+from tempfile import mkstemp
+
+class UniqueFile:
+    def __init__(self, filename, mimetype='application/octet-stream'):
+        self.mimetype = mimetype
+        self._fd,self.path = mkstemp(prefix=filename + '.', dir='.')
+    def write(self, data):
+        os.write(self._fd, data)
+    def close(self):
+        os.close(self._fd)
+        del(self._fd)
 
 class CreateCommand(PostableResource):
     def acceptFile(self, headers):
-        log_debug("[core]: acceptFile");
-        log_debug("[core]: acceptFile: headers=%s" % headers)
-        return None
+        content_disposition = headers.getHeader('content-disposition')
+        if 'filename' in content_disposition.params:
+            filename = content_disposition.params['filename']
+        else:
+            filename = "file"
+        content_type = headers.getHeader('content-type')
+        if isinstance(content_type, http_headers.MimeType):
+            mimetype = content_type.mediaType + '/' + content_type.mediaSubtype
+        else:
+            mimetype = 'application/octet-stream'
+        file = UniqueFile(filename, mimetype)
+        log_debug("[core] acceptFile: created new unique file %s" % file.path);
+        return file
 
     def render(self, request):
-        log_debug("[core] CreateCommand: render")
-        return http.Response(200, stream="success");
         try:
             # title is required
             title = request.post.get('title', None)
             if title == None:
-                raise http.Response(400, stream="Missing required form item 'title")
+                return HttpResponse(400, stream="Missing required form item 'title")
 
-            # process in local mode
             is_local = request.args.get('is_local', None)
+            # process in local mode
             if not is_local == None:
                 local_path = request.post.get('local_path', None)
                 if local_path == None:
-                    raise http.Response(400, stream="Missing required form item 'local_path'")
+                    return HttpResponse(400, stream="Missing required form item 'local_path'")
                 mimetype = request.post.get('mimetype', None)
                 if mimetype == None:
-                    raise http.Response(400, stream="Missing required form item 'mimetype'")
+                    return HttpResponse(400, stream="Missing required form item 'mimetype'")
                 # verify that file exists at local_path
-                from os import stat
                 try:
-                    s = stat(local_path)
+                    s = os.stat(local_path)
                 except:
-                    raise http.Response(400, stream="Failed to stat() local file %s" % local_path)
+                    return HttpResponse(400, stream="Failed to stat() local file %s" % local_path)
                 file = File(path=local_path, mimetype=mimetype, size=s.st_size)
                 file.save()
-
-#            if not len(request.FILES.lists()) == 1:
-#                resp = HttpResponse()
-#                resp.status_code = 400
-#                return resp
-#            context = {}
-#            context['method'] = 'create'
-#            context['filename'] = request.FILES['file']['filename']
-#            context['content-type'] = request.FILES['file']['content-type']
-#            params = request.POST.lists()
+            else:
+                nfiles = len(request.files)
+                if nfiles == 0:
+                    return HttpResponse(400, stream="Not local mode and no file specified")
+                if nfiles > 1:
+                    return HttpResponse(400, stream="More than one file specified")
+                posted = request.files[0]
+                try:
+                    s = os.stat(posted.path)
+                except:
+                    return HttpResponse(400, stream="Failed to stat() local file %s" % local_path)
+                file = File(path=posted.path, mimetype=posted.mimetype, size=s.st_size)
+                file.save()
+                log_debug("[core] CreateCommand: created new file %s" % posted.path)
 
             # create or get the artist object
             value = request.post.get('artist', None)
@@ -81,18 +105,19 @@ class CreateCommand(PostableResource):
             song.save()
 
             log_debug("[core]: successfully added new song '%s'" % title)
-            return http.Response(200, stream="success!")
+            return HttpResponse(200, stream="success!")
 
-        except http.Response, r:
-            return r
+        except Exception, e:
+            log_debug("[core] CreateCommand failed: %s" % e)
+            return HttpResponse(500, stream="Internal Server Error")
 
 class UpdateCommand(resource.Resource):
     def render(self, request):
-        return http.Response(404)
+        return HttpResponse(404)
 
 class DeleteCommand(resource.Resource):
     def render(self, request):
-        return http.Response(404)
+        return HttpResponse(404)
 
 class ManagerResource(resource.Resource):
     def locateChild(self, request, segments):

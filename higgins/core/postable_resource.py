@@ -10,7 +10,7 @@ class ContentDisposition:
     def __repr__(self):
         return "%s, params=%s" % (self.type,self.params)
 
-def parseContentDisposition(header):
+def _parseContentDisposition(header):
     """
     Parses a Content-Disposition header.
     """
@@ -19,7 +19,8 @@ def parseContentDisposition(header):
     if not type == "form-data" and not type == "file":
         raise ValueError("Content-Disposition type is not 'form-data' or 'file'")
     return ContentDisposition(type, dict(args))
-http_headers.DefaultHTTPHandler.addParser("content-disposition", (http_headers.tokenize, parseContentDisposition))
+
+http_headers.DefaultHTTPHandler.addParser("content-disposition", (http_headers.tokenize, _parseContentDisposition))
 
 class PostableResource(resource.Resource):
     def acceptFile(self, headers):
@@ -58,12 +59,12 @@ class PostableResource(resource.Resource):
 
         # context for the state machine
         class Context:
-            STATE_READ_FIRST_BOUNDARY = 1
-            STATE_READ_HEADERS = 2
-            STATE_PROCESS_HEADERS = 3
-            STATE_READ_BODY = 4
-            STATE_PROCESS_BODY = 5
-            STATE_FINISHED = 6
+            STATE_READ_FIRST_BOUNDARY = "FIRST_BOUNDARY"
+            STATE_READ_HEADERS = "READ_HEADERS"
+            STATE_PROCESS_HEADERS = "PROCESS_HEADERS"
+            STATE_READ_BODY = "READ_BODY"
+            STATE_PROCESS_BODY = "PROCESS_BODY"
+            STATE_FINISHED = "FINISHED"
             def __init__(self):
                 self.state = Context.STATE_READ_FIRST_BOUNDARY
                 self.leftover = None
@@ -72,20 +73,27 @@ class PostableResource(resource.Resource):
 
         # Write data to opaque handle instance.
         def _writeToHandle(handle, data):
-            if isinstance(handle, list):
-                handle.append(data)
-            elif isinstance(handle, file):
-                handle.write(data)
+            if not handle == None:
+                if isinstance(handle, list):
+                    handle.append(data)
+                else:
+                    handle.write(data)
 
         # Clean up handle after we are done with it.
         def _closeHandle(handle):
-            if isinstance(handle, file):
-                handle.close()
+            if not handle == None:
+                if not isinstance(handle, list):
+                    handle.close()
 
         request.ctxt = Context()
 
-        # keep reading from request.buffered_stream until its empty
-        while request.buffered_stream.length > 0:
+        while True:
+            if request.buffered_stream.length == 0:
+                if request.ctxt.state == Context.STATE_READ_BODY:
+                    request.ctxt.state = Context.STATE_PROCESS_BODY
+                else:
+                    log_error("[core] reached end of request, state is %s" % request.ctxt.state)
+                    break
 
             ##########################################################
             # STATE_READ_FIRST_BOUNDARY                              #
@@ -105,7 +113,7 @@ class PostableResource(resource.Resource):
             ##########################################################
             # STATE_READ_HEADERS                                     #
             ##########################################################
-            elif request.ctxt.state == Context.STATE_READ_HEADERS:
+            if request.ctxt.state == Context.STATE_READ_HEADERS:
                 retval = request.buffered_stream.readline()
                 if isinstance(retval, defer.Deferred):
                     data = defer.waitForDeferred(retval)
@@ -125,27 +133,17 @@ class PostableResource(resource.Resource):
             ##########################################################
             # STATE_PROCESS_HEADERS                                  #
             ##########################################################
-            elif request.ctxt.state == Context.STATE_PROCESS_HEADERS:
+            if request.ctxt.state == Context.STATE_PROCESS_HEADERS:
                 content_disposition = request.ctxt.headers.getHeader('content-disposition')
                 if 'name' in content_disposition.params:
                     request.ctxt.name = content_disposition.params['name']
                 else:
                     request.ctxt.name = None
-                content_type = request.ctxt.headers.getHeader('content-type')
-                if isinstance(content_type, http_headers.MimeType):
-                    request.ctxt.mimetype = content_type.mediaType + '/' + content_type.mediaSubtype
-                else:
-                    request.ctxt.mimetype = None
-                if 'filename' in content_disposition.params:
+                if content_disposition.type == 'file' or 'filename' in content_disposition.params:
                     try:
-                        from os.path import abspath
-                        path = self.acceptFile(request.ctxt.headers)
-                        if not path == None:
-                            request.ctxt.filename = abspath(path)
-                            request.ctxt.handle = open(request.ctxt.filename, "w")
-                        else:
-                            request.ctxt.handle = None
-                    except:
+                        request.ctxt.handle = self.acceptFile(request.ctxt.headers)
+                    except Exception, e:
+                        log_debug("[core] acceptFile failed: %s" % e)
                         request.ctxt.handle = None
                 else:
                     request.ctxt.handle = []
@@ -154,7 +152,7 @@ class PostableResource(resource.Resource):
             ##########################################################
             # STATE_READ_BODY                                        #
             ##########################################################
-            elif request.ctxt.state == Context.STATE_READ_BODY:
+            if request.ctxt.state == Context.STATE_READ_BODY:
                 retval = request.buffered_stream.readExactly(512)
                 if isinstance(retval, defer.Deferred):
                     data = defer.waitForDeferred(retval)
@@ -194,14 +192,18 @@ class PostableResource(resource.Resource):
             ##########################################################
             # STATE_PROCESS_BODY                                     #
             ##########################################################
-            elif request.ctxt.state == Context.STATE_PROCESS_BODY:
-                # add the file info to the http.Request.files list
-                if isinstance(request.ctxt.handle, file):
-                    request.files.append((request.ctxt.name, request.ctxt.filename, request.ctxt.mimetype))
-                # add the form data to the http.Request.post dictionary
-                elif isinstance(request.ctxt.handle, list):
-                    value = u''.join(request.ctxt.handle)
-                    request.post[request.ctxt.name] = value
+            if request.ctxt.state == Context.STATE_PROCESS_BODY:
+                log_debug("[core] STATE_PROCESS_BODY")
+                if request.ctxt.handle:
+                    # add the form data to the http.Request.post dictionary
+                    if isinstance(request.ctxt.handle, list):
+                        value = u''.join(request.ctxt.handle)
+                        request.post[request.ctxt.name] = value
+                        log_debug("[core] parsed post param '%s'='%s'" % (request.ctxt.name,value))
+                    # add the file info to the http.Request.files list
+                    else:
+                        request.files.append(request.ctxt.handle)
+                        log_debug("[core] created file '%s'" % request.ctxt.handle.path)
                 # reset the context
                 request.ctxt.headers = http_headers.Headers()
                 request.ctxt.leftover = None
@@ -213,10 +215,12 @@ class PostableResource(resource.Resource):
             ##########################################################
             # STATE_FINISHED                                         #
             ##########################################################
-            elif request.ctxt.state == Context.STATE_FINISHED:
+            if request.ctxt.state == Context.STATE_FINISHED:
                 break
 
+        # finished state machine
         request.ctxt = None
+
     _readMultipartFormData = defer.deferredGenerator(_readMultipartFormData)
 
     def _errback(self, error):
