@@ -35,7 +35,7 @@ content_codes = {
     'mbcl': (ContentType.List, 'dmap.bag'),
     'mdcl': (ContentType.List, 'dmap.dictionary'),
     'msrv': (ContentType.List, 'dmap.serverinforesponse'),
-    'msaud': (ContentType.Byte, 'dmap.authenticationmethod'),
+    'msau': (ContentType.Byte, 'dmap.authenticationmethod'),
     'mslr': (ContentType.Byte, 'dmap.loginrequired'),
     'mpro': (ContentType.Version, 'dmap.protocolversion'),
     'apro': (ContentType.Version, 'daap.protocolversion'),

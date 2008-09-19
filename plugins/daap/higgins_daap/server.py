@@ -9,7 +9,7 @@ class DAAPResource:
         return None
 
     def renderDAAP(self, request):
-        raise DAAPError(404, body="The requested resource '%s' was not found." % request.abs_path)
+        raise DAAPResponse(404, body="The requested resource '%s' was not found." % request.abs_path)
 
 class DAAPStream:
     def prepare(self, transport):
@@ -48,7 +48,7 @@ class DAAPDataStream(DAAPStream):
         self.deferred = None
 
     def stopProducing(self):
-        log_debug("DAAPDataStream.stopProducing() was called")
+        log_debug("[daap] DAAPDataStream.stopProducing() was called")
 
 class DAAPFileStream(DAAPStream):
     def __init__(self, file):
@@ -80,7 +80,7 @@ class DAAPFileStream(DAAPStream):
         self.transport.write(chunk)
 
     def stopProducing(self):
-        log_debug("DAAPFileStream.stopProducing() was called")
+        log_debug("[daap] DAAPFileStream.stopProducing() was called")
 
 class DAAPResponse:
     _status_codes = {
@@ -108,15 +108,19 @@ class DAAPRequest:
         self.http_version = None
         self.parsed_headers = False
         self.headers = {}
+        self.daap_client_version = None
+        self.daap_client_access_index = None
+        self.daap_client_validation = None
+        self.daap_client_request_id = None
 
     def _parseInitialLine(self, line):
         # break the initial line into method, uri, and version
         try:
-            method,uri,version = line.split(' ')
+            self.method,uri,version = line.split(' ')
         except:
             raise DAAPResponse(400)
         # parse the method
-        if not method == 'GET':
+        if not self.method == 'GET':
             raise DAAPResponse(405)
         # parse the URI
         try:
@@ -149,7 +153,7 @@ class DAAPRequest:
                     break
         # normalize the http version
         self.http_version = version.upper()
-        log_debug("DAAP: method=%s, uri=%s, version=%s" %
+        log_debug("[daap] method=%s, uri=%s, version=%s" %
                      (self.method, self.abs_path, self.http_version)
                  )
 
@@ -158,7 +162,15 @@ class DAAPRequest:
         name = name.strip()
         value = value.strip()
         self.headers[name] = value
-        #log_debug("DAAP: _parseHeader: '%s' = '%s'" % (name,value))
+        # set daap-specific properties
+        if name == 'Client-DAAP-Version':
+            self.daap_client_version = value
+        if name == 'Client-DAAP-Access-Index':
+            self.daap_client_access_index = value
+        if name == 'Client-DAAP-Validation':
+            self.daap_client_validation = value
+        if name == 'Client-DAAP-Request-ID':
+            self.daap_client_request_id = value
 
     def lineReceived(self, line):
         if not self.http_version:
@@ -195,7 +207,7 @@ class DAAPSession(LineReceiver):
             except DAAPResponse, r:
                 raise r
             except Exception, e:
-                log_error("DAAPSession caught exception: %s (type=%s)" % (e, str(type(e))))
+                log_error("[daap] DAAPSession caught exception: %s (type=%s)" % (e, str(type(e))))
                 raise DAAPResponse(500)
         except DAAPResponse, response:
             #self.transport.stopReading()
@@ -262,16 +274,18 @@ class DAAPSession(LineReceiver):
             self.transport.loseConnection()
 
     def _failureResponse(self, failure):
-        self.stream.close()
+        if self.stream:
+            self.stream.close()
+            self.stream = None
         self.deferred = None
         self.stream = None
         self.request = None
         self.response = None
         self.transport.loseConnection()
-        log_error("DAAP: failed to write response: %s" % str(failure))
+        log_error("[daap] failed to write response")
 
     def connectionLost(self, reason):
-        log_debug("DAAP: connection was lost")
+        log_debug("[daap] connection was lost")
         if self.deferred:
             self.deferred.errback(reason)
         self.deferred = None

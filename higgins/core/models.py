@@ -62,17 +62,17 @@ class Tag(models.Model):
     def __str__(self):
         return self.name
 
-#class Playlist(models.Model):
-#    class Admin:
-#        pass
-#    name = models.CharField(maxlength=80)
-#    items = models.ManyToManyField('PlaylistItem')
-#    tags = models.ManyToManyField('Tag', blank=True)
-#    rating = models.IntegerField(blank=True, null=True)
-#
-#class PlaylistItem(models.Model):
-#    class Admin:
-#        pass
-#    song = models.ForeignKey('Song')
-#    prev_item = models.ForeignKey('PlaylistItem', blank=True)
-#    next_item = models.ForeignKey('PlaylistItem', blank=True)
+class PlaylistItem(models.Model):
+    class Admin:
+        pass
+    song = models.ForeignKey(Song)
+    prev = models.ForeignKey('PlaylistItem', related_name='previtems_set', blank=True)
+    next = models.ForeignKey('PlaylistItem', related_name='nextitems_set', blank=True)
+
+class Playlist(models.Model):
+    class Admin:
+        pass
+    name = models.CharField(maxlength=80)
+    first = models.ForeignKey(PlaylistItem)
+    tags = models.ManyToManyField(Tag, blank=True)
+    rating = models.IntegerField(blank=True, null=True)

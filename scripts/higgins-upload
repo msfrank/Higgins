@@ -7,10 +7,10 @@
 
 from sys import argv, exit
 from getopt import gnu_getopt
-import magic
 import httplib, urllib
 from os import stat
 from os.path import abspath,basename
+from mutagen import File
 
 boundary = '----------ThIs_Is_tHe_bouNdaRY_$'
 
@@ -85,36 +85,36 @@ def do_local_upload(host, file, metadata):
 #
 #
 #
-def get_metadata(path, mimetype):
-    metadata = { 'mimetype': mimetype }
-    if mimetype == 'audio/mpeg':
-        from mutagen import mp3
-        tags = mp3.Open(path)
-        metadata['artist'] = u''.join(tags['TPE1'].text)
-        metadata['album'] = u''.join(tags['TALB'].text)
-        metadata['title'] = u''.join(tags['TIT2'].text)
-        metadata['genre'] = u''.join(tags['TCON'].text)
-        metadata['length'] = str(int(tags.info.length*1000))
-        metadata['bitrate'] = str(tags.info.bitrate)
-        metadata['samplerate'] = str(tags.info.sample_rate)
+def get_metadata(path):
+    metadata = {}
+    try:
+        f = File(path)
+        metadata['mimetype'] = f.mime[0]
+        metadata['artist'] = u''.join(f['TPE1'].text)
+        metadata['album'] = u''.join(f['TALB'].text)
+        metadata['title'] = u''.join(f['TIT2'].text)
+        metadata['genre'] = u''.join(f['TCON'].text)
+        metadata['length'] = str(int(f.info.length*1000))
+        metadata['bitrate'] = str(f.info.bitrate)
+        metadata['samplerate'] = str(f.info.sample_rate)
         # hack to deal with TRCK tags formatted as numerator/denominator
         try:
-            track_num = int(tags['TRCK'])
-            metadata['track'] = u''.join(tags['TRCK'].text)
+            track_num = int(f['TRCK'])
+            metadata['track'] = u''.join(f['TRCK'].text)
         except:
-            a = str(tags['TRCK']).split('/')
+            a = str(f['TRCK']).split('/')
             metadata['track'] = str(a[0])
         return metadata
-    print "can't handle file with type %s" % mimetype
-    return None
+    except KeyError, e:
+        raise Exception("missing metadata field %s" % e)
+    except Exception, e:
+        raise e
 
 def print_help():
-    print "Usage: higgins-upload [-h HOST] [-d] FILE..."
+    print "Usage: higgins-upload [-h HOST] [-l] FILE..."
     print ""
     print "  -h HOST       The host to upload to.  Default is 'localhost:8000'"
     print "  -l            Enables local mode (File itself will not be uploaded)"
-    print "  -v            Increase verbosity"
-    print "  -q            Decrease verbosity"
     print ""
 
 if __name__ == '__main__':
@@ -123,11 +123,10 @@ if __name__ == '__main__':
     if len(argv) == 1:
         print_help()
         exit(1)
-    opts,args = gnu_getopt(argv[1:], 'h:lvq')
+    opts,args = gnu_getopt(argv[1:], 'h:l')
     if len(args) == 0:
         print_help()
         exit(1)
-
     local_mode = False
     verbosity = 0
     for opt,arg in opts:
@@ -135,31 +134,24 @@ if __name__ == '__main__':
             host = arg
         if opt == '-l':
             local_mode = True
-        if opt == '-v':
-            verbosity = 1
-        if opt == '-q':
-            verbosity = -1
         
-    cookie = magic.open(magic.MAGIC_MIME)
-    if cookie.load('/usr/share/file/magic') == -1:
-        print "Error: failed to load 'magic' database at /usr/share/file/magic"
-        exit(1)
     print "========================================"
     for path in args:
-        path = abspath(path)
-        print "Reading meta-data from %s ..." % path
-        mimetype = cookie.file(path)
-        metadata = get_metadata(path, mimetype)
-        if local_mode:
-            metadata['local_path'] = path
-        for datum in metadata.items():
-            print "    %s: %s" % datum
-        print "----------------------------------------"
-        print "Uploading file to media server at %s ..." % host
-        if local_mode:
-            result = do_local_upload(host, path, metadata)
-        else:
-            result = do_upload(host, path, metadata)
-        print "========================================"
-    cookie.close()
+        try:
+            path = abspath(path)
+            metadata = get_metadata(path)
+            if local_mode:
+                metadata['local_path'] = path
+            for datum in metadata.items():
+                print "    %s: %s" % datum
+            print "----------------------------------------"
+            print "Uploading file to media server at %s ..." % host
+            if local_mode:
+                result = do_local_upload(host, path, metadata)
+            else:
+                result = do_upload(host, path, metadata)
+        except Exception, e:
+            print "Failed to process %s: %s" % (path, e)
+        finally:
+            print "========================================"
     exit(0)

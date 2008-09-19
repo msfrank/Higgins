@@ -11,20 +11,21 @@ class ServerInfoCommand(server.DAAPResource):
     def renderDAAP(self, request):
         msrv = CodeBag("msrv")
         msrv.add(ContentCode("mstt", 200))
-        msrv.add(ContentCode("apro", (3,0,6)))  # version 0.3.0.6
-        msrv.add(ContentCode("msix", 1))        # support indexing?
-        msrv.add(ContentCode("msex", 0))        # support extensions?
-        msrv.add(ContentCode("msup", 0))        # support update?
-        msrv.add(ContentCode("msal", 0))        # support auto-logout?
-        msrv.add(ContentCode("mstm", 300))      # timeout interval
-        msrv.add(ContentCode("mslr", 0))        # login required?
-        msrv.add(ContentCode("msqy", 0))        # support queries?
+        msrv.add(ContentCode("mpro", (2,0,2)))  # version 0.2.0.2
+        msrv.add(ContentCode("apro", (3,0,2)))  # version 0.3.0.2
         msrv.add(ContentCode("minm", conf.get("DAAP_SHARE_NAME")))
-        msrv.add(ContentCode("msrs", 0))        # support resolve?
+        msrv.add(ContentCode("mslr", 1))        # login required?
+        msrv.add(ContentCode("msau", 0))        # authentication method
+        msrv.add(ContentCode("mstm", 300))      # timeout interval
+        msrv.add(ContentCode("msal", 1))        # support auto-logout?
+        msrv.add(ContentCode("msup", 1))        # support update?
+        msrv.add(ContentCode("mspi", 1))        # support persistent ids
+        msrv.add(ContentCode("msex", 1))        # support extensions?
         msrv.add(ContentCode("msbr", 1))        # support browsing?
-        msrv.add(ContentCode("mspi", 0))        # support persistent ids
-        msrv.add(ContentCode("mpro", (2,0,4)))  # version 0.2.0.4
-        msrv.add(ContentCode("msdc", 1))
+        msrv.add(ContentCode("msqy", 1))        # support queries?
+        msrv.add(ContentCode("msix", 1))        # support indexing?
+        msrv.add(ContentCode("msrs", 1))        # support resolve?
+        msrv.add(ContentCode("msdc", 1))        # number of databases
         return server.DAAPResponse(200, 
                             {'Content-Type': 'application/x-dmap-tagged'},
                             render(msrv))
@@ -53,12 +54,37 @@ class LoginCommand(server.DAAPResource):
                             render(mlog))
 
 class UpdateCommand(server.DAAPResource):
-    def renderDAAP(self, request):
-        rid = request.args.get('revision-number', None)
-        if rid == None:
-            return server.DAAPResponse(400, {}, "Request is missing the 'revision-number' parameter")
-        delta = request.args.get('delta', None)
-        if delta == None:
+    def _checkForUpdates(self, deferred):
+        if self.stop_checking:
+            return
+        #log_debug("checking for database updates")
+        if False:
+            deferred.callback(server.DAAPResponse(200,
+                                                  {'Content-Type': 'application/x-dmap-tagged'},
+                                                  ""))
+            return
+        reactor.callLater(5, self._checkForUpdates, deferred)
+
+    def _stopChecking(self, unused):
+        self.stop_checking = True
+
+    def _renderDAAP_3_6(self, request):
+        try:
+            rid = int(request.args.get('revision-number', '0'))
+            if rid < 0:
+                raise Exception
+        except:
+            log_error("[daap] UpdateCommand (3.6): invalid revision-number param")
+            return server.DAAPResponse(400)
+        try:
+            delta = int(request.args.get('delta', '0'))
+            if delta < 0:
+                raise Exception
+        except:
+            log_error("[daap] UpdateCommand (3.6): invalid delta param")
+            return server.DAAPResponse(400)
+        log_debug("[daap] UpdateCommand (3.6): revision-number=%i, delta=%i" % (rid,delta))
+        if delta == 0:
             mupd = CodeBag("mupd")
             mupd.add(ContentCode("mstt", 200))
             mupd.add(ContentCode("musr", 1))
@@ -70,18 +96,35 @@ class UpdateCommand(server.DAAPResource):
         self.stop_checking = False
         reactor.callLater(5, self._checkForUpdates, deferred)
         return deferred
-    def _checkForUpdates(self, deferred):
-        if self.stop_checking:
-            return
-        log_debug("checking for database updates")
-        if False:
-            deferred.callback(server.DAAPResponse(200,
-                                                  {'Content-Type': 'application/x-dmap-tagged'},
-                                                  ""))
-            return
+
+    def _renderDAAP_3_0(self, request):
+        try:
+            rid = int(request.args.get('revision-number', '0'))
+            if rid < 0:
+                raise Exception
+        except:
+            log_error("[daap] UpdateCommand (3.0): invalid revision-number param")
+            return server.DAAPResponse(400)
+        log_debug("[daap] UpdateCommand (3.0): revision-number=%i" % rid)
+        if rid == 0:
+            mupd = CodeBag("mupd")
+            mupd.add(ContentCode("mstt", 200))
+            mupd.add(ContentCode("musr", 1))
+            return server.DAAPResponse(200, 
+                                       {'Content-Type': 'application/x-dmap-tagged'},
+                                       render(mupd))
+        deferred = defer.Deferred()
+        deferred.addBoth(self._stopChecking)
+        self.stop_checking = False
         reactor.callLater(5, self._checkForUpdates, deferred)
-    def _stopChecking(self, unused):
-        self.stop_checking = True
+        return deferred
+
+    def renderDAAP(self, request):
+        if request.daap_client_version == '3.6':
+            return self._renderDAAP_3_6(request)
+        if request.daap_client_version == '3.0':
+            return self._renderDAAP_3_0(request)
+        return server.DAAPResponse(400)
 
 class DatabaseCommand(server.DAAPResource):
     def locateResource(self, request, segments):
@@ -103,10 +146,10 @@ class DatabaseCommand(server.DAAPResource):
         avdb.add(ContentCode("mrco", 1))         # total number of records returned
         listing = CodeBag("mlcl")
         record = CodeBag("mlit")
-        record.add(ContentCode("miid", 1))
-        record.add(ContentCode("mper", 1))
-        record.add(ContentCode("minm", conf.get("DAAP_SHARE_NAME")))
-        record.add(ContentCode("mimc", len(Song.objects.all())))
+        record.add(ContentCode("miid", 1))      # database ID
+        record.add(ContentCode("mper", 1))      # database persistent ID
+        record.add(ContentCode("minm", conf.get("DAAP_SHARE_NAME")))    # db name
+        record.add(ContentCode("mimc", len(Song.objects.all())))        # number of db items
         record.add(ContentCode("mctc", 0))
         listing.add(record)
         avdb.add(listing)
@@ -132,15 +175,15 @@ class ListItemsCommand(server.DAAPResource):
             #fields = meta[0].split(',')
             #for field in fields:
             #    print field
-            log_debug("DAAP: ListItemsCommand requesting metadata fields: %s" % ''.join(meta))
+            log_debug("[daap] ListItemsCommand requesting metadata fields: %s" % ''.join(meta))
         except Exception, e:
-            log_debug("DAAP: ListItemsCommand caught exception: %s" % e)
-        apso = CodeBag("apso")
-        apso.add(ContentCode("mstt", 200))      # status code
-        apso.add(ContentCode("muty", 1))        # always 0?
+            log_debug("[daap] ListItemsCommand caught exception: %s" % e)
+        adbs = CodeBag("adbs")
+        adbs.add(ContentCode("mstt", 200))      # status code
+        adbs.add(ContentCode("muty", 1))        # always 0?
         songs = Song.objects.all()
-        apso.add(ContentCode("mtco", len(songs)))       # total number of matching records
-        apso.add(ContentCode("mrco", len(songs)))       # total number of records returned
+        adbs.add(ContentCode("mtco", len(songs)))       # total number of matching records
+        adbs.add(ContentCode("mrco", len(songs)))       # total number of records returned
         listing = CodeBag("mlcl")
         for song in songs:
             record = CodeBag("mlit")
@@ -159,17 +202,16 @@ class ListItemsCommand(server.DAAPResource):
             #record.add(ContentCode("ascs", ))          # codec subtype
             #record.add(ContentCode("asgn", song.genre.name))
             listing.add(record)
-        apso.add(listing)
+        adbs.add(listing)
         return server.DAAPResponse(200, 
                                    {'Content-Type': 'application/x-dmap-tagged'},
-                                   render(apso))
-
+                                   render(adbs))
         
 class StreamSongCommand(server.DAAPResource):
     def __init__(self, songid):
         self.songid = songid
     def renderDAAP(self, request):
-        log_debug("DAAP: downloading songid %s" % self.songid)
+        log_debug("[daap] downloading songid %s" % self.songid)
         song = Song.objects.filter(id=self.songid)
         if song == []:
             return server.DAAPResponse(404)
@@ -177,7 +219,7 @@ class StreamSongCommand(server.DAAPResource):
             f = open(song[0].file.path, "r")
         except:
             return server.DAAPResponse(404) 
-        log_debug("DAAP: songid %s -> %s" % (self.songid, song[0].file.path))
+        log_debug("[daap] songid %s -> %s" % (self.songid, song[0].file.path))
         return server.DAAPResponse(200, 
                                    {'Content-Type': song[0].file.mimetype },
                                    server.DAAPFileStream(f))
