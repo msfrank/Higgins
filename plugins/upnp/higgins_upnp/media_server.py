@@ -3,9 +3,13 @@
 # Copyright 2005, Tim Potter <tpot@samba.org>
 # Copyright 2006 John-Mark Gurney <gurney_j@resnet.uroegon.edu>
 
+import netif
 from twisted.web import resource, static
+from twisted.web.server import Site
+from twisted.internet import reactor
 from connection_manager import ConnectionManager
 from content_directory import ContentDirectory
+from higgins.conf import conf
 
 class RootDevice(static.Data):
     isLeaf = True
@@ -63,3 +67,42 @@ class MediaServer(resource.Resource):
         self.putChild("root-device.xml", RootDevice(self.urlbase, self.devicename, self.uuid))
         self.putChild("ContentDirectory", ContentDirectory())
         self.putChild("ConnectionManager", ConnectionManager())
+
+class MSService:
+    def __init__(self, ssdp, interfaces=[]):
+        self.ssdp = ssdp
+        if len(interfaces) == 0:
+            self.interfaces = [addr for name,(addr,up) in netif.list_interfaces().items()]
+        else:
+            self.interfaces = interfaces
+        self.servers = {}
+
+    def start(self):
+        name = conf.get("UPNP_SHARE_NAME")
+        uuid = conf.get("UPNP_UUID")
+        for iface in self.interfaces:
+            urlbase = 'http://%s:%d/' % (iface, 31338)
+            ms = MediaServer(urlbase, name, uuid)
+            server = reactor.listenTCP(31338, Site(ms), interface=iface)
+            self.servers[iface] = server
+            # register available services
+            self.ssdp.register('%s::upnp:rootdevice' % uuid,
+                               'upnp:rootdevice',
+                               urlbase + 'root-device.xml')
+            self.ssdp.register(uuid, uuid, urlbase + 'root-device.xml')
+            self.ssdp.register('%s::urn:schemas-upnp-org:device:MediaServer:1' % uuid,
+                               'urn:schemas-upnp-org:device:MediaServer:1',
+                               urlbase + 'root-device.xml')
+            self.ssdp.register('%s::urn:schemas-upnp-org:service:ConnectionManager:1' % uuid,
+                               'urn:schemas-upnp-org:device:ConnectionManager:1',
+                               urlbase + 'root-device.xml')
+            self.ssdp.register('%s::urn:schemas-upnp-org:service:ContentDirectory:1' % uuid,
+                               'urn:schemas-upnp-org:device:ContentDirectory:1',
+                               urlbase + 'root-device.xml')
+
+    def stop(self):
+        for server in self.servers.items():
+            d = server.stopListening()
+            if d:
+                log_debug("MediaServer couldn't immediately stop listening, deferring")
+            self.ssdp.unregister()

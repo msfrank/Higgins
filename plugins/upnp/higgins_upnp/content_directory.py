@@ -4,61 +4,29 @@
 
 from twisted.web import http, resource, soap
 from higgins.logging import log_debug, log_error
-import SOAPpy
+import xml.etree.ElementTree as elementtree
 
-class UPnPPublisher(soap.SOAPPublisher):
-    """UPnP requires OUT parameters to be returned in a slightly
-    different way than the SOAPPublisher class does."""
-
-    def _gotResult(self, result, request, methodName):
-        response = SOAPpy.buildSOAP(kw=result, encoding=self.encoding)
-        self._sendResponse(request, response)
-        log_debug("UPnPPublisher._gotResult()")
-
-    def _gotError(self, failure, request, methodName):
-        class errorCode(Exception):
-            def __init__(self, status):
-                self.status = status
-        e = failure.value
-        status = 500
-        if isinstance(e, SOAPpy.faultType):
-            fault = e
-        else:
-            if isinstance(e, errorCode):
-                status = e.status
-            #else:
-            #    failure.printTraceback(file = log.logfile)
-            fault = SOAPpy.faultType("%s:Server" % SOAPpy.NS.ENV_T, "Method %s failed." % methodName)
-        response = SOAPpy.buildSOAP(fault, encoding=self.encoding)
-        self._sendResponse(request, response, status=status)
-        log_debug("UPnPPublisher._gotError(): status=%d, failure=%s, fault=%s", (status,failure,fault))
-
-class ContentDirectoryControl(UPnPPublisher, dict):
-    updateID = property(lambda x: x['0'].updateID)
-    urlbase = property(lambda x: x._urlbase)
-    BrowseFlags = ('BrowseMetaData', 'BrowseDirectChildren')
+class ContentDirectoryControl(resource.Resource):
+    isLeaf = True
+    allowedMethods = ('POST',)
 
     def __init__(self):
-        UPnPPublisher.__init__(self)
+        self.updateID = 0
 
-    def soap_GetSearchCapabilities(self, *args, **kwargs):
-        """Required: Return the searching capabilities supported by the device."""
-        log_debug('GetSearchCapabilities()')
-        return { 'SearchCapabilitiesResponse': { 'SearchCaps': '' }}
+    def render_POST(self, request):
+        pass
 
-    def soap_GetSortCapabilities(self, *args, **kwargs):
-        """Required: Return the CSV list of meta-data tags that can be used in sortCriteria."""
-        log_debug('GetSortCapabilities()')
-        return { 'SortCapabilitiesResponse': { 'SortCaps': '' }}
+    def GetSearchCapabilities(self, *args, **kwargs):
+        """Return the searching capabilities supported by the device."""
 
-    def soap_GetSystemUpdateID(self, *args, **kwargs):
-        """Required: Return the current value of state variable SystemUpdateID."""
-        log_debug('GetSystemUpdateID()')
-        return { 'SystemUpdateIdResponse': { 'Id': self.updateID }}
+    def GetSortCapabilities(self, *args, **kwargs):
+        """Return the CSV list of meta-data tags that can be used in sortCriteria."""
 
-    def soap_Browse(self, *args):
+    def GetSystemUpdateID(self, *args, **kwargs):
+        """Return the current value of state variable SystemUpdateID."""
+
+    def Browse(self, *args):
         log_debug('Browse()')
-        return { 'Result': "", 'NumberReturned': 0, 'TotalMatches': 0, 'UpdateID': self.updateID }
 
 class ServiceDescription(resource.Resource):
     isLeaf = True

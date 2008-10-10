@@ -12,7 +12,6 @@ AM_CHECK_PYMOD([sqlite],,, AC_MSG_ERROR([Python module 'sqlite' not found]))
 AM_CHECK_PYMOD([django],,, AC_MSG_ERROR([Python module 'django' not found]))
 AM_CHECK_PYMOD([dbus],,, AC_MSG_ERROR([Python module 'dbus' not found]))
 AM_CHECK_PYMOD([avahi],,, AC_MSG_ERROR([Python module 'avahi' not found]))
-AM_CHECK_PYMOD([magic],,, AC_MSG_ERROR([Python module 'magic' not found]))
 AM_CHECK_PYMOD([mutagen],,, AC_MSG_ERROR([Python module 'mutagen' not found]))
 AM_CHECK_PYMOD([setuptools],,, AC_MSG_ERROR([Python module 'setuptools' not found]))
 
