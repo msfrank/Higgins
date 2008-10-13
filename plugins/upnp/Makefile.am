@@ -4,6 +4,7 @@ EXTRA_DIST = \
 	higgins_upnp/connection_manager.py \
 	higgins_upnp/content_directory.py \
 	higgins_upnp/media_server.py \
+	higgins_upnp/soap_resource.py \
 	higgins_upnp/ssdp_server.py \
 	higgins_upnp/netif-internal.c \
 	higgins_upnp/netif-internal.h \

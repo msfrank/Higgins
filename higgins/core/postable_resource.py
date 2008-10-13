@@ -1,4 +1,5 @@
-from twisted.web2 import http, resource, http_headers
+from twisted.web2 import http, resource
+from twisted.web2.http_headers import DefaultHTTPHandler, tokenize, parseArgs
 from twisted.internet import defer
 from twisted.web2.stream import BufferedStream
 from higgins.logging import log_error, log_debug
@@ -19,8 +20,7 @@ def _parseContentDisposition(header):
     if not type == "form-data" and not type == "file":
         raise ValueError("Content-Disposition type is not 'form-data' or 'file'")
     return ContentDisposition(type, dict(args))
-
-http_headers.DefaultHTTPHandler.addParser("content-disposition", (http_headers.tokenize, _parseContentDisposition))
+DefaultHTTPHandler.addParser("content-disposition", (tokenize, _parseContentDisposition))
 
 class PostableResource(resource.Resource):
     def acceptFile(self, headers):

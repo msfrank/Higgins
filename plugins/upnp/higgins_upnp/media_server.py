@@ -4,16 +4,14 @@
 # Copyright 2006 John-Mark Gurney <gurney_j@resnet.uroegon.edu>
 
 import netif
-from twisted.web import resource, static
-from twisted.web.server import Site
+from twisted.web2 import channel, resource, static
+from twisted.web2.server import Site
 from twisted.internet import reactor
 from connection_manager import ConnectionManager
 from content_directory import ContentDirectory
 from higgins.conf import conf
 
 class RootDevice(static.Data):
-    isLeaf = True
-    allowedMethods = ('GET',)
     def __init__(self, urlbase, devicename, uuid):
         self.urlbase = urlbase
         self.devicename = devicename
@@ -58,15 +56,23 @@ class RootDevice(static.Data):
 </root>
         """ % (self.urlbase, self.devicename, self.uuid), 'text/xml')
 
+    def locateChild(self, request, segments):
+        return self, []
+
 class MediaServer(resource.Resource):
     def __init__(self, urlbase, devicename, uuid):
         resource.Resource.__init__(self)
         self.urlbase = urlbase
         self.devicename = devicename
         self.uuid = uuid
-        self.putChild("root-device.xml", RootDevice(self.urlbase, self.devicename, self.uuid))
-        self.putChild("ContentDirectory", ContentDirectory())
-        self.putChild("ConnectionManager", ConnectionManager())
+    def locateChild(self, request, segments):
+        if segments[0] == "root-device.xml":
+            return RootDevice(self.urlbase, self.devicename, self.uuid), segments[1:]
+        if segments[0] == "ContentDirectory":
+            return ContentDirectory(), segments[1:]
+        if segments[0] == "ConnectionManager":
+            return ConnectionManager(), segments[1:]
+        return None, []
 
 class MSService:
     def __init__(self, ssdp, interfaces=[]):
@@ -82,8 +88,8 @@ class MSService:
         uuid = conf.get("UPNP_UUID")
         for iface in self.interfaces:
             urlbase = 'http://%s:%d/' % (iface, 31338)
-            ms = MediaServer(urlbase, name, uuid)
-            server = reactor.listenTCP(31338, Site(ms), interface=iface)
+            site = Site(MediaServer(urlbase, name, uuid))
+            server = reactor.listenTCP(31338, channel.HTTPFactory(site), interface=iface)
             self.servers[iface] = server
             # register available services
             self.ssdp.register('%s::upnp:rootdevice' % uuid,
