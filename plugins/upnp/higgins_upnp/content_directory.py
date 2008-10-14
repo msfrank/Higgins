@@ -7,7 +7,6 @@ from twisted.web2.http import Response as HttpResponse
 from higgins.core.models import File, Song
 from higgins.logging import log_debug, log_error
 from xml.etree.ElementTree import Element, SubElement, tostring as xmltostring
-from xml.sax.saxutils import escape as xmlescape
 from soap_resource import SoapResource, SoapBag as SoapResult
 
 class ContentDirectoryControl(SoapResource):
@@ -24,18 +23,18 @@ class ContentDirectoryControl(SoapResource):
         # get the matching songs
         songs = Song.objects.all()[request_start:request_start+request_count]
         # generate the DIDL
-        didl = Element("{urn:schemas-upnp-org:metadata-1-0/DIDL-Lite}DIDL-Lite")
+        didl = Element("{urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/}DIDL-Lite")
         for song in songs:
-            item = SubElement(didl, "{urn:schemas-upnp-org:metadata-1-0/DIDL-Lite}item")
+            item = SubElement(didl, "{urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/}item")
             item.attrib["id"] = str(song.id)
             item.attrib["parentID"] = "0"
             item.attrib["restricted"] = "0"
+            upnp_class = SubElement(item, "{urn:schemas-upnp-org:metadata-1-0/upnp/}class")
+            upnp_class.text = "object.item.audioItem"
             title = SubElement(item, "{http://purl.org/dc/elements/1.1/}title")
             title.text = song.name
-            upnp_class = SubElement(item, "{urn:schemas-upnp-org:metadata-1-0/upnp}class")
-            upnp_class.text = "object.item.audioItem"
-            resource = SubElement(item, "{urn:schemas-upnp-org:metadata-1-0/DIDL-Lite}res")
-            resource.attrib["protocolInfo"] = "http-get:*:audio/mpeg"
+            resource = SubElement(item, "{urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/}res")
+            resource.attrib["protocolInfo"] = "http-get:*:audio/mpeg:*"
             #resource.attrib["size"] = 
             resource.text = "http://%s:%i/content/%i" % ('http://127.0.0.1', 31338, song.id)
         # build the SOAP result
@@ -43,7 +42,7 @@ class ContentDirectoryControl(SoapResource):
         result.set("xsd:int", "NumberReturned", len(songs))
         result.set("xsd:int", "TotalMatches", len(songs))
         result.set("xsd:int", "UpdateID", 1)
-        result.set("xsd:string", "Result", xmlescape(xmltostring(didl)))
+        result.set("xsd:string", "Result", xmltostring(didl))
         return result
 
 class ServiceDescription(static.Data):
