@@ -24,16 +24,27 @@ class ContentDirectoryControl(SoapResource):
         songs = Song.objects.all()[request_start:request_start+request_count]
         # generate the DIDL
         didl = Element("{urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/}DIDL-Lite")
+        didl.attrib["xmlns"] = "urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"
+        didl.attrib["xmlns:upnp"] = "urn:schemas-upnp-org:metadata-1-0/upnp/"
+        didl.attrib["xmlns:dc"] = "http://purl.org/dc/elements/1.1/"
         for song in songs:
-            item = SubElement(didl, "{urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/}item")
+            item = SubElement(didl, "item")
             item.attrib["id"] = str(song.id)
             item.attrib["parentID"] = "0"
             item.attrib["restricted"] = "0"
-            upnp_class = SubElement(item, "{urn:schemas-upnp-org:metadata-1-0/upnp/}class")
+            #item.attrib["size"] = song.file.size
+            #item.attrib["duration"] = song.duration
+            upnp_class = SubElement(item, "upnp:class")
             upnp_class.text = "object.item.audioItem"
-            title = SubElement(item, "{http://purl.org/dc/elements/1.1/}title")
+            title = SubElement(item, "dc:title")
             title.text = song.name
-            resource = SubElement(item, "{urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/}res")
+            upnp_artist = SubElement(item, "upnp:artist")
+            upnp_artist.text = str(song.artist.name)
+            upnp_album = SubElement(item, "upnp:album")
+            upnp_album.text = str(song.album.name)
+            #upnp_genre = SubElement(item, "upnp:genre")
+            #upnp_genre.text = 
+            resource = SubElement(item, "res")
             resource.attrib["protocolInfo"] = "http-get:*:audio/mpeg:*"
             #resource.attrib["size"] = 
             resource.text = "http://%s:%i/content/%i" % ('http://127.0.0.1', 31338, song.id)
