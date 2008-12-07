@@ -10,6 +10,10 @@ from xml.etree.ElementTree import Element, SubElement, tostring as xmltostring
 from soap_resource import SoapResource, SoapBag as SoapResult
 
 class ContentDirectoryControl(SoapResource):
+    def __init__(self, addr, port):
+        self.addr = addr
+        self.port = port
+
     def locateChild(self, request, segments):
         return self, []
 
@@ -47,7 +51,7 @@ class ContentDirectoryControl(SoapResource):
             resource = SubElement(item, "res")
             resource.attrib["protocolInfo"] = "http-get:*:audio/mpeg:*"
             #resource.attrib["size"] = 
-            resource.text = "http://%s:%i/content/%i" % ('http://127.0.0.1', 31338, song.id)
+            resource.text = "http://%s:%i/content/%i" % (self.addr, self.port, song.id)
         # build the SOAP result
         result = SoapResult()
         result.set("xsd:int", "NumberReturned", len(songs))
@@ -272,9 +276,12 @@ class ServiceDescription(static.Data):
         return self, []
 
 class ContentDirectory(resource.Resource):
+    def __init__(self, addr, port):
+        self.addr = addr
+        self.port = port
     def locateChild(self, request, segments):
         if segments[0] == "scpd.xml":
             return ServiceDescription(), segments[1:]
         if segments[0] == "control":
-            return ContentDirectoryControl(), segments[1:]
+            return ContentDirectoryControl(self.addr, self.port), segments[1:]
         return None, []

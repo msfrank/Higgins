@@ -1,7 +1,7 @@
 import os
 import pickle
 from logging import log_error, log_debug
-from django.core.management import syncdb
+from django.core.management import call_command
 from twisted.python import usage
 
 class Application:
@@ -26,7 +26,7 @@ class Application:
         # we import conf after parsing options, but before syncing the db tables
         from higgins.conf import conf
         # create db tables if necessary
-        syncdb(interactive=False)
+        call_command('syncdb')
         # create the parent service
         from twisted.application import service
         self.app = service.Application("Higgins", uid=o['uid'], gid=o['gid'])

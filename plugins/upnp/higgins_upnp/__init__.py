@@ -16,7 +16,7 @@ class UpnpService(Service):
         self.name = "UPnP"
         self.description = "Exposes the Higgins media store as a UPnP share"
         if conf.get("UPNP_SHARE_NAME") == None:
-            conf.set(UPNP_SHARE_NAME="Higgins UPnP Share on %s" % self.ms_addr)
+            conf.set(UPNP_SHARE_NAME="Higgins UPnP Share")
         if conf.get("UPNP_UUID") == None:
             conf.set(UPNP_UUID=''.join([ 'uuid:'] + map(lambda x: random.choice(string.letters), xrange(20))))
 
@@ -35,7 +35,7 @@ class UpnpService(Service):
         log_debug("[upnp] stopped UPnP service")
         return None
 
-from django import newforms as forms
+from django import forms
 
 class UpnpConfig(forms.Form):
     UPNP_SHARE_NAME = forms.CharField(label="UPnP Share Name")

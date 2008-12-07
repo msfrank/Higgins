@@ -39,7 +39,7 @@ class DaapService(internet.TCPServer):
         log_debug("stopped DAAP service")
         return None
 
-from django import newforms as forms
+from django import forms
 
 class DaapConfig(forms.Form):
     DAAP_SHARE_NAME = forms.CharField(label="DAAP Share Name")
