@@ -2,7 +2,7 @@ from twisted.web2 import resource, http_headers
 from twisted.web2.http import Response as HttpResponse
 from higgins.core.models import File, Artist, Album, Song, Genre
 from higgins.core.postable_resource import PostableResource
-from higgins.logging import log_debug, log_error
+from logger import CoreLogger
 import os
 from tempfile import mkstemp
 
@@ -16,7 +16,7 @@ class UniqueFile:
         os.close(self._fd)
         del(self._fd)
 
-class CreateCommand(PostableResource):
+class CreateCommand(PostableResource, CoreLogger):
     def acceptFile(self, headers):
         content_disposition = headers.getHeader('content-disposition')
         if 'filename' in content_disposition.params:
@@ -29,7 +29,7 @@ class CreateCommand(PostableResource):
         else:
             mimetype = 'application/octet-stream'
         file = UniqueFile(filename, mimetype)
-        log_debug("[core] acceptFile: created new unique file %s" % file.path);
+        self.log_debug("acceptFile: created new unique file %s" % file.path);
         return file
 
     def render(self, request):
@@ -68,7 +68,7 @@ class CreateCommand(PostableResource):
                     return HttpResponse(400, stream="Failed to stat() local file %s" % local_path)
                 file = File(path=posted.path, mimetype=posted.mimetype, size=s.st_size)
                 file.save()
-                log_debug("[core] CreateCommand: created new file %s" % posted.path)
+                self.log_debug("CreateCommand: created new file %s" % posted.path)
 
             # create or get the artist object
             value = request.post.get('artist', None)
@@ -104,22 +104,22 @@ class CreateCommand(PostableResource):
                 song.duration = int(value)
             song.save()
 
-            log_debug("[core]: successfully added new song '%s'" % title)
+            self.log_debug("successfully added new song '%s'" % title)
             return HttpResponse(200, stream="success!")
 
         except Exception, e:
-            log_debug("[core] CreateCommand failed: %s" % e)
+            self.log_debug("CreateCommand failed: %s" % e)
             return HttpResponse(500, stream="Internal Server Error")
 
-class UpdateCommand(resource.Resource):
+class UpdateCommand(resource.Resource, CoreLogger):
     def render(self, request):
         return HttpResponse(404)
 
-class DeleteCommand(resource.Resource):
+class DeleteCommand(resource.Resource, CoreLogger):
     def render(self, request):
         return HttpResponse(404)
 
-class ManagerResource(resource.Resource):
+class ManagerResource(resource.Resource, CoreLogger):
     def locateChild(self, request, segments):
         if segments[0] == "create":
             return CreateCommand(), []

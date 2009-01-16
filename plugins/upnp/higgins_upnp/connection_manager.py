@@ -4,18 +4,18 @@
 
 from twisted.web2 import channel, resource, static
 from twisted.web2.http import Response as HttpResponse
-from higgins.logging import log_debug, log_error
+from logger import UPnPLogger
 
-class ConnectionManagerControl(resource.Resource):
+class ConnectionManagerControl(resource.Resource, UPnPLogger):
     def locateChild(self, request, segments):
         return self, []
 
     def render_GET(self, request):
-        log_debug("ConnectionManagerControl: GET request=%s", request)
+        self.log_debug("ConnectionManagerControl: GET request=%s" % request)
         return HttpResponse(200)
 
     def render_POST(self, request):
-        log_debug("ConnectionManagerControl: POST request=%s", request)
+        self.log_debug("ConnectionManagerControl: POST request=%s" % request)
         return HttpResponse(200)
 
 class ServiceDescription(static.Data):

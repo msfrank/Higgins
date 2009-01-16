@@ -1,8 +1,8 @@
-from twisted.web2 import http, resource
+from twisted.web2 import http, resource, http_headers
 from twisted.web2.http_headers import DefaultHTTPHandler, tokenize, parseArgs
 from twisted.internet import defer
 from twisted.web2.stream import BufferedStream
-from higgins.logging import log_error, log_debug
+from logger import CoreLogger
 
 class ContentDisposition:
     def __init__(self, type, params):
@@ -22,7 +22,8 @@ def _parseContentDisposition(header):
     return ContentDisposition(type, dict(args))
 DefaultHTTPHandler.addParser("content-disposition", (tokenize, _parseContentDisposition))
 
-class PostableResource(resource.Resource):
+class PostableResource(resource.Resource, CoreLogger):
+
     def acceptFile(self, headers):
         """
         The default function which is called before reading a file sent via an HTTP POST.
@@ -92,7 +93,7 @@ class PostableResource(resource.Resource):
                 if request.ctxt.state == Context.STATE_READ_BODY:
                     request.ctxt.state = Context.STATE_PROCESS_BODY
                 else:
-                    log_error("[core] reached end of request, state is %s" % request.ctxt.state)
+                    self.log_error("reached end of request, state is %s" % request.ctxt.state)
                     break
 
             ##########################################################
@@ -106,8 +107,8 @@ class PostableResource(resource.Resource):
                     data = data.getResult()
                 data = data.strip()
                 if not data == "--" + request.boundary:
-                    log_debug("boundary error: expected '%s'" % (request.boundary))
-                    log_debug("     `--------> received '%s'" % (data))
+                    self.log_debug("boundary error: expected '%s'" % (request.boundary))
+                    self.log_debug("     `--------> received '%s'" % (data))
                 request.ctxt.state = Context.STATE_READ_HEADERS
 
             ##########################################################
@@ -128,7 +129,7 @@ class PostableResource(resource.Resource):
                         name, value = namevalue
                         request.ctxt.headers.addRawHeader(name, value.strip())
                     else:
-                        log_debug("header error: failed to parse '%s'" % data)
+                        self.log_debug("header error: failed to parse '%s'" % data)
 
             ##########################################################
             # STATE_PROCESS_HEADERS                                  #
@@ -143,7 +144,7 @@ class PostableResource(resource.Resource):
                     try:
                         request.ctxt.handle = self.acceptFile(request.ctxt.headers)
                     except Exception, e:
-                        log_debug("[core] acceptFile failed: %s" % e)
+                        self.log_debug("acceptFile failed: %s" % e)
                         request.ctxt.handle = None
                 else:
                     request.ctxt.handle = []
@@ -193,17 +194,17 @@ class PostableResource(resource.Resource):
             # STATE_PROCESS_BODY                                     #
             ##########################################################
             if request.ctxt.state == Context.STATE_PROCESS_BODY:
-                log_debug("[core] STATE_PROCESS_BODY")
+                self.log_debug("[core] STATE_PROCESS_BODY")
                 if request.ctxt.handle:
                     # add the form data to the http.Request.post dictionary
                     if isinstance(request.ctxt.handle, list):
                         value = u''.join(request.ctxt.handle)
                         request.post[request.ctxt.name] = value
-                        log_debug("[core] parsed post param '%s'='%s'" % (request.ctxt.name,value))
+                        self.log_debug("parsed post param '%s'='%s'" % (request.ctxt.name,value))
                     # add the file info to the http.Request.files list
                     else:
                         request.files.append(request.ctxt.handle)
-                        log_debug("[core] created file '%s'" % request.ctxt.handle.path)
+                        self.log_debug("created file '%s'" % request.ctxt.handle.path)
                 # reset the context
                 request.ctxt.headers = http_headers.Headers()
                 request.ctxt.leftover = None

@@ -2,10 +2,11 @@ from twisted.application import internet
 from server import DAAPFactory
 from commands import DAAPCommand
 from higgins.conf import conf
-from higgins.logging import log_debug, log_error
+from logger import DAAPLogger
 import dbus, avahi
 
-class DaapService(internet.TCPServer):
+class DaapService(internet.TCPServer, DAAPLogger):
+
     def __init__(self):
         self.name = "DAAP"
         self.description = "Exposes the Higgins media store as a DAAP (iTunes) share"
@@ -30,13 +31,13 @@ class DaapService(internet.TCPServer):
                                     "_daap._tcp", 
                                     "", "", 3689, [])
         self.avahi_group.Commit()
-        log_debug("started DAAP service")
+        self.log_debug("started DAAP service")
 
     def stopService(self):
         internet.TCPServer.stopService(self)
         self.avahi_group.Reset()
         self.avahi_group = None
-        log_debug("stopped DAAP service")
+        self.log_debug("stopped DAAP service")
         return None
 
 from django import forms

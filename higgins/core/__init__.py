@@ -2,7 +2,7 @@ from twisted.application import internet
 from twisted.web2 import resource, wsgi
 from twisted.web2.server import StopTraversal
 from twisted.web2.static import File
-from higgins.logging import log_debug, log_error
+from logger import CoreLogger
 from higgins.conf import conf
 from higgins.core.manager import ManagerResource
 from os.path import join
@@ -19,7 +19,6 @@ class StaticResource(resource.Resource):
         self.path = join(conf.get("STATIC_DATA_PATH"), *segments)
         return self, []
     def render(self, request):
-        log_debug("[core] GET static file %s" % self.path)
         return File(self.path)
 
 class RootResource(resource.Resource):
@@ -33,9 +32,9 @@ class RootResource(resource.Resource):
             return ManagerResource(), segments[1:]
         return self.browser, segments
 
-class CoreService(internet.TCPServer):
+class CoreService(internet.TCPServer, CoreLogger):
     def __init__(self):
         from twisted.web2 import server, channel
         site = server.Site(RootResource())
         internet.TCPServer.__init__(self, 8000, channel.HTTPFactory(site))
-        log_debug("started core service on port 8000")
+        self.log_debug("started core service on port 8000")

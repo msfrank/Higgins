@@ -1,7 +1,7 @@
 from twisted.protocols.basic import LineReceiver
 from twisted.internet.protocol import ServerFactory
 from twisted.internet import defer
-from higgins.logging import log_debug, log_error
+from logger import DAAPLogger
 import os
 
 class DAAPResource:
@@ -26,7 +26,7 @@ class DAAPStream:
     def close(self):
         pass
 
-class DAAPDataStream(DAAPStream):
+class DAAPDataStream(DAAPStream, DAAPLogger):
     def __init__(self, data):
         self.data = data
         self.size = len(data)
@@ -48,9 +48,9 @@ class DAAPDataStream(DAAPStream):
         self.deferred = None
 
     def stopProducing(self):
-        log_debug("[daap] DAAPDataStream.stopProducing() was called")
+        self.log_debug("DAAPDataStream.stopProducing() was called")
 
-class DAAPFileStream(DAAPStream):
+class DAAPFileStream(DAAPStream, DAAPLogger):
     def __init__(self, file):
         self.file = file
         file.seek(0, os.SEEK_END)
@@ -80,7 +80,7 @@ class DAAPFileStream(DAAPStream):
         self.transport.write(chunk)
 
     def stopProducing(self):
-        log_debug("[daap] DAAPFileStream.stopProducing() was called")
+        log_debug("DAAPFileStream.stopProducing() was called")
 
 class DAAPResponse:
     _status_codes = {
@@ -96,7 +96,7 @@ class DAAPResponse:
         self.headers = headers
         self.body = body
 
-class DAAPRequest:
+class DAAPRequest(DAAPLogger):
     def __init__(self, session):
         self.session = session
         self.session.setLineMode()
@@ -153,8 +153,8 @@ class DAAPRequest:
                     break
         # normalize the http version
         self.http_version = version.upper()
-        log_debug("[daap] method=%s, uri=%s, version=%s" %
-                     (self.method, self.abs_path, self.http_version)
+        self.log_debug("method=%s, uri=%s, version=%s" %
+                       (self.method, self.abs_path, self.http_version)
                  )
 
     def _parseHeader(self, header):
@@ -187,7 +187,7 @@ class DAAPRequest:
                 if segments == []:
                     raise command.renderDAAP(self)
 
-class DAAPSession(LineReceiver):
+class DAAPSession(LineReceiver, DAAPLogger):
     def __init__(self):
         self.setLineMode()
         self.persist = False
@@ -207,7 +207,7 @@ class DAAPSession(LineReceiver):
             except DAAPResponse, r:
                 raise r
             except Exception, e:
-                log_error("[daap] DAAPSession caught exception: %s (type=%s)" % (e, str(type(e))))
+                self.log_error("DAAPSession caught exception: %s (type=%s)" % (e, str(type(e))))
                 raise DAAPResponse(500)
         except DAAPResponse, response:
             #self.transport.stopReading()
@@ -282,10 +282,10 @@ class DAAPSession(LineReceiver):
         self.request = None
         self.response = None
         self.transport.loseConnection()
-        log_error("[daap] failed to write response")
+        self.log_error("failed to write response")
 
     def connectionLost(self, reason):
-        log_debug("[daap] connection was lost")
+        self.log_debug("connection was lost")
         if self.deferred:
             self.deferred.errback(reason)
         self.deferred = None

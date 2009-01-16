@@ -1,10 +1,10 @@
-import os
-import pickle
-from logging import log_error, log_debug
+from logging import Loggable
 from django.core.management import call_command
 from twisted.python import usage
 
-class Application:
+class Application(Loggable):
+    log_domain = "core"
+
     def __init__(self, options=[]):
         """
         Initialize the application
@@ -43,8 +43,8 @@ class Application:
                 service = services[service_name]
                 service.setServiceParent(self.app)
                 service.startService()
-                log_debug("started service '%s'" % service_name)
-            log_debug ("finished loading services")
+                self.log_debug("started service '%s'" % service_name)
+            self.log_debug ("finished loading services")
         except Exception, e:
             raise e
 
@@ -57,4 +57,4 @@ class Application:
         # save configuration settings
         from higgins.conf import conf
         conf.flush()
-        log_debug("higgins is exiting")
+        self.log_debug("higgins is exiting")

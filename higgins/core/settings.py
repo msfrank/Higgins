@@ -1,13 +1,16 @@
 from django.shortcuts import render_to_response, get_object_or_404
 from django.http import Http404
-from higgins.logging import log_debug, log_error
+from logger import CoreLogger
 from higgins.conf import conf
 from higgins.loader import configs
+
+logger = CoreLogger()
 
 def front(request):
     return render_to_response('settings-front.t')
 
 def configure(request, module):
+    logger.log_debug("test log message")
     # if there is no configurator named module, then return a 404
     try:
         config_factory = configs[module]
@@ -25,7 +28,7 @@ def configure(request, module):
             new_values[name] = config.clean_data[name]
         conf.set(**new_values)
     else:
-        log_debug("config form is not valid")
+        logger.log_debug("config form is not valid")
     return render_to_response('settings-service.t', {'config': config})
 
 def configure_services(request):
@@ -44,11 +47,11 @@ def configure_services(request):
         if not is_enabled == None:
             if service.running == 0:
                 service.startService()
-                log_debug ("started service %s" % name)
+                logger.log_debug ("started service %s" % name)
             enabled_services.append(name)
         elif not service.running == 0:
             service.stopService()
-            log_debug ("stopped service %s" % name)
+            logger.log_debug ("stopped service %s" % name)
         item = { 'name': name, 'service': service, 'config': configs.get(name, None) }
         service_items.append(item)
     conf.set(ENABLED_SERVICES=enabled_services)

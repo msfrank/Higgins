@@ -8,10 +8,10 @@ import random, string
 from twisted.application.service import Service
 from media_server import MSService
 from ssdp_server import SSDPService
-from higgins.logging import log_error, log_debug
+from logger import UPnPLogger
 from higgins.conf import conf
 
-class UpnpService(Service):
+class UpnpService(Service, UPnPLogger):
     def __init__(self):
         self.name = "UPnP"
         self.description = "Exposes the Higgins media store as a UPnP share"
@@ -26,13 +26,13 @@ class UpnpService(Service):
         self.ssdp.start()
         self.ms = MSService(self.ssdp)
         self.ms.start()
-        log_debug ("[upnp] started UPnP service")
+        self.log_debug ("started UPnP service")
 
     def stopService(self):
         self.ssdp.stop()
         self.ms.stop()
         Service.stopService(self)
-        log_debug("[upnp] stopped UPnP service")
+        self.log_debug("stopped UPnP service")
         return None
 
 from django import forms

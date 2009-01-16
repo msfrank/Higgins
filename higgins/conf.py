@@ -1,10 +1,12 @@
-import os
-import pickle
-from logging import log_error, log_debug
+from logging import Loggable
 from django.conf import settings as django_settings
 from higgins.site_settings import site_settings
+import os
+import pickle
 
-class LocalSettings:
+class LocalSettings(Loggable):
+    log_domain = "conf"
+
     _local_settings = {}
 
     def __init__(self):
@@ -19,7 +21,7 @@ class LocalSettings:
                 # ignore empty file error
                 pass
             except Exception, e:
-                log_error("failed to load local settings from '%s': %s" % (site_settings['LOCAL_SETTINGS_PATH'],e))
+                self.log_error("failed to load local settings from '%s': %s" % (site_settings['LOCAL_SETTINGS_PATH'],e))
                 raise e
         if 'SECRET_KEY' not in LocalSettings._local_settings:
             # generate a secret key
@@ -27,13 +29,13 @@ class LocalSettings:
             validchars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
             secret_key = ''.join([choice(validchars) for i in range(50)])
             LocalSettings._local_settings = {'SECRET_KEY': secret_key}
-            log_debug("generated a new secret key")
+            self.log_debug("generated a new secret key")
         # load the local settings into the site_settings dict
         for name,value in LocalSettings._local_settings.items():
             site_settings[name] = value
         # load the site_settings into the django_settings object
         django_settings.configure(**site_settings)
-        log_debug("loaded settings from '%s'" % (site_settings['LOCAL_SETTINGS_PATH']))
+        self.log_debug("loaded settings from '%s'" % (site_settings['LOCAL_SETTINGS_PATH']))
 
     def get(self, name, default=None):
         try:
@@ -61,6 +63,6 @@ class LocalSettings:
         f = open(site_settings['LOCAL_SETTINGS_PATH'], 'w')
         pickle.dump(LocalSettings._local_settings, f, 0)
         f.close()
-        log_debug("flushed settings changes")
+        self.log_debug("flushed settings changes")
 
 conf = LocalSettings()

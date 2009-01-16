@@ -4,7 +4,7 @@ from twisted.web2.http_headers import DefaultHTTPHandler, last, parseKeyValue
 from twisted.internet import defer
 from twisted.web2.stream import BufferedStream
 from xml.etree.ElementTree import XML, Element, SubElement, tostring as xmltostring
-from higgins.logging import log_error, log_debug
+from logger import UPnPLogger
 
 class SoapBag:
     def __init__(self):
@@ -34,7 +34,7 @@ def _parseSoapAction(header):
     return ''.join(header.split('"')).split('#', 1)
 DefaultHTTPHandler.addParser("soapaction", (last, _parseSoapAction))
 
-class SoapResource(resource.Resource):
+class SoapResource(resource.Resource, UPnPLogger):
     def _readSoapData(self, request):
         while not request.buffered_stream.length == 0:
                 retval = request.buffered_stream.readExactly(512)
@@ -60,7 +60,7 @@ class SoapResource(resource.Resource):
             request.soap_args = args
             return self.render(request)
         except Exception, e:
-            log_debug("[upnp] failed to parse soap request: %s" % e)
+            self.log_debug("failed to parse soap request: %s" % e)
             return HttpResponse(400)
 
     def render(self, request):
@@ -75,10 +75,10 @@ class SoapResource(resource.Resource):
                 arg.attrib["{http://www.w3.org/1999/XMLSchema-instance}type"] = type
                 arg.text = str(value)
             output = xmltostring(env)
-            log_debug("[upnp] executed soap method %s" % request.soap_action)
+            self.log_debug("executed soap method %s" % request.soap_action)
             return HttpResponse(200, stream=output)
         except Exception, e:
-            log_debug("[upnp] failed to execute soap method: %s" % e)
+            self.log_debug("failed to execute soap method: %s" % e)
             return HttpResponse(404)
 
     def http_POST(self, request):

@@ -9,9 +9,9 @@ import netif
 from twisted.python import log
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
-from higgins.logging import log_error, log_debug
+from logger import UPnPLogger
 
-class SSDPServer(DatagramProtocol):
+class SSDPServer(DatagramProtocol, UPnPLogger):
 
     def __init__(self, interfaces):
         self.known = {}
@@ -37,12 +37,12 @@ class SSDPServer(DatagramProtocol):
         elif cmd[0] == 'NOTIFY' and cmd[1] == '*':
             pass
         else:
-            log_debug('[upnp] Ignoring unknown SSDP command %s' % cmd)
+            self.log_debug('Ignoring unknown SSDP command %s' % cmd)
 
     def discoveryRequest(self, headers, (host, port)):
         """Process a discovery request.  The response must be sent to
         the address specified by (host, port)."""
-        log_debug('[upnp] SSDP discovery request for %s' % headers['st'])
+        self.log_debug('SSDP discovery request for %s' % headers['st'])
         # Do we know about this service?
         if headers['st'] == 'ssdp:all':
             for i in self.known:
@@ -64,7 +64,7 @@ class SSDPServer(DatagramProtocol):
     def register(self, usn, st, location):
         """Register a service or device that this SSDP server will
         respond to."""
-        log_debug('[upnp] Registering service %s' % st)
+        self.log_debug('Registering service %s' % st)
         self.known[st] = {}
         self.known[st]['USN'] = usn
         self.known[st]['LOCATION'] = location
@@ -76,7 +76,7 @@ class SSDPServer(DatagramProtocol):
 
     def doByebye(self, st):
         """Do byebye"""
-        log_debug('[upnp] Unregistering service %s' % st)
+        self.log_debug('Unregistering service %s' % st)
         for iface in self.interfaces:
             resp = [ 'NOTIFY * HTTP/1.1',
                 'Host: %s:%d' % (iface, 1900),
@@ -91,7 +91,7 @@ class SSDPServer(DatagramProtocol):
 
     def doNotify(self, st):
         """Do notification"""
-        log_debug('[upnp] Sending alive notification for %s' % st)
+        self.log_debug('Sending alive notification for %s' % st)
         for iface in self.interfaces:
             resp = [ 'NOTIFY * HTTP/1.1',
                 'Host: %s:%d' % (iface, 1900),
@@ -104,7 +104,7 @@ class SSDPServer(DatagramProtocol):
             resp.extend(('', ''))
             self.transport.write('\r\n'.join(resp), (iface, 1900))
 
-class SSDPService:
+class SSDPService(UPnPLogger):
     def __init__(self, interfaces=None):
         if interfaces == None:
             self.interfaces = [addr for name,(addr,up) in netif.list_interfaces().items()]
@@ -113,7 +113,7 @@ class SSDPService:
         self.servers = {}
 
     def start(self):
-        log_debug("[upnp] SSDP Server listening on port 1900")
+        self.log_debug("SSDP Server listening on port 1900")
         self.server = SSDPServer(self.interfaces)
         self.listener = reactor.listenMulticast(1900, self.server, listenMultiple=True)
         self.listener.joinGroup('239.255.255.250')

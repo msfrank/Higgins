@@ -3,6 +3,7 @@ higginscore_PYTHON = \
   	__init__.py \
   	browser.py \
   	front.py \
+	logger.py \
   	manager.py \
   	models.py \
   	postable_resource.py \

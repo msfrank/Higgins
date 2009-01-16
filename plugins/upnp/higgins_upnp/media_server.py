@@ -10,11 +10,11 @@ from twisted.web2.stream import FileStream
 from twisted.web2.server import Site
 from twisted.web2.http_headers import MimeType
 from twisted.internet import reactor
+from logger import UPnPLogger
 from connection_manager import ConnectionManager
 from content_directory import ContentDirectory
 from higgins.core.models import Song
 from higgins.conf import conf
-from higgins.logging import log_debug, log_error
 
 class RootDevice(static.Data):
     def __init__(self, urlbase, devicename, uuid):
@@ -64,7 +64,7 @@ class RootDevice(static.Data):
     def locateChild(self, request, segments):
         return self, []
 
-class Content(resource.Resource):
+class Content(resource.Resource, UPnPLogger):
     def render(self, request):
         f = open(self.song.file.path, "r")
         mimetype = MimeType.fromString(self.song.file.mimetype)
@@ -75,13 +75,13 @@ class Content(resource.Resource):
 
     def locateChild(self, request, segments):
         try:
-            log_debug("[upnp] streaming /content/%s" % segments[0])
+            self.log_debug("streaming /content/%s" % segments[0])
             item = int(segments[0])
             self.song = Song.objects.filter(id=item)[0]
-            log_debug("[upnp] /content/%s -> %s" % (segments[0], self.song.file.path))
+            self.log_debug("/content/%s -> %s" % (segments[0], self.song.file.path))
             return self, []
         except Exception, e:
-            log_debug("[upnp] can't stream /content/%s: %s" % (segments[0], e))
+            self.log_debug("can't stream /content/%s: %s" % (segments[0], e))
             return None, []
 
 class MediaServer(resource.Resource):
@@ -103,7 +103,7 @@ class MediaServer(resource.Resource):
             return ConnectionManager(), segments[1:]
         return None, []
 
-class MSService:
+class MSService(UPnPLogger):
     def __init__(self, ssdp, interfaces=[]):
         self.ssdp = ssdp
         if len(interfaces) == 0:
@@ -139,5 +139,5 @@ class MSService:
         for server in self.servers.items():
             d = server.stopListening()
             if d:
-                log_debug("MediaServer couldn't immediately stop listening, deferring")
+                self.log_debug("MediaServer couldn't immediately stop listening, deferring")
             self.ssdp.unregister()

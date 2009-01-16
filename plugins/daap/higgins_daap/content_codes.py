@@ -66,12 +66,14 @@ content_codes = {
     'abcp': (ContentType.List, 'daap.browsecomposerlisting'),
     'abgn': (ContentType.List, 'daap.browsegenrelisting'),
     'adbs': (ContentType.List, 'daap.databasesongs'),
+    'agrp': (ContentType.String, 'daap.songgrouping'),
     'asal': (ContentType.String, 'daap.songalbum'),
     'asar': (ContentType.String, 'daap.songartist'),
-    'asbt': (ContentType.Short, 'daap.songsbeatsperminute'),
+    'asbt': (ContentType.Short, 'daap.songbeatsperminute'),
     'asbr': (ContentType.Short, 'daap.songbitrate'),
     'ascm': (ContentType.String, 'daap.songcomment'),
     'asco': (ContentType.Byte, 'daap.songcompilation'),
+    'ascp': (ContentType.String, 'daap.songcomposer'),
     'asda': (ContentType.Date, 'daap.songdateadded'),
     'asdm': (ContentType.Date, 'daap.songdatemodified'),
     'asdc': (ContentType.Short, 'daap.songdisccount'),
@@ -103,3 +105,7 @@ content_codes = {
     'aeNV': (ContentType.Long, 'com.apple.itunes.norm-volume'),
     'aeSP': (ContentType.Byte, 'com.apple.itunes.smart-playlist'),
 }
+
+reverse_table = {}
+for code,(type,cname) in content_codes.items():
+    reverse_table[cname] = code

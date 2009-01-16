@@ -5,7 +5,7 @@
 from twisted.web2 import channel, resource, static
 from twisted.web2.http import Response as HttpResponse
 from higgins.core.models import File, Song
-from higgins.logging import log_debug, log_error
+from logger import UPnPLogger
 from xml.etree.ElementTree import Element, SubElement, tostring as xmltostring
 from soap_resource import SoapResource, SoapBag as SoapResult
 
