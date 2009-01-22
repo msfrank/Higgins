@@ -28,7 +28,7 @@ setup(
               'higgins.upnp',
         ],
     ext_modules=[Extension('higgins.netif.commands', ['higgins/netif/commands.pyx', 'higgins/netif/netif-internal.c'])],
-    package_data={'higgins.data': ['css/*.css', 'templates/*.t', 'images/*.png', 'images/*.jpg']},
+    package_data={'higgins.data': ['static/css/*.css', 'templates/*.t', 'static/images/*.*']},
     # auto-generate the higgins-media-server script
     entry_points={
         'console_scripts': [ 'higgins-media-server=higgins:run_application' ],
