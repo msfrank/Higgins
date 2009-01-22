@@ -58,3 +58,8 @@ class Application(Loggable):
         from higgins.conf import conf
         conf.flush()
         self.log_debug("higgins is exiting")
+
+def run_application():
+    import sys
+    Application(sys.argv[1:]).run()
+

@@ -59,6 +59,9 @@ class LocalSettings(Loggable):
         for key,value in settings.items():
             LocalSettings._local_settings[key] = value
 
+    def __setitem__(self, name, value):
+        LocalSettings._local_settings[key] = value
+
     def flush(self):
         f = open(site_settings['LOCAL_SETTINGS_PATH'], 'w')
         pickle.dump(LocalSettings._local_settings, f, 0)
