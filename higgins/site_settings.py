@@ -1,26 +1,23 @@
-# default settings
 site_settings = {
-    'LOCAL_SETTINGS_PATH': '/home/msfrank/local/var/higgins/settings',
-    'PLUGINS_DIR': '/home/msfrank/local/var/higgins/plugins',
+    'HIGGINS_DIR': None,
     'DEBUG': True,
     'TEMPLATE_DEBUG': True,
     'ADMINS': (),
     'MANAGERS': (),
     'DATABASE_ENGINE': 'sqlite3',
-    'DATABASE_NAME': '/home/msfrank/local/var/higgins/database',
+    'DATABASE_NAME': None,
     'TIME_ZONE': 'America/Pacific',
     'LANGUAGE_CODE': 'en-us',
     'SITE_ID': 1,
     'USE_I18N': True,
     'MEDIA_ROOT': '',
     'MEDIA_URL': '',
-    'ADMIN_MEDIA_PREFIX': '/media/',
+    'ADMIN_MEDIA_PREFIX': '',
     'SECRET_KEY': '',
     'TEMPLATE_LOADERS': (
         'higgins.loader.load_template_source',
-        #'django.template.loaders.eggs.load_template_source',
-        #'django.template.loaders.filesystem.load_template_source',
-        #'django.template.loaders.app_directories.load_template_source',
+        'django.template.loaders.app_directories.load_template_source',
+        'django.template.loaders.filesystem.load_template_source',
         ),
     'MIDDLEWARE_CLASSES': (
         'django.middleware.common.CommonMiddleware',
@@ -29,7 +26,7 @@ site_settings = {
         'django.middleware.doc.XViewMiddleware',
         ),
     'ROOT_URLCONF': 'higgins.core.urls',
-    'TEMPLATE_DIRS': ('/home/msfrank/projects/higgins.git/build/share/higgins/templates',),
+    'TEMPLATE_DIRS': (),
     'INSTALLED_APPS': (
         'django.contrib.auth',
         'django.contrib.contenttypes',
@@ -38,5 +35,4 @@ site_settings = {
         'django.contrib.admin',
         'higgins.core',
         ),
-    'STATIC_DATA_PATH': '/home/msfrank/local/share/higgins'
 }

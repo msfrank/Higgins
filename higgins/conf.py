@@ -10,18 +10,19 @@ class LocalSettings(Loggable):
     _local_settings = {}
 
     def __init__(self):
+        self.local_settings_path = os.path.join(site_settings['HIGGINS_DIR'], "settings.dat")
         # check for the existence of a local settings file
-        if os.access(site_settings['LOCAL_SETTINGS_PATH'], os.F_OK):
+        if os.access(self.local_settings_path, os.F_OK):
             # load the local settings
             try:
-                f = open(site_settings['LOCAL_SETTINGS_PATH'], 'r')
+                f = open(self.local_settings_path, 'r')
                 LocalSettings._local_settings = pickle.load(f)
                 f.close()
             except EOFError, e:
                 # ignore empty file error
                 pass
             except Exception, e:
-                self.log_error("failed to load local settings from '%s': %s" % (site_settings['LOCAL_SETTINGS_PATH'],e))
+                self.log_error("failed to load local settings from '%s': %s" % (self.local_settings_path,e))
                 raise e
         if 'SECRET_KEY' not in LocalSettings._local_settings:
             # generate a secret key
@@ -35,7 +36,8 @@ class LocalSettings(Loggable):
             site_settings[name] = value
         # load the site_settings into the django_settings object
         django_settings.configure(**site_settings)
-        self.log_debug("loaded settings from '%s'" % (site_settings['LOCAL_SETTINGS_PATH']))
+        self._doFlush()
+        self.log_debug("loaded settings from '%s'" % self.local_settings_path)
 
     def get(self, name, default=None):
         try:
@@ -62,10 +64,13 @@ class LocalSettings(Loggable):
     def __setitem__(self, name, value):
         LocalSettings._local_settings[key] = value
 
-    def flush(self):
-        f = open(site_settings['LOCAL_SETTINGS_PATH'], 'w')
+    def _doFlush(self):
+        f = open(self.local_settings_path, 'w')
         pickle.dump(LocalSettings._local_settings, f, 0)
         f.close()
+
+    def flush(self):
+        self._doFlush()
         self.log_debug("flushed settings changes")
 
 conf = LocalSettings()

@@ -26,12 +26,20 @@ setup(
               'higgins.data',
               'higgins.netif',
               'higgins.upnp',
+              'higgins.plugins',
+              'higgins.plugins.daap',
         ],
-    ext_modules=[Extension('higgins.netif.commands', ['higgins/netif/commands.pyx', 'higgins/netif/netif-internal.c'])],
+    namespace_packages=['higgins', 'higgins.plugins'],
+    ext_modules=[Extension('higgins.netif.commands',
+                           ['higgins/netif/commands.pyx', 'higgins/netif/netif-internal.c'])
+        ],
     package_data={'higgins.data': ['static/css/*.css', 'templates/*.t', 'static/images/*.*']},
     # auto-generate the higgins-media-server script
     entry_points={
-        'console_scripts': [ 'higgins-media-server=higgins:run_application' ],
+        'console_scripts': ['higgins-media-server=higgins:run_application',
+                            'higgins-upload=higgins.core.upload.run_application'
+            ],
+        'higgins.plugin.service': 'daap=higgins.plugins.daap:DaapService',
         },
 )
 
