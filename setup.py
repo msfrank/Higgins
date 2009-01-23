@@ -34,10 +34,10 @@ setup(
                            ['higgins/netif/commands.pyx', 'higgins/netif/netif-internal.c'])
         ],
     package_data={'higgins.data': ['static/css/*.css', 'templates/*.t', 'static/images/*.*']},
+    scripts=['scripts/higgins-upload',],
     # auto-generate the higgins-media-server script
     entry_points={
         'console_scripts': ['higgins-media-server=higgins:run_application',
-                            'higgins-upload=higgins.core.upload.run_application'
             ],
         'higgins.plugin.service': 'daap=higgins.plugins.daap:DaapService',
         },

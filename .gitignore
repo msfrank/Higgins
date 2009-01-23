@@ -1,0 +1,10 @@
+build
+dist
+dumps
+*.pyc
+Higgins.egg-info
+MANIFEST
+higgins/netif/commands.c
+higgins/netif/commands.so
+plugins/daap/DAAP_Share_Server.egg-info
+plugins/upnp/UPnP_MediaServer.egg-info
