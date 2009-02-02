@@ -1,52 +1,15 @@
-/*
- *
- */
 body
 {
     background-color: white;
     font-family: "Trebuchet MS";
     font-size: 12pt;
 }
-a
-{ 
-    color: #183d57;
-    text-decoration: none;
-    font-size: 12pt;
-}
+a { color: #183d57; text-decoration: none; }
 a:hover { text-decoration: underline; }
 img { border: none; }
-
-/*
- *
- */
-#higgins-title { font-size: 24pt; }
-#enclosure
-{
-    width: 800px;
-    margin-left: auto;
-    margin-right: auto;
-    margin-top: 20px;
-}
-#higgins-nav
-{
-    margin-top: 10px;
-    width: 800px;
-    border-top: 1px solid black;
-    margin-bottom: 20px;
-}
-#higgins-nav-home
-{
-    width: 80px;
-}
-#higgins-nav-browse
-{
-    width: 80px;
-}
-#higgins-nav-search
-{
-    width: 80px;
-}
-#higgins-nav-settings
-{
-    width: 80px;
-}
+#higgins-title { font-size: 24pt; width: 800px; }
+#enclosure { width: 800px; margin-left: auto; margin-right: auto; margin-top: 20px; }
+#higgins-nav { margin-top: 10px; margin-bottom: 5px; }
+#higgins-content { margin-top: 20px; }
+.higgins-nav-item { padding-right: 20px; }
+.higgins-separator { border-top: 1px solid black; }

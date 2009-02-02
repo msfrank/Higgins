@@ -8,16 +8,21 @@
 
 <div id="enclosure">
     <div id="higgins-title">Higgins</div>
+    <div class="higgins-content-separator" />
     <table id="higgins-nav">
         <tr id="higgins-nav-row">
-            <td id="higgins-nav-home"><a href="/">Home</a></td>
-            <td id="higgins-nav-browse"><a href="/browse/">Browse</a></td>
-            <td id="higgins-nav-search"><a href="/search/">Search</a></td>
-            <td id="higgins-nav-settings"><a href="/settings/">Settings</a></td>
+            <td class="higgins-nav-item"><a href="/">Home</a></td>
+            <td class="higgins-nav-item"><a href="/browse/">Browse</a></td>
+            <td class="higgins-nav-item"><a href="/search/">Search</a></td>
+            <td class="higgins-nav-item"><a href="/settings/">Settings</a></td>
             <td> </td>
         </tr>
     </table>
+    <div class="higgins-separator" />
+    {% block subnav %}{% endblock %}
+    <div id="higgins-content">
     {% block content %}{% endblock %}
+    </div>
 </div>
 
 </body>

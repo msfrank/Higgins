@@ -1,12 +1,10 @@
-{% extends "base.t" %}
+{% extends "settings-base.t" %}
 
 {% block title %}Settings{% endblock %}
 
-{% block content %}
-<div>
+{% block settings_content %}
     <form method="post" action="">
-        <table>{{ config.as_table }}</table>
+        <table id="higgins-settings-configurator">{{ config.as_table }}</table>
         <input type="submit" value="Save Settings"/>
     </form>
-</div>
 {% endblock %}

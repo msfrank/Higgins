@@ -11,15 +11,6 @@ setup(
     description="Multi-protocol A/V Server",
     long_description="",
     url="http://www.syntaxjockey.com/higgins",
-    # package requirements
-    #install_requires=['Twisted', 
-    #                  'twisted.web2',
-    #                  'pysqlite',
-    #                  'Django >= 1.0.0',
-    #                  'mutagen',
-    #                  'dbus',
-    #                  'avahi',
-    #    ],
     # package contents
     packages=['higgins',
               'higgins.core',
@@ -39,7 +30,9 @@ setup(
     entry_points={
         'console_scripts': ['higgins-media-server=higgins:run_application',
             ],
-        'higgins.plugin.service': 'daap=higgins.plugins.daap:DaapService',
+        'higgins.service': 'daap=higgins.plugins.daap:DaapService',
+        'higgins.core.configurator': 'http=higgins.core:CoreHttpConfig',
+        #'higgins.upnp.device': 'mediaserver=higgins.plugins.mediaserver:MediaServerDevice',
         },
 )
 

@@ -4,6 +4,7 @@ from twisted.web2.http import Response
 from higgins.conf import conf
 from higgins.core.manager import ManagerResource
 from higgins.core.logger import CoreLogger
+from higgins.core import configurator
 from os.path import join as pathjoin
 from pkg_resources import resource_string
 
@@ -41,3 +42,8 @@ class CoreService(internet.TCPServer, CoreLogger):
         site = server.Site(RootResource())
         internet.TCPServer.__init__(self, 8000, channel.HTTPFactory(site))
         self.log_debug("started core service on port 8000")
+
+class CoreHttpConfig(configurator.Configurator):
+    config_name = "HTTP Server"
+    config_description = "Configure the built-in HTTP Server"
+    CORE_HTTP_PORT = configurator.IntegerSetting("Listening Port", min_value=0, max_value=65535)

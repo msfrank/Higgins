@@ -1,14 +1,7 @@
-{% extends "base.t" %}
-
-{% block stylesheet %}
-    <link href="/static/css/settings.css" rel="stylesheet" type="text/css" media="screen"/>
-{% endblock %}
+{% extends "settings-base.t" %}
 
 {% block title %}Settings{% endblock %}
 
-{% block content %}
-<p>
-    System settings go here
-</p>
-<p><a href="/settings/services/">Configure Services</a></p>
+{% block settings_content %}
+Describe services here.
 {% endblock %}

@@ -28,20 +28,31 @@ class HigginsOptions(usage.Options):
                 db = pwd.getpwnam(self['user'])
                 self['user'] = db[2]
             except KeyError:
-                raise Exception("Unknown user '%s'" % self['user'])
+                raise Exception("Error parsing options: Unknown user '%s'" % self['user'])
         # convert group name to GID
         if self['group']:
             try:
                 db = grp.getgrnam(self['group'])
                 self['group'] = db[2]
             except KeyError:
-                raise Exception("Unknown group '%s'" % self['group'])
+                raise Exception("Error parsing options: Unknown group '%s'" % self['group'])
         # create environment directory if necessary
+        env_dir = self['env']
         if self['create']:
-            pass
+            try:
+                os.makedirs(env_dir, 0755)
+            except Exception, e:
+                raise Exception("Startup failed: couldn't create directory %s (%s)" % (env_dir, e.strerror))
         # verify that environment directory exists and is sane
-        else:
-            pass
+        if not os.access(env_dir, os.F_OK):
+            raise Exception("Startup failed: Environment directory %s doesn't exist." % env_dir)
+        if not os.access(env_dir, os.R_OK):
+            raise Exception("Startup failed: %s is not readable by Higgins." % env_dir)
+        if not os.access(env_dir, os.W_OK):
+            raise Exception("Startup failed: %s is not writable by Higgins." % env_dir)
+        if not os.access(env_dir, os.X_OK):
+            raise Exception("Startup failed: %s is not executable by Higgins." % env_dir)
+        # set HIGGINS_DIR and DATABASE name
         site_settings['HIGGINS_DIR'] = self['env']
         site_settings['DATABASE_NAME'] = os.path.join(self['env'], "database.dat")
 
@@ -52,8 +63,8 @@ class HigginsOptions(usage.Options):
         print "  -u,--user USER     The user the process should run under (must be root)"
         print "  -g,--group GROUP   The group the process should run under (must be root)"
         print "  -d,--debug         Run in the foreground, and log everything to stdout"
-        print "  -h,--help"
-        print "  -v,--version"
+        print "  --help"
+        print "  --version"
         sys.exit(0)
 
     def opt_version(self):
@@ -68,15 +79,29 @@ class Application(Loggable):
         """
         Initialize the application
         """
+        # check dependencies
+        try:
+            import twisted
+            import twisted.web2
+            import django
+            import xml.etree.ElementTree
+            import mutagen
+            import setuptools
+        except ImportError, e:
+            print "%s: make sure the corresponding python package is installed and in your PYTHONPATH." % e
+            sys.exit(1)
         # parse options
         o = HigginsOptions()
         try:
             o.parseOptions(options)
-        except Exception, e:
+        except usage.UsageError, e:
             print "Error parsing options: %s" % e
             print ""
-            print "Try %s --help for usage information." % sys.argv[0]
-            sys.exit(0)
+            print "Try %s --help for usage information." % os.path.basename(sys.argv[0])
+            sys.exit(1)
+        except Exception, e:
+            print "%s" % e
+            sys.exit(1)
 
         # we import conf after parsing options, but before syncing the db tables
         from higgins.conf import conf
@@ -90,15 +115,26 @@ class Application(Loggable):
         core_service = CoreService()
         core_service.setServiceParent(self.app)
         core_service.startService()
+        # start the UPnP service
+        from higgins.upnp import UPnPService
+        upnp_service = UPnPService()
+        upnp_service.setServiceParent(self.app)
+        upnp_service.startService()
         try:
             from higgins.loader import services
             # load enabled services
             enabled_services = conf.get("ENABLED_SERVICES", [])
             for service_name in enabled_services:
-                service = services[service_name]
-                service.setServiceParent(self.app)
-                service.startService()
-                self.log_debug("started service '%s'" % service_name)
+                try:
+                    service = services[service_name]
+                    service.setServiceParent(self.app)
+                    service.startService()
+                    self.log_debug("started service '%s'" % service_name)
+                except KeyError, e:
+                    self.log_error("failed to load service '%s': plugin is not loaded" % service_name)
+                except Exception, e:
+                    self.log_error("failed to load service '%s': %s" % (service_name,e))
+
             self.log_debug ("finished loading services")
         except Exception, e:
             raise e
@@ -115,6 +151,5 @@ class Application(Loggable):
         self.log_debug("higgins is exiting")
 
 def run_application():
-    import sys
     Application(sys.argv[1:]).run()
 
