@@ -1,4 +1,5 @@
 from higgins.logging import Loggable
 
-class UpnpLogger(Loggable):
+class UPnPLogger(Loggable):
     log_domain = "upnp"
+logger = UPnPLogger()

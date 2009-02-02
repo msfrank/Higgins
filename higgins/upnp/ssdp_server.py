@@ -5,12 +5,12 @@
 
 import random
 import string
-import netif
+from higgins import netif
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
-from logger import UpnpLogger
+from logger import UPnPLogger
 
-class SSDPServer(DatagramProtocol, UpnpLogger):
+class SSDPFactory(DatagramProtocol, UPnPLogger):
 
     def __init__(self, interfaces):
         self.interfaces = interfaces
@@ -18,7 +18,7 @@ class SSDPServer(DatagramProtocol, UpnpLogger):
 
     def registerDevice(self, device):
         if device.upnp_UDN in self.devices:
-            raise UpnpRuntimeException("%s is already a registered device" % device)
+            raise UPnPRuntimeException("%s is already a registered device" % device)
         for iface in self.interfaces:
             # advertise the device
             self.sendAlive("upnp:rootdevice",
@@ -40,7 +40,7 @@ class SSDPServer(DatagramProtocol, UpnpLogger):
 
     def unregisterDevice(self, device):
         if not device.upnp_UDN in self.devices:
-            raise UpnpRuntimeException("%s is not a registered device" % device)
+            raise UPnPRuntimeException("%s is not a registered device" % device)
         for iface in self.interfaces:
             # advertise the device
             self.sendByebye("upnp:rootdevice", "uuid:%s::upnp:rootdevice" % device.upnp_UDN)
@@ -143,7 +143,7 @@ class SSDPServer(DatagramProtocol, UpnpLogger):
             self.unregisterDevice(device)
         DatagramProtocol.doStop(self)
 
-class SSDPService(UpnpLogger):
+class SSDPServer(UPnPLogger):
     def __init__(self, interfaces=None):
         if interfaces == None:
             self.interfaces = [addr for name,(addr,up) in netif.list_interfaces().items()]
@@ -152,7 +152,7 @@ class SSDPService(UpnpLogger):
 
     def start(self):
         self.log_debug("SSDP Server listening on port 1900")
-        self.server = SSDPServer(self.interfaces)
+        self.server = SSDPFactory(self.interfaces)
         self.listener = reactor.listenMulticast(1900, self.server, listenMultiple=True)
         self.listener.joinGroup('239.255.255.250')
         self.listener.setLoopbackMode(0)
