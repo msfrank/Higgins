@@ -11,12 +11,12 @@
         <tr>
             <td>
                 <span class="higgins-settings-nav-item">
-                    <a href="/settings/services/">Services</a>
+                    <a href="/settings/plugins/">Plugins</a>
                 </span>
             </td>
             {% for item in config_items %}<td>
                 <span class="higgins-settings-nav-item">
-                    <a href="/settings/{{item.name}}/">{{item.config.config_name}}</a>
+                    <a href="/settings/{{item.name}}/">{{item.config.pretty_name}}</a>
                 </span>
             </td>
         {% endfor %}</tr>

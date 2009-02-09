@@ -1,10 +1,16 @@
+# Higgins - A multi-media server
+# Copyright (c) 2007-2009  Michael Frank <msfrank@syntaxjockey.com>
+#
+# This program is free software; for license information see the COPYING
+# file or view it at http://www.gnu.org/licenses/lgpl-2.1.html
+
 __import__('pkg_resources').declare_namespace(__name__)
 
-from logging import Loggable
-from site_settings import site_settings
+import sys, pwd, grp, os
 from django.core.management import call_command as django_admin_command
 from twisted.python import usage
-import sys, pwd, grp, os
+from higgins.logging import Loggable
+from higgins.site_settings import site_settings
 
 class HigginsOptions(usage.Options):
     optFlags = [
@@ -41,6 +47,9 @@ class HigginsOptions(usage.Options):
         if self['create']:
             try:
                 os.makedirs(env_dir, 0755)
+                os.makedirs(os.path.join(env_dir, 'logs'), 0755)
+                os.makedirs(os.path.join(env_dir, 'plugins'), 0755)
+                os.makedirs(os.path.join(env_dir, 'media'), 0755)
             except Exception, e:
                 raise Exception("Startup failed: couldn't create directory %s (%s)" % (env_dir, e.strerror))
         # verify that environment directory exists and is sane
@@ -71,9 +80,8 @@ class HigginsOptions(usage.Options):
         print "Higgins version 0.1"
         sys.exit(0)
 
-
 class Application(Loggable):
-    log_domain = "core"
+    log_domain = "startup"
 
     def __init__(self, options=[]):
         """
@@ -88,7 +96,7 @@ class Application(Loggable):
             import mutagen
             import setuptools
         except ImportError, e:
-            print "%s: make sure the corresponding python package is installed and in your PYTHONPATH." % e
+            self.log_error("%s: make sure the corresponding python package is installed and in your PYTHONPATH." % e)
             sys.exit(1)
         # parse options
         o = HigginsOptions()
@@ -100,44 +108,42 @@ class Application(Loggable):
             print "Try %s --help for usage information." % os.path.basename(sys.argv[0])
             sys.exit(1)
         except Exception, e:
-            print "%s" % e
+            self.log_error("%s" % e)
             sys.exit(1)
-
+        # check for pid file
+        self._pidfile = os.path.join(o['env'], "higgins.pid")
+        if os.path.exists(self._pidfile):
+            try:
+                f = open(self._pidfile)
+                pid = int(f.read())
+                f.close()
+            except Exception, e:
+                self.log_warning("failed to parse PID file '%s': %s" % (self._pidfile, e))
+            else:
+                self.log_error("failed to start Higgins: another instance is already running with PID %i" % pid)
+                sys.exit(1)
+        else:
+            try:
+                open(self._pidfile, 'wb').write(str(os.getpid()))
+            except Exception, e:
+                self.log_error("failed to create PID file '%s': %s" % (self._pidfile, e))
         # we import conf after parsing options, but before syncing the db tables
         from higgins.conf import conf
         # create db tables if necessary
         django_admin_command('syncdb')
-        # create the parent service
+        # importing higgins.loader implicitly loads plugins
+        import higgins.loader
+        # start the core service
         from twisted.application import service
         self.app = service.Application("Higgins", uid=o['user'], gid=o['group'])
-        # start the core service
-        from higgins.core import CoreService
-        core_service = CoreService()
+        from core import core_service
         core_service.setServiceParent(self.app)
         core_service.startService()
         # start the UPnP service
-        from higgins.upnp import UPnPService
-        upnp_service = UPnPService()
-        upnp_service.setServiceParent(self.app)
-        upnp_service.startService()
-        try:
-            from higgins.loader import services
-            # load enabled services
-            enabled_services = conf.get("ENABLED_SERVICES", [])
-            for service_name in enabled_services:
-                try:
-                    service = services[service_name]
-                    service.setServiceParent(self.app)
-                    service.startService()
-                    self.log_debug("started service '%s'" % service_name)
-                except KeyError, e:
-                    self.log_error("failed to load service '%s': plugin is not loaded" % service_name)
-                except Exception, e:
-                    self.log_error("failed to load service '%s': %s" % (service_name,e))
-
-            self.log_debug ("finished loading services")
-        except Exception, e:
-            raise e
+        #from higgins.upnp import UPnPService
+        #upnp_service = UPnPService()
+        #upnp_service.setServiceParent(self.app)
+        #upnp_service.startService()
 
     def run(self):
         """
@@ -148,8 +154,16 @@ class Application(Loggable):
         # save configuration settings
         from higgins.conf import conf
         conf.flush()
+        # remove the PID file
+        try:
+            os.unlink(self._pidfile)
+        except Exception, e:
+            self.log_warning("failed to remove PID file '%s': %s" % (self._pidfile, e))
         self.log_debug("higgins is exiting")
 
 def run_application():
+    """
+    This is the entry point for running Higgins from the higgins-media-server script,
+    which is generated at build time by setuptools.
+    """
     Application(sys.argv[1:]).run()
-

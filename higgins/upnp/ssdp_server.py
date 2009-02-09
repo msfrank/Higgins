@@ -59,7 +59,7 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
         lines = map(lambda x: x.replace(': ', ':', 1), lines[1:])
         lines = filter(lambda x: len(x) > 0, lines)
         headers = [string.split(x, ':', 1) for x in lines]
-        #headers = dict(map(lambda x: (x[0].lower(), x[1]), headers))
+        headers = dict(map(lambda x: (x[0].upper(), x[1]), headers))
         if cmd == 'M-SEARCH' and uri == '*':
             self.discoveryRequest(headers, (host, port))
 
@@ -97,8 +97,8 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
                 'USN: %s' % usn
                 ]
             return '\r\n'.join(response) + '\r\n'
-        # check for ssdp:discover, as required by the upnp spec
-        if not headers['MAN'] == '"ssdp:discover"':
+        # if the MAN header is present, make sure its ssdp:discover
+        if not headers.get('MAN', '') == '"ssdp:discover"':
             return
         self.log_debug('received discovery request for %s' % headers['ST'])
         # Generate a response

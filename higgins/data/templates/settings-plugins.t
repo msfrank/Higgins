@@ -10,20 +10,20 @@
     </p>
     <p>
     <form id="higgins-settings-form" method="post" action="">
-        <table id="higgins-settings-services">{% for item in service_items %}
+        <table id="higgins-settings-plugins">{% for plugin in plugins %}
             <tr>
                 <td>
                     <input type="checkbox"
-                           name="{{item.name}}"
-                           value="enabled"{% if item.service.running %} checked="true"{% endif %} />
+                           name="{{plugin.name}}"
+                           value="enabled"{% if plugin.running %} checked="true"{% endif %} />
                 </td>
                 <td>
-                    <span class="higgins-settings-service-name">{{item.service.service_name}}</span>
+                    <span class="higgins-settings-plugin-name">{{plugin.pretty_name}}</span>
                     <br/>
-                    <span class="higgins-settings-service-descripton">{{item.service.service_description}}<span>
+                    <span class="higgins-settings-plugin-descripton">{{plugin.description}}<span>
                 </td>
                 <td>
-                    {% ifnotequal item.service.service_config None %}<a href="{{item.name}}/">Settings</a>{% endifnotequal %}
+                    {% ifnotequal item.plugin_config None %}<a href="{{plugin.name}}/">Settings</a>{% endifnotequal %}
                 </td>
             </tr>
         {% endfor %}</table>

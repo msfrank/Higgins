@@ -19,8 +19,6 @@ def log_handler(params):
         level = params.get('level', 'debug')
         time_t = params.get('time', None)
         domain = params.get('domain', 'twisted')
-#        if domain == '<none>':
-#            print "log_handler: params = %s" % params
         if params.get('printed') == True:
             if params.get('isError') == True:
                 domain = "stderr"
@@ -30,9 +28,14 @@ def log_handler(params):
             time = ctime(time_t)
         else:
             time = ''
-        print "%s [%s] %s: %s" % (time, domain, level, ''.join(params['message']))
+        if level == 'FATAL' or level == 'ERROR':
+            print "\033[1;31m%s [%s] %s: %s\033[0m" % (time, domain, level, ''.join(params['message']))
+        elif level == 'warning':
+            print "\033[1;33m%s [%s] %s: %s\033[0m" % (time, domain, level, ''.join(params['message']))
+        else:
+            print "%s [%s] %s: %s" % (time, domain, level, ''.join(params['message']))
     except Exception, e:
-        print "%s [default] ERROR: failed to log message: %s (params was %s)" % (time, e, params)
+        print "\033[1;31m%s [default] ERROR: failed to log message: %s (params was %s)\033[0m" % (time, e, params)
 
 log.addObserver(log_handler)
 

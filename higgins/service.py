@@ -1,10 +1,9 @@
 from twisted.application.service import Service as TwistedService
 
 class Service(TwistedService):
-    service_name = None
-    service_description = None
-    service_config = None
-    entry_points = {}
+    pretty_name = None
+    description = None
+    configs = None
 
     def __init__(self):
         pass

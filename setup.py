@@ -16,9 +16,11 @@ setup(
               'higgins.core',
               'higgins.data',
               'higgins.netif',
-              'higgins.upnp',
               'higgins.plugins',
               'higgins.plugins.daap',
+              'higgins.plugins.mediaserver',
+              'higgins.upnp',
+              'higgins.web2',
         ],
     namespace_packages=['higgins', 'higgins.plugins'],
     ext_modules=[Extension('higgins.netif.commands',
@@ -30,9 +32,9 @@ setup(
     entry_points={
         'console_scripts': ['higgins-media-server=higgins:run_application',
             ],
-        'higgins.service': 'daap=higgins.plugins.daap:DaapService',
-        'higgins.core.configurator': 'http=higgins.core:CoreHttpConfig',
-        #'higgins.upnp.device': 'mediaserver=higgins.plugins.mediaserver:MediaServerDevice',
+        'higgins.plugin': ['daap=higgins.plugins.daap:DaapService',
+                           #'mediaserver=higgins.plugins.mediaserver:MediaserverService',
+            ],
         },
 )
 
