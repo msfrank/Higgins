@@ -9,7 +9,8 @@ __import__('pkg_resources').declare_namespace(__name__)
 import sys, pwd, grp, os
 from django.core.management import call_command as django_admin_command
 from twisted.python import usage
-from higgins.logging import Loggable
+from twisted.python.logfile import LogFile
+from higgins.logging import Loggable, StdoutObserver, LogfileObserver
 from higgins.site_settings import site_settings
 
 class HigginsOptions(usage.Options):
@@ -18,12 +19,19 @@ class HigginsOptions(usage.Options):
         ["debug", "d", "Run Higgins in the foreground, and log everything to stdout"],
     ]
 
+    def __init__(self, app):
+        self.app = app
+        usage.Options.__init__(self)
+        self['verbose'] = 0
+
+    def opt_verbose(self):
+        self['verbose'] = self['verbose'] + 1
+    opt_v = opt_verbose
+
     def parseArgs(self, env):
         self['env'] = env
 
     def postOptions(self):
-        if self['debug']:
-            print "Debugging enabled"
         # create environment directory if necessary
         env_dir = self['env']
         if self['create']:
@@ -52,6 +60,7 @@ class HigginsOptions(usage.Options):
         print ""
         print "  -c,--create        Create the environment if necessary"
         print "  -d,--debug         Run in the foreground, and log everything to stdout"
+        print "  -v                 Increase verbosity"
         print "  --help"
         print "  --version"
         sys.exit(0)
@@ -67,19 +76,8 @@ class Application(Loggable):
         """
         Initialize the application
         """
-        # check dependencies
-        try:
-            import twisted
-            import twisted.web2
-            import django
-            import xml.etree.ElementTree
-            import mutagen
-            import setuptools
-        except ImportError, e:
-            self.log_error("%s: make sure the corresponding python package is installed and in your PYTHONPATH." % e)
-            sys.exit(1)
         # parse options
-        o = HigginsOptions()
+        o = HigginsOptions(self)
         try:
             o.parseOptions(options)
         except usage.UsageError, e:
@@ -90,11 +88,26 @@ class Application(Loggable):
         except Exception, e:
             self.log_error("%s" % e)
             sys.exit(1)
-        # if debug flag is specified, then don't request to daemonize
+        # check runtime dependencies
+        try:
+            import twisted
+            import twisted.web2
+            import django
+            import xml.etree.ElementTree
+            import mutagen
+            import setuptools
+        except ImportError, e:
+            self.log_error("%s: make sure the corresponding python package is installed and in your PYTHONPATH." % e)
+            sys.exit(1)
+        # if debug flag is specified, then don't request to daemonize and log to stdout
         if o['debug']:
             self.daemonize = False
+            self.observer = StdoutObserver()
+        # otherwise daemonize and log to logs/higgins.log
         else:
             self.daemonize = True
+            self.observer = LogfileObserver(LogFile('higgins.log', os.path.join(o['env'], 'logs')))
+        self.observer.start()
         # set pid file
         self._pidfile = os.path.join(o['env'], "higgins.pid")
         if os.path.exists(self._pidfile):
@@ -140,6 +153,7 @@ class Application(Loggable):
             self.log_debug("higgins is exiting")
         finally:
             self._removePID()
+            self.observer.stop()
 
     def _removePID(self):
         try:

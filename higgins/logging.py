@@ -1,5 +1,5 @@
-from twisted.python import log, logfile
 from time import ctime
+from twisted.python import log, logfile, util
 
 class Loggable:
     log_domain = "default"
@@ -14,8 +14,8 @@ class Loggable:
     def log_debug(self, reason):
         log.msg(reason, level="debug", domain=self.log_domain)
 
-def log_handler(params):
-    try:
+class CommonObserver(log.DefaultObserver):
+    def _formatMessage(self, params):
         level = params.get('level', 'debug')
         time_t = params.get('time', None)
         domain = params.get('domain', 'twisted')
@@ -28,13 +28,35 @@ def log_handler(params):
             time = ctime(time_t)
         else:
             time = ''
-        if level == 'FATAL' or level == 'ERROR':
-            print "\033[1;31m%s [%s] %s: %s\033[0m" % (time, domain, level, ''.join(params['message']))
-        elif level == 'warning':
-            print "\033[1;33m%s [%s] %s: %s\033[0m" % (time, domain, level, ''.join(params['message']))
-        else:
-            print "%s [%s] %s: %s" % (time, domain, level, ''.join(params['message']))
-    except Exception, e:
-        print "\033[1;31m%s [default] ERROR: failed to log message: %s (params was %s)\033[0m" % (time, e, params)
+        return "%s [%s] %s: %s" % (time, domain, level, ''.join(params['message']))
 
-log.addObserver(log_handler)
+class LogfileObserver(CommonObserver):
+    def __init__(self, f):
+        self.write = f.write
+        self.flush = f.flush
+
+    def _emit(self, params):
+        msg = self._formatMessage(params) + '\r\n'
+        util.untilConcludes(self.write, msg)
+        util.untilConcludes(self.flush)
+
+class StdoutObserver(CommonObserver):
+    def __init__(self, colorized=False):
+        if colorized:
+            self.START_RED = '\033[1;31m'
+            self.START_YELLOW = '\033[1;33m'
+            self.END = '\033[0m'
+        else:
+            self.START_RED = ''
+            self.START_YELLOW = ''
+            self.END = ''
+
+    def _emit(self, params):
+        level = params.get('level', 'debug')
+        msg = self._formatMessage(params)
+        if level == 'FATAL' or level == 'ERROR':
+            print self.START_RED + msg + self.END
+        elif level == 'warning':
+            print self.START_YELLOW + msg + self.END
+        else:
+            print msg
