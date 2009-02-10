@@ -127,39 +127,50 @@ class Application(Loggable):
                 open(self._pidfile, 'wb').write(str(os.getpid()))
             except Exception, e:
                 self.log_error("failed to create PID file '%s': %s" % (self._pidfile, e))
-        # we import conf after parsing options, but before syncing the db tables
-        from higgins.conf import conf
-        # create db tables if necessary
-        django_admin_command('syncdb')
-        # importing higgins.loader implicitly loads plugins
-        import higgins.loader
-        # start the core service
-        from twisted.application import service
-        self.app = service.Application("Higgins", uid=o['user'], gid=o['group'])
-        from core import core_service
-        core_service.setServiceParent(self.app)
-        core_service.startService()
-        # start the UPnP service
-        #from higgins.upnp import UPnPService
-        #upnp_service = UPnPService()
-        #upnp_service.setServiceParent(self.app)
-        #upnp_service.startService()
+        # this logic in enclosed in a try-except block so the _removePID method
+        # will get called if we error out.  we re-raise the exception so we can
+        # catch it in the run_application function.
+        try:
+            # we import conf after parsing options, but before syncing the db tables
+            from higgins.conf import conf
+            # create db tables if necessary
+            django_admin_command('syncdb')
+            # importing higgins.loader implicitly loads plugins
+            import higgins.loader
+            # start the core service
+            from twisted.application import service
+            self.app = service.Application("Higgins", uid=o['user'], gid=o['group'])
+            from core import core_service
+            core_service.setServiceParent(self.app)
+            core_service.startService()
+            # start the UPnP service
+            #from higgins.upnp import UPnPService
+            #upnp_service = UPnPService()
+            #upnp_service.setServiceParent(self.app)
+            #upnp_service.startService()
+        except Exception, e:
+            self._removePID()
+            raise e
 
     def run(self):
         """
         Pass control of the application to twisted
         """
-        from twisted.internet import reactor
-        reactor.run()
-        # save configuration settings
-        from higgins.conf import conf
-        conf.flush()
-        # remove the PID file
+        try:
+            from twisted.internet import reactor
+            reactor.run()
+            # save configuration settings
+            from higgins.conf import conf
+            conf.flush()
+            self.log_debug("higgins is exiting")
+        finally:
+            self._removePID()
+
+    def _removePID(self):
         try:
             os.unlink(self._pidfile)
         except Exception, e:
             self.log_warning("failed to remove PID file '%s': %s" % (self._pidfile, e))
-        self.log_debug("higgins is exiting")
 
 def run_application():
     """

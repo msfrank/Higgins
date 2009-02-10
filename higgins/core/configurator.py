@@ -1,4 +1,5 @@
 from django import forms
+from higgins.conf import conf
 from higgins.core.logger import logger
 
 class ConfiguratorDeclarativeParser(type):
@@ -19,8 +20,14 @@ class Configurator:
     def __init__(self):
         self._config_cls = type(self._config_name + "Form", (forms.Form,), self._config_attrs)
         initial = self._config_cls({})
+        # for each field, set the default value if it hasn't already been set
         for name,field in initial.fields.items():
-            logger.log_debug("configurator %s: initial value for %s=%s" % (self._config_name,name,field.default))
+            if not name in conf:
+                try:
+                    conf[name] = field.clean(field.default)
+                    logger.log_debug("set initial value for %s to '%s'" % (name, field.default))
+                except forms.ValidationError, e:
+                    logger.log_warning("failed to set initial value for %s: '%s' is not valid" % (name, field.default))
 
     def __call__(self, settings):
         return self._config_cls(settings)
