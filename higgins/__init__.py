@@ -17,10 +17,6 @@ class HigginsOptions(usage.Options):
         ["create", "c", "Create the environment if necessary"],
         ["debug", "d", "Run Higgins in the foreground, and log everything to stdout"],
     ]
-    optParameters = [
-        ["user", "u", None, "The user the process should run under (must be root)"],
-        ["group", "g", None, "The group the process should run under (must be root)"],
-    ]
 
     def parseArgs(self, env):
         self['env'] = env
@@ -28,20 +24,6 @@ class HigginsOptions(usage.Options):
     def postOptions(self):
         if self['debug']:
             print "Debugging enabled"
-        # convert user name to UID
-        if self['user']:
-            try:
-                db = pwd.getpwnam(self['user'])
-                self['user'] = db[2]
-            except KeyError:
-                raise Exception("Error parsing options: Unknown user '%s'" % self['user'])
-        # convert group name to GID
-        if self['group']:
-            try:
-                db = grp.getgrnam(self['group'])
-                self['group'] = db[2]
-            except KeyError:
-                raise Exception("Error parsing options: Unknown group '%s'" % self['group'])
         # create environment directory if necessary
         env_dir = self['env']
         if self['create']:
@@ -69,8 +51,6 @@ class HigginsOptions(usage.Options):
         print "Usage: %s [OPTION]... ENV" % sys.argv[0]
         print ""
         print "  -c,--create        Create the environment if necessary"
-        print "  -u,--user USER     The user the process should run under (must be root)"
-        print "  -g,--group GROUP   The group the process should run under (must be root)"
         print "  -d,--debug         Run in the foreground, and log everything to stdout"
         print "  --help"
         print "  --version"
@@ -81,7 +61,7 @@ class HigginsOptions(usage.Options):
         sys.exit(0)
 
 class Application(Loggable):
-    log_domain = "startup"
+    log_domain = "core"
 
     def __init__(self, options=[]):
         """
@@ -110,7 +90,12 @@ class Application(Loggable):
         except Exception, e:
             self.log_error("%s" % e)
             sys.exit(1)
-        # check for pid file
+        # if debug flag is specified, then don't request to daemonize
+        if o['debug']:
+            self.daemonize = False
+        else:
+            self.daemonize = True
+        # set pid file
         self._pidfile = os.path.join(o['env'], "higgins.pid")
         if os.path.exists(self._pidfile):
             try:
@@ -118,45 +103,35 @@ class Application(Loggable):
                 pid = int(f.read())
                 f.close()
             except Exception, e:
-                self.log_warning("failed to parse PID file '%s': %s" % (self._pidfile, e))
+                self.log_error("failed to parse PID file '%s': %s" % (self._pidfile, e))
+                sys.exit(1)
             else:
                 self.log_error("failed to start Higgins: another instance is already running with PID %i" % pid)
                 sys.exit(1)
-        else:
-            try:
-                open(self._pidfile, 'wb').write(str(os.getpid()))
-            except Exception, e:
-                self.log_error("failed to create PID file '%s': %s" % (self._pidfile, e))
-        # this logic in enclosed in a try-except block so the _removePID method
-        # will get called if we error out.  we re-raise the exception so we can
-        # catch it in the run_application function.
-        try:
-            # we import conf after parsing options, but before syncing the db tables
-            from higgins.conf import conf
-            # create db tables if necessary
-            django_admin_command('syncdb')
-            # importing higgins.loader implicitly loads plugins
-            import higgins.loader
-            # start the core service
-            from twisted.application import service
-            self.app = service.Application("Higgins", uid=o['user'], gid=o['group'])
-            from core import core_service
-            core_service.setServiceParent(self.app)
-            core_service.startService()
-            # start the UPnP service
-            #from higgins.upnp import UPnPService
-            #upnp_service = UPnPService()
-            #upnp_service.setServiceParent(self.app)
-            #upnp_service.startService()
-        except Exception, e:
-            self._removePID()
-            raise e
+        # we import conf after parsing options, but before syncing the db tables
+        from higgins.conf import conf
+        # create db tables if necessary
+        django_admin_command('syncdb')
+        # importing higgins.loader implicitly loads plugins
+        import higgins.loader
+        # start the core service
+        from twisted.application import service
+        self.app = service.Application("Higgins")
+        from core import core_service
+        core_service.setServiceParent(self.app)
+        core_service.startService()
 
     def run(self):
         """
         Pass control of the application to twisted
         """
         try:
+            open(self._pidfile, 'wb').write(str(os.getpid()))
+        except Exception, e:
+            self.log_error("failed to create PID file '%s': %s" % (self._pidfile, e))
+            return
+        try:
+            # pass control to reactor
             from twisted.internet import reactor
             reactor.run()
             # save configuration settings
@@ -177,4 +152,12 @@ def run_application():
     This is the entry point for running Higgins from the higgins-media-server script,
     which is generated at build time by setuptools.
     """
-    Application(sys.argv[1:]).run()
+    application = Application(sys.argv[1:])
+    if application.daemonize:
+        if os.fork():
+            os._exit(0)
+        null = os.open('/dev/null', os.O_RDWR)
+        for i in range(3):
+            os.dup2(null, i)
+        os.close(null)
+    application.run()

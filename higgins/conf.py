@@ -86,7 +86,7 @@ class LocalSettings(Loggable):
         then the default value is returned.
         """
         try:
-            return LocalSettings._local_settings[name]
+            return self._local_settings[name]
         except:
             pass
         try:
@@ -98,7 +98,7 @@ class LocalSettings(Loggable):
     def set(self, **settings):
         """Saves one or more settings."""
         for key,value in settings.items():
-            LocalSettings._local_settings[key] = value
+            self._local_settings[key] = value
 
     def flush(self):
         """Flushes settings to disk."""

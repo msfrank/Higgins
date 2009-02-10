@@ -7,7 +7,7 @@ class Loggable:
         log.msg(reason, level="FATAL", domain=self.log_domain)
     def log_error(self, reason):
         log.msg(reason, level="ERROR", domain=self.log_domain)
-    def log_warn(self, reason):
+    def log_warning(self, reason):
         log.msg(reason, level="warning", domain=self.log_domain)
     def log_info(self, reason):
         log.msg(reason, level="info", domain=self.log_domain)
@@ -38,18 +38,3 @@ def log_handler(params):
         print "\033[1;31m%s [default] ERROR: failed to log message: %s (params was %s)\033[0m" % (time, e, params)
 
 log.addObserver(log_handler)
-
-def log_fatal(domain, reason):
-    log.msg(reason, level="FATAL", domain=domain)
-
-def log_error(domain, reason):
-    log.msg(reason, level="ERROR", domain=domain)
-
-def log_warn(domain, reason):
-    log.msg(reason, level="warning", domain=domain)
-
-def log_info(domain, reason):
-    log.msg(reason, level="info", domain=domain)
-
-def log_debug(domain, reason):
-    log.msg(reason, level="debug", domain=domain)

@@ -12,4 +12,4 @@ class Service(TwistedService):
         TwistedService.startService(self)
 
     def stopService(self):
-        TwistedService.stopService()
+        TwistedService.stopService(self)
