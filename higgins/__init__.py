@@ -1,8 +1,8 @@
 # Higgins - A multi-media server
 # Copyright (c) 2007-2009  Michael Frank <msfrank@syntaxjockey.com>
 #
-# This program is free software; for license information see the COPYING
-# file or view it at http://www.gnu.org/licenses/lgpl-2.1.html
+# This program is free software; for license information see
+# the COPYING file.
 
 __import__('pkg_resources').declare_namespace(__name__)
 
@@ -91,7 +91,6 @@ class Application(Loggable):
         # check runtime dependencies
         try:
             import twisted
-            import twisted.web2
             import django
             import xml.etree.ElementTree
             import mutagen

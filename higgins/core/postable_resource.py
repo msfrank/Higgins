@@ -1,8 +1,8 @@
-from twisted.web2 import http, resource, http_headers
-from twisted.web2.http_headers import DefaultHTTPHandler, tokenize, parseArgs
 from twisted.internet import defer
-from twisted.web2.stream import BufferedStream
-from logger import CoreLogger
+from higgins.http import http, resource, http_headers
+from higgins.http.http_headers import DefaultHTTPHandler, tokenize, parseArgs
+from higgins.http.stream import BufferedStream
+from higgins.core.logger import CoreLogger
 
 class ContentDisposition:
     def __init__(self, type, params):

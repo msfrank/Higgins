@@ -2,10 +2,10 @@ from os.path import join as pathjoin
 from pkg_resources import resource_string
 from twisted.application.service import MultiService
 from twisted.application.internet import TCPServer
-from twisted.web2 import resource, wsgi
-from twisted.web2.http import Response
 from higgins.conf import conf
 from higgins.service import Service
+from higgins.http import resource, wsgi
+from higgins.http.http import Response
 from higgins.core.configurator import Configurator, IntegerSetting
 from higgins.core.manager import ManagerResource
 from higgins.core.logger import CoreLogger
@@ -52,7 +52,7 @@ class CoreService(MultiService, TCPServer, CoreLogger):
             'http': { 'name': 'http', 'config': CoreHttpConfig() }
             }
         # start the webserver
-        from twisted.web2 import server, channel
+        from higgins.http import server, channel
         site = server.Site(RootResource())
         MultiService.__init__(self)
         TCPServer.__init__(self, 8000, channel.HTTPFactory(site))

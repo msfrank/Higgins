@@ -1,8 +1,8 @@
-from twisted.web2 import resource
-from twisted.web2.static import Data as StaticResource
-from twisted.web2.http import Response as HttpResponse
-from twisted.web2.http_headers import DefaultHTTPHandler, last, parseKeyValue
-from twisted.web2.stream import BufferedStream
+from higgins.http import resource
+from higgins.http.static import Data as StaticResource
+from higgins.http.http import Response as HttpResponse
+from higgins.http.http_headers import DefaultHTTPHandler, last, parseKeyValue
+from higgins.http.stream import BufferedStream
 from twisted.internet import defer
 from xml.etree.ElementTree import XML, Element, SubElement, tostring as xmltostring
 import urllib

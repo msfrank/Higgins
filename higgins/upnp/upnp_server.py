@@ -1,5 +1,5 @@
-from twisted.web2 import resource
-from twisted.web2.static import Data as StaticResource
+from higgins.http import resource
+from higgins.http.static import Data as StaticResource
 from twisted.internet import reactor
 from higgins import netif
 from control_resource import ControlResource
@@ -42,8 +42,8 @@ class UPnPServer:
         self.devices = {}
 
     def start(self):
-        from twisted.web2.server import Site
-        from twisted.web2.channel import HTTPFactory
+        from higgins.http.server import Site
+        from higgins.http.channel import HTTPFactory
         self.site = Site(RootResource(self))
         self.listener = reactor.listenTCP(1901, HTTPFactory(self.site))
         logger.log_debug("UPnP Server listening on port 1901")

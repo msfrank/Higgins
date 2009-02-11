@@ -1,5 +1,5 @@
-from twisted.web2 import resource, http_headers
-from twisted.web2.http import Response as HttpResponse
+from higgins.http import resource, http_headers
+from higgins.http.http import Response as HttpResponse
 from higgins.core.models import File, Artist, Album, Song, Genre
 from higgins.core.postable_resource import PostableResource
 from logger import CoreLogger
