@@ -3,24 +3,53 @@ from higgins.conf import conf
 from higgins.core.logger import logger
 
 class ConfiguratorDeclarativeParser(type):
-    def __new__(cls, name, bases, attrs):
-        attrs['_config_name'] = name
-        config_attrs = {}
-        for name,object in attrs.items():
-            if isinstance(object, forms.Field):
-                config_attrs[name] = object
-        attrs['_config_attrs'] = config_attrs
-        return super(ConfiguratorDeclarativeParser,cls).__new__(cls, name, bases, attrs)
+    # The metaclass does the magic of parsing the Configurator subclass
+    # and building a configuration form from the supplied settings.
 
-class Configurator:
+    def __new__(cls, name, bases, attrs):
+        # Returns the generated Configurator subclass.
+        attrs['_config_name'] = name
+        config_fields = {}
+        for key,object in attrs.items():
+            if isinstance(object, forms.Field):
+                config_fields[key] = object
+                del attrs[key]
+        attrs['_config_fields'] = config_fields
+        attrs['_config_cls'] = type(name + "Form", (forms.Form,), config_fields.copy())
+        new_class = super(ConfiguratorDeclarativeParser,cls).__new__(cls, name, bases, attrs)
+        return new_class
+
+    def __getattr__(cls, name):
+        # if 'name' is a setting, then return the setting value from the
+        # configuration store.  otherwise, return an AttributeError exception.
+        # Note that this method will only be called if 'name' *doesn't* exist
+        # as a class attribute.
+        if name in cls._config_fields:
+            return conf[name]
+        raise AttributeError("Configurator is missing config field %s" % name)
+
+    def __setattr__(cls, name, value):
+        # if 'name' is a setting, then set its value in the configuration
+        # store.  Otherwise try to set the class attribute to 'value'.
+        try:
+            field = cls._config_fields[name]
+            conf[name] = field.clean(value)
+            logger.log_debug("%s: %s => %s" % (cls._config_name, name, value))
+        except:
+            type.__setattr__(cls, name, value)
+
+class Configurator(object):
+    """
+    Holds one or more configuration settings, and provides a method for
+    getting and setting these settings.
+    """
     __metaclass__ = ConfiguratorDeclarativeParser
     pretty_name = None
     description = None
 
     def __init__(self):
-        self._config_cls = type(self._config_name + "Form", (forms.Form,), self._config_attrs)
+        # For each field, set the default value if it hasn't already been set.
         initial = self._config_cls({})
-        # for each field, set the default value if it hasn't already been set
         for name,field in initial.fields.items():
             if not name in conf:
                 try:
@@ -30,9 +59,12 @@ class Configurator:
                     logger.log_warning("failed to set initial value for %s: '%s' is not valid" % (name, field.default))
 
     def __call__(self, settings):
+        # Return an instance of the Configurator form.
         return self._config_cls(settings)
 
 class IntegerSetting(forms.IntegerField):
+    """An integer setting."""
+
     def __init__(self, label, default, **kwds):
         if not 'initial' in kwds:
             kwds['initial'] = default
@@ -41,6 +73,8 @@ class IntegerSetting(forms.IntegerField):
         self.default = default
 
 class StringSetting(forms.CharField):
+    """A string setting."""
+
     def __init__(self, label, default, **kwds):
         if not 'initial' in kwds:
             kwds['initial'] = default
