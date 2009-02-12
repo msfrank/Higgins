@@ -101,7 +101,7 @@ class Application(Loggable):
         # if debug flag is specified, then don't request to daemonize and log to stdout
         if o['debug']:
             self.daemonize = False
-            self.observer = StdoutObserver()
+            self.observer = StdoutObserver(colorized=True)
         # otherwise daemonize and log to logs/higgins.log
         else:
             self.daemonize = True

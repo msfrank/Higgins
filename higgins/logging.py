@@ -62,6 +62,8 @@ class StdoutObserver(CommonObserver):
         msg = self._formatMessage(params)
         if level == 'FATAL' or level == 'ERROR':
             print self.START_RED + msg + self.END
+            import traceback
+            print traceback.print_exc()
         elif level == 'warning':
             print self.START_YELLOW + msg + self.END
         else:
