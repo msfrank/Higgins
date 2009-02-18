@@ -2,6 +2,12 @@ from django import forms
 from higgins.conf import conf
 from higgins.core.logger import logger
 
+class ConfiguratorException(Exception):
+    def __init__(self, reason):
+        self.reason = reason
+    def __str__(self):
+        return str(self.reason)
+
 class ConfiguratorDeclarativeParser(type):
     # The metaclass does the magic of parsing the Configurator subclass
     # and building a configuration form from the supplied settings.
@@ -15,8 +21,20 @@ class ConfiguratorDeclarativeParser(type):
                 config_fields[key] = object
                 del attrs[key]
         attrs['_config_fields'] = config_fields
-        attrs['_config_cls'] = type(name + "Form", (forms.Form,), config_fields.copy())
+        config_cls = type(name + "Form", (forms.Form,), config_fields.copy())
+        attrs['_config_cls'] = config_cls
         new_class = super(ConfiguratorDeclarativeParser,cls).__new__(cls, name, bases, attrs)
+        # For each field, set the default value if it hasn't already been set.
+        initial = config_cls({})
+        for name,field in initial.fields.items():
+            if not name in conf:
+                try:
+                    conf[name] = field.clean(field.default)
+                    logger.log_debug("set initial value for %s to '%s'" % (name, field.default))
+                except forms.ValidationError:
+                    e = ConfiguratorException("'%s' is not a valid value for %s" % (field.default, name))
+                    logger.log_warning("failed to set initial value: %s" % e)
+                    raise e
         return new_class
 
     def __getattr__(cls, name):
@@ -46,17 +64,6 @@ class Configurator(object):
     __metaclass__ = ConfiguratorDeclarativeParser
     pretty_name = None
     description = None
-
-    def __init__(self):
-        # For each field, set the default value if it hasn't already been set.
-        initial = self._config_cls({})
-        for name,field in initial.fields.items():
-            if not name in conf:
-                try:
-                    conf[name] = field.clean(field.default)
-                    logger.log_debug("set initial value for %s to '%s'" % (name, field.default))
-                except forms.ValidationError, e:
-                    logger.log_warning("failed to set initial value for %s: '%s' is not valid" % (name, field.default))
 
     def __call__(self, settings):
         # Return an instance of the Configurator form.

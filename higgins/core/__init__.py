@@ -9,7 +9,7 @@ from higgins.http.http import Response
 from higgins.core.configurator import Configurator, IntegerSetting
 from higgins.core.manager import ManagerResource
 from higgins.core.logger import CoreLogger
-from higgins.upnp import UPnPService
+from higgins.upnp import upnp_service
 
 class CoreHttpConfig(Configurator):
     pretty_name = "HTTP Server"
@@ -55,16 +55,14 @@ class CoreService(MultiService, TCPServer, CoreLogger):
         from higgins.http import server, channel
         site = server.Site(RootResource())
         MultiService.__init__(self)
-        TCPServer.__init__(self, 8000, channel.HTTPFactory(site))
+        TCPServer.__init__(self, CoreHttpConfig.CORE_HTTP_PORT, channel.HTTPFactory(site))
 
     def startService(self):
         MultiService.startService(self)
         TCPServer.startService(self)
         self.log_debug("started core service")
         # start the UPnP service
-        self.upnp_service = UPnPService()
-        self.upnp_service.setServiceParent(self)
-        #upnp_service.startService()
+        upnp_service.setServiceParent(self)
         # load enabled services
         try:
             for name in conf.get("CORE_ENABLED_PLUGINS", []):
