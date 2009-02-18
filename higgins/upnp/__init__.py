@@ -1,8 +1,8 @@
-# Contains portions of code from pymeds:
-#   Licensed under the MIT license
-#   http://opensource.org/licenses/mit-license.php
-#   Copyright 2005, Tim Potter <tpot@samba.org>
-#   Copyright 2006 John-Mark Gurney <gurney_j@resnet.uroegon.edu>
+# Portions of this code from the pymeds project  are licensed under
+# the MIT license: http://opensource.org/licenses/mit-license.php
+#
+# Copyright 2005, Tim Potter <tpot@samba.org>
+# Copyright 2006 John-Mark Gurney <gurney_j@resnet.uroegon.edu>
 
 import random, string
 from higgins.service import Service
@@ -26,12 +26,14 @@ class UPnPService(Service, UPnPLogger):
         if self.running == 0:
             raise UPnPRuntimeException("UPnP service is not running")
         self.ssdp.registerDevice(device)
+        self.upnp.registerDevice(device)
         self.upnp_devices[device.upnp_UDN] = device
 
     def unregisterUPnPDevice(self, device):
         if self.running == 0:
             raise UPnPRuntimeException("UPnP service is not running")
         self.ssdp.unregisterDevice(device)
+        self.upnp.unregisterDevice(device)
         del self.upnp_devices[device.upnp_UDN]
 
     def startService(self):
@@ -51,3 +53,5 @@ class UPnPService(Service, UPnPLogger):
         Service.stopService(self)
         self.log_debug("stopped UPnP service")
         return None
+
+upnp_service = UPnPService()

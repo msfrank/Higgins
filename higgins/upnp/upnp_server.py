@@ -1,28 +1,30 @@
-from higgins.http import resource
-from higgins.http.static import Data as StaticResource
+import urllib
 from twisted.internet import reactor
 from higgins import netif
-from control_resource import ControlResource
-from logger import logger
+from higgins.http import resource
+from higgins.http.static import Data as StaticResource
+from higgins.upnp.control_resource import ControlResource
+from higgins.upnp.logger import logger
 
 class RootResource(resource.Resource):
     def __init__(self, server):
         resource.Resource.__init__(self)
         self.server = server
     def locateChild(self, request, segments):
+        logger.log_debug("request URI: %s" % '/' + '/'.join(segments))
         # the first segment is the device UDN
-        device_id = urllib.unquote(segments[0])
+        device_id = segments[0]
         try:
             device = self.server.devices[device_id]
         except:
             logger.log_warning("device '%s' doesn't exist" % device_id)
             return None, []
-        # if there are no more segments, return the device description
+        # if the next segment is 'root-device.xml', return the device description
         segments = segments[1:]
-        if segments == []:
+        if segments[0] == 'root-device.xml':
             return StaticResource(str(device), 'text/xml'), []
-        # the next segment is the service ID
-        service_id = urllib.unquote(segments[0])
+        # otherwise the next segment is the service ID
+        service_id = segments[0]
         try:
             service = device._upnp_services[service_id]
         except:
@@ -53,7 +55,9 @@ class UPnPServer:
         self.server = None
 
     def registerDevice(self, device):
-        self.devices[device.upnp_device_name] = device
+        self.devices[device.upnp_UDN] = device
+        logger.log_debug("registered device %s with UPnP server" % device.upnp_UDN)
 
     def unregisterDevice(self, device):
-        del self.devices[device.upnp_device_name]
+        del self.devices[device.upnp_UDN]
+        logger.log_debug("unregistered device %s with UPnP server" % device.upnp_UDN)

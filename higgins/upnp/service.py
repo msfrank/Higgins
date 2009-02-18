@@ -1,6 +1,6 @@
 from xml.etree.ElementTree import Element, SubElement, tostring as xmltostring
 
-class StateVar:
+class StateVar(object):
     TYPE_I1 = "i1"
     TYPE_UI1 = "ui1"
     TYPE_I2 = "i2"
@@ -32,7 +32,7 @@ class StateVar:
     def parse(self, text_value):
         pass
 
-class Argument:
+class Argument(object):
     DIRECTION_IN = "in"
     DIRECTION_OUT = "out"
     def __init__(self, name, direction, related, retval=False):
@@ -43,7 +43,7 @@ class Argument:
         self.related = related
         self.retval = retval
 
-class Action:
+class Action(object):
     def __init__(self, action, *args):
         self.action = action
         self.in_args = []
@@ -66,19 +66,19 @@ class ServiceDeclarativeParser(type):
         # load actions
         actions = {}
         for name,object in attrs.items():
-            if isinstance(object, Service):
+            if isinstance(object, Action):
                 actions[name] = object
         # load stateVars and actions from any base classes
         for base in bases:
             if hasattr(base, '_upnp_stateVars'):
                 stateVars.update(base._upnp_stateVars)
             if hasattr(base, '_upnp_actions'):
-                actions.update(base.upnp_actions)
+                actions.update(base._upnp_actions)
         attrs['_upnp_stateVars'] = stateVars
         attrs['_upnp_actions'] = actions
-        return super(DeviceDeclarativeParser,cls).__new__(cls, name, bases, attrs)
+        return super(ServiceDeclarativeParser,cls).__new__(cls, name, bases, attrs)
 
-class Service:
+class Service(object):
     __metaclass__ = ServiceDeclarativeParser
 
     upnp_service_type = None

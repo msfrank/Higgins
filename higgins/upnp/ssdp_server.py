@@ -8,7 +8,7 @@ import string
 from higgins import netif
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
-from logger import UPnPLogger
+from higgins.upnp.logger import UPnPLogger
 
 class SSDPFactory(DatagramProtocol, UPnPLogger):
 
@@ -23,20 +23,20 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
             # advertise the device
             self.sendAlive("upnp:rootdevice",
                            "uuid:%s::upnp:rootdevice" % device.upnp_UDN,
-                           "http://%s:31338/%s/root-device.xml" % (iface,device.upnp_UDN))
+                           "http://%s:1901/%s/root-device.xml" % (iface,device.upnp_UDN))
             self.sendAlive("uuid:%s" % device.upnp_UDN,
                            "uuid:%s" % device.upnp_UDN,
-                           "http://%s:31338/%s/root-device.xml" % (iface,device.upnp_UDN))
+                           "http://%s:1901/%s/root-device.xml" % (iface,device.upnp_UDN))
             self.sendAlive(device.upnp_device_type,
                            "uuid:%s::%s" % (device.upnp_UDN, device.upnp_device_type),
-                           "http://%s:31338/%s/root-device.xml" % (iface,device.upnp_UDN))
+                           "http://%s:1901/%s/root-device.xml" % (iface,device.upnp_UDN))
             # advertise each service on the device
-            for svc in device.upnp_services:
+            for svc in device._upnp_services:
                 self.sendAlive(svc.upnp_service_type,
                                "uuid:%s::%s" % (device.upnp_UDN, svc.upnp_service_type),
-                               "http://%s:31338/%s/root-device.xml" % (iface,device.upnp_UDN))
+                               "http://%s:1901/%s/root-device.xml" % (iface,device.upnp_UDN))
+            self.log_debug("registered device %s on %s" % (device.upnp_UDN, iface))
         self.devices[device.upnp_UDN] = device
-        self.log_debug('registered device %s' % device.upnp_UDN)
 
     def unregisterDevice(self, device):
         if not device.upnp_UDN in self.devices:
@@ -47,13 +47,16 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
             self.sendByebye("uuid:%s" % device.upnp_UDN, "uuid:%s" % device.upnp_UDN)
             self.sendByebye(device.upnp_device_type, "uuid:%s::%s" % (device.upnp_UDN, device.upnp_device_type))
             # advertise each service on the device
-            for svc in device.upnp_services:
+            for svc in device._upnp_services:
                 self.sendByebye(svc.upnp_service_type, "uuid:%s::%s" % (device.upnp_UDN, svc.upnp_service_type))
+            self.log_debug("unregistered device %s on %s" % (device.upnp_UDN, iface))
         del self.devices[device.upnp_UDN]
-        self.log_debug('unregistered device %s' % device.upnp_UDN)
 
     def datagramReceived(self, data, (host, port)):
-        header, payload = data.split('\r\n\r\n')
+        try:
+            header, payload = data.split('\r\n\r\n')
+        except:
+            header = data
         lines = header.split('\r\n')
         cmd,uri,unused = string.split(lines[0], ' ')
         lines = map(lambda x: x.replace(': ', ':', 1), lines[1:])
@@ -74,7 +77,7 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
                 'CACHE-CONTROL: max-age=%d' % cacheControl,
                 'SERVER: %s' % server
                 ]
-            self.transport.write('\r\n'.join(resp) + '\r\n', (iface, 1900))
+            self.transport.write('\r\n'.join(resp) + '\r\n\r\n', (iface, 1900))
 
     def sendByebye(self, nt, usn):
         for iface in self.interfaces:
@@ -84,59 +87,81 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
                 'NT: %s' % nt,
                 'USN: %s' % usn
                 ]
-            self.transport.write('\r\n'.join(resp) + '\r\n', (iface, 1900))
+            self.transport.write('\r\n'.join(resp) + '\r\n\r\n', (iface, 1900))
 
     def discoveryRequest(self, headers, (host, port)):
         def makeResponse(st, usn, location, cacheControl=1800, server='Twisted, UPnP/1.0, Higgins'):
             resp = ['HTTP/1.1 200 OK',
-                'CACHE-CONTROL: max-age=%d' % cacheControl,
                 'EXT: ',
                 'LOCATION: %s' % location,
                 'SERVER: %s' % server,
                 'ST: %s' % st,
-                'USN: %s' % usn
+                'USN: %s' % usn,
+                'CACHE-CONTROL: max-age=%d' % cacheControl,
                 ]
-            return '\r\n'.join(response) + '\r\n'
+            return '\r\n'.join(resp) + '\r\n'
         # if the MAN header is present, make sure its ssdp:discover
         if not headers.get('MAN', '') == '"ssdp:discover"':
             return
-        self.log_debug('received discovery request for %s' % headers['ST'])
+        self.log_debug('received discovery request from %s for %s' % (host, headers['ST']))
         # Generate a response
         responses = []
         # return all devices and services
         if headers['ST'] == 'ssdp:all':
             for udn,device in self.devices.items():
-                # advertise the device
-                response.append(makeResponse("upnp:rootdevice",
-                                "uuid:%s::upnp:rootdevice" % udn,
-                                "http://%s:31338/%s/root-device.xml" % (iface,udn)))
-                response.append(makeResponse("uuid:%s" % udn,
-                                "uuid:%s" % udn,
-                                "http://%s:31338/%s/root-device.xml" % (iface,udn)))
-                response.append(makeResponse(device.upnp_device_type,
-                                "uuid:%s::%s" % (udn, device.upnp_device_type),
-                                "http://%s:31338/%s/root-device.xml" % (iface,udn)))
-                # advertise each service on the device
-                for svc in device.upnp_services:
-                    response.append(makeResponse(svc.upnp_service_type,
-                                    "uuid:%s::%s" % (udn, svc.upnp_service_type),
-                                    "http://%s:31338/%s/root-device.xml" % (iface,udn)))
+                for iface in self.interfaces:
+                    # advertise the device
+                    responses.append(makeResponse("upnp:rootdevice",
+                                     "uuid:%s::upnp:rootdevice" % udn,
+                                     "http://%s:1901/%s/root-device.xml" % (iface,udn)))
+                    responses.append(makeResponse("uuid:%s" % udn,
+                                     "uuid:%s" % udn,
+                                     "http://%s:1901/%s/root-device.xml" % (iface,udn)))
+                    responses.append(makeResponse(device.upnp_device_type,
+                                     "uuid:%s::%s" % (udn, device.upnp_device_type),
+                                     "http://%s:1901/%s/root-device.xml" % (iface,udn)))
+                    # advertise each service on the device
+                    for svc in device._upnp_services:
+                        responses.append(makeResponse(svc.upnp_service_type,
+                                         "uuid:%s::%s" % (udn, svc.upnp_service_type),
+                                         "http://%s:1901/%s/root-device.xml" % (iface,udn)))
         # return each root device
-        if headers['ST'] == 'upnp:rootdevice':
-            pass
+        elif headers['ST'] == 'upnp:rootdevice':
+            for udn,device in self.devices.items():
+                for iface in self.interfaces:
+                    # advertise the root device
+                    responses.append(makeResponse("upnp:rootdevice",
+                                     "uuid:%s::upnp:rootdevice" % udn,
+                                     "http://%s:1901/%s/root-device.xml" % (iface,udn)))
         # return the specific device
-        if headers['ST'].startswith('uuid:'): 
+        elif headers['ST'].startswith('uuid:'): 
             pass
         # return device type
-        if headers['ST'].startswith('urn:schemas-upnp-or:device:'):
+        elif headers['ST'].startswith('urn:schemas-upnp-or:device:'):
             pass
         # return service type
-        if headers['ST'].startswith('urn:schemas-upnp-or:service:'):
+        elif headers['ST'].startswith('urn:schemas-upnp-or:service:'):
             pass
         # introduce a random delay between 0 and MX
-        delay = random.randint(0, int(headers['MX']))
+        delayMax = int(headers['MX'])
         # send the responses
-        reactor.callLater(delay, self.transport.write, ''.join(responses), (host, port))
+        reactor.callLater(random.randint(0, delayMax),
+                          self._doWriteResponse,
+                          host,
+                          port,
+                          responses,
+                          delayMax)
+
+    def _doWriteResponse(self, host, port, responses, delayMax):
+        if responses == []:
+            return
+        self.transport.write(responses.pop(0) + '\r\n', (host,port))
+        reactor.callLater(random.randint(0, delayMax),
+                          self._doWriteResponse,
+                          host,
+                          port,
+                          responses,
+                          delayMax)
 
     def doStop(self):
         for udn,device in self.devices.items():
