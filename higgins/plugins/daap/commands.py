@@ -1,20 +1,52 @@
 from twisted.internet import defer, reactor
-from codebag import CodeBag, ContentCode, render
-from content_codes import content_codes, content_code_str_to_int
+from higgins.http.channel import HTTPFactory
+from higgins.http.server import Site
+from higgins.http.http import Response
+from higgins.http.resource import Resource
+from higgins.http.stream import SimpleStream, FileStream
+from higgins.http.http_headers import MimeType
 from higgins.core.models import File, Song
-from logger import DAAPLogger
-from higgins.conf import conf
-import server
+from higgins.plugins.daap import DaapConfig, DaapPrivConfig
+from higgins.plugins.daap.codebag import CodeBag, ContentCode
+from higgins.plugins.daap.content_codes import content_codes, content_code_str_to_int
+from higgins.plugins.daap.logger import logger
 
-class ServerInfoCommand(server.DAAPResource):
+x_dmap_tagged = MimeType('application', 'x-dmap-tagged')
+
+class Command(Resource):
+    """The base class for a DAAP command."""
+
+    def renderDAAP(self, request):
+        """
+        This method is invoked for GET requests on this resource.  Subclasses
+        should return a CodeBag which is rendered as the response body, or raise
+        an Exception if an error occurred.
+        """
+        raise Exception('Not Implemented')
+
+    def allowedMethods(self):
+        # The only allowed method is a GET request.
+        return ('GET',)
+
+    def render(self, request):
+        # calls the renderDAAP method and returns its result.
+        logger.log_debug("%s %s" % (request.method, request.path))
+        logger.log_debug(str(request.args))
+        try:
+            return Response(200, { 'content-type': x_dmap_tagged }, self.renderDAAP(request).render())
+        except Exception, e:
+            logger.log_error("command failed: %s" % e)
+            return Response(400, { 'content-type': MimeType('text','plain') }, str(e))
+
+class ServerInfoCommand(Command):
     def renderDAAP(self, request):
         msrv = CodeBag("msrv")
         msrv.add(ContentCode("mstt", 200))
         msrv.add(ContentCode("mpro", (2,0,0)))  # version 0.2.0.0
         msrv.add(ContentCode("apro", (3,0,0)))  # version 0.3.0.0
-        msrv.add(ContentCode("minm", str(conf.get("DAAP_SHARE_NAME"))))
-        msrv.add(ContentCode("mslr", 1))        # login required?
+        msrv.add(ContentCode("minm", str(DaapConfig.DAAP_SHARE_NAME)))
         msrv.add(ContentCode("msau", 0))        # authentication method
+        msrv.add(ContentCode("mslr", 1))        # login required?
         msrv.add(ContentCode("mstm", 300))      # timeout interval
         msrv.add(ContentCode("msal", 1))        # support auto-logout?
         msrv.add(ContentCode("msup", 1))        # support update?
@@ -25,11 +57,9 @@ class ServerInfoCommand(server.DAAPResource):
         msrv.add(ContentCode("msix", 1))        # support indexing?
         msrv.add(ContentCode("msrs", 1))        # support resolve?
         msrv.add(ContentCode("msdc", 1))        # number of databases
-        return server.DAAPResponse(200, 
-                            {'Content-Type': 'application/x-dmap-tagged'},
-                            render(msrv))
+        return msrv
 
-class ContentCodesCommand(server.DAAPResource):
+class ContentCodesCommand(Command):
     def renderDAAP(self, request):
         mccr = CodeBag("mccr")
         mccr.add(ContentCode("mstt", 200))
@@ -39,100 +69,54 @@ class ContentCodesCommand(server.DAAPResource):
             mdcl.add(ContentCode("mcna", value[1]))
             mdcl.add(ContentCode("mcty", value[0]))
             mccr.add(mdcl)
-        return server.DAAPResponse(200, 
-                            {'Content-Type': 'application/x-dmap-tagged'},
-                            render(mccr))
+        return mccr
 
-class LoginCommand(server.DAAPResource):
+class LoginCommand(Command):
     def renderDAAP(self, request):
         mlog = CodeBag("mlog")
         mlog.add(ContentCode("mstt", 200))
         mlog.add(ContentCode("mlid", 1000000))
-        return server.DAAPResponse(200, 
-                            {'Content-Type': 'application/x-dmap-tagged'},
-                            render(mlog))
+        return mlog
 
-class UpdateCommand(server.DAAPResource, DAAPLogger):
-    def _checkForUpdates(self, deferred):
-        if self.stop_checking:
-            return
-        #log_debug("checking for database updates")
-        if False:
-            deferred.callback(server.DAAPResponse(200,
-                                                  {'Content-Type': 'application/x-dmap-tagged'},
-                                                  ""))
-            return
-        reactor.callLater(5, self._checkForUpdates, deferred)
+class UpdateStream(SimpleStream):
+    def __init__(self):
+        self.deferred = defer.Deferred()
+    def read(self):
+        logger.log_debug("UpdateStream: waiting on read")
+        return self.deferred
+    def close(self):
+        logger.log_debug("UpdateStream: closed stream")
+        self.length = 0
 
-    def _stopChecking(self, unused):
-        self.stop_checking = True
-
-    def _renderDAAP_3_7(self, request):
-        return self._renderDAAP_3_6(request)
-
-    def _renderDAAP_3_6(self, request):
+class UpdateCommand(Command):
+    def render(self, request):
+        logger.log_debug("%s %s" % (request.method, request.path))
+        logger.log_debug(str(request.args))
         try:
-            rid = int(request.args.get('revision-number', '0'))
-            if rid < 0:
-                raise Exception
-        except:
-            self.log_error("UpdateCommand (3.6): invalid revision-number param")
-            return server.DAAPResponse(400)
-        try:
-            delta = int(request.args.get('delta', '0'))
-            if delta < 0:
-                raise Exception
-        except:
-            self.log_error("UpdateCommand (3.6): invalid delta param")
-            return server.DAAPResponse(400)
-        self.log_debug("UpdateCommand (3.6): revision-number=%i, delta=%i" % (rid,delta))
-        if delta == 0:
-            mupd = CodeBag("mupd")
-            mupd.add(ContentCode("mstt", 200))
-            mupd.add(ContentCode("musr", 5))
-            return server.DAAPResponse(200, 
-                                       {'Content-Type': 'application/x-dmap-tagged'},
-                                       render(mupd))
-        deferred = defer.Deferred()
-        deferred.addBoth(self._stopChecking)
-        self.stop_checking = False
-        reactor.callLater(5, self._checkForUpdates, deferred)
-        return deferred
+            # get revision number
+            rid = request.args.get('revision-number', ['0'])
+            rid = rid[0]
+            rid = int(rid)
+            logger.log_debug("UpdateCommand: revision-number is %i" % rid)
+            # if revision-number is not current revision number
+            if not rid == DaapPrivConfig.REVISION_NUMBER:
+                if rid < 0:
+                    raise Exception("invalid revision-number %s" % rid)
+                # return the current revision number
+                mupd = CodeBag("mupd")
+                mupd.add(ContentCode("mstt", 200))
+                mupd.add(ContentCode("musr", int(DaapPrivConfig.REVISION_NUMBER)))
+                return Response(200, { 'content-type': x_dmap_tagged }, mupd.render())
+            # wait forever
+            # FIXME: don't just wait forever ;)  actually respond to updates
+            return Response(200, { 'content-type': x_dmap_tagged }, UpdateStream())
+        except Exception, e:
+            logger.log_error("UpdateCommand failed: %s" % e)
+            return Response(400, { 'content-type': MimeType('text','plain') }, str(e))
 
-    def _renderDAAP_3_0(self, request):
-        try:
-            rid = int(request.args.get('revision-number', '0'))
-            if rid < 0:
-                raise Exception
-        except:
-            self.log_error("UpdateCommand (3.0): invalid revision-number param")
-            return server.DAAPResponse(400)
-        self.log_debug("UpdateCommand (3.0): revision-number=%i" % rid)
-        if rid == 0:
-            mupd = CodeBag("mupd")
-            mupd.add(ContentCode("mstt", 200))
-            mupd.add(ContentCode("musr", 5))
-            return server.DAAPResponse(200, 
-                                       {'Content-Type': 'application/x-dmap-tagged'},
-                                       render(mupd))
-        deferred = defer.Deferred()
-        deferred.addBoth(self._stopChecking)
-        self.stop_checking = False
-        reactor.callLater(5, self._checkForUpdates, deferred)
-        return deferred
 
-    def renderDAAP(self, request):
-        if request.daap_client_version == '3.7':
-            return self._renderDAAP_3_7(request)
-        if request.daap_client_version == '3.6':
-            return self._renderDAAP_3_6(request)
-        if request.daap_client_version == '3.0':
-            return self._renderDAAP_3_0(request)
-        self.log_error =("UpdateCommand: failed to render response: unknown version %s" % request.daap_client_version)
-        return server.DAAPResponse(400)
-
-class DatabaseCommand(server.DAAPResource):
-    def locateResource(self, request, segments):
+class DatabaseCommand(Command):
+    def locateChild(self, request, segments):
         if segments == []:
             return self, []
         dbid = int(segments[0])
@@ -153,19 +137,17 @@ class DatabaseCommand(server.DAAPResource):
         record = CodeBag("mlit")
         record.add(ContentCode("miid", 1))                                  # database ID
         record.add(ContentCode("mper", 1))                                  # database persistent ID
-        record.add(ContentCode("minm", str(conf.get("DAAP_SHARE_NAME"))))   # db name
+        record.add(ContentCode("minm", str(DaapConfig.DAAP_SHARE_NAME)))    # db name
         record.add(ContentCode("mimc", len(Song.objects.all())))            # number of db items
         record.add(ContentCode("mctc", 1))                                  # container count
         listing.add(record)
         avdb.add(listing)
-        return server.DAAPResponse(200, 
-                            {'Content-Type': 'application/x-dmap-tagged'},
-                            render(avdb))
+        return avdb
 
-class ListItemsCommand(server.DAAPResource, DAAPLogger):
+class ListItemsCommand(Command):
     def __init__(self, dbid):
         self.dbid = dbid
-    def locateResource(self, request, segments):
+    def locateChild(self, request, segments):
         if len(segments) == 1:
             return self, []
         try:
@@ -183,9 +165,9 @@ class ListItemsCommand(server.DAAPResource, DAAPLogger):
                 try:
                     code = reverse_table[field]
                 except:
-                    self.log_debug("ListItemsCommand: '%s' is not a recognized content code" % field)
+                    logger.log_debug("ListItemsCommand: '%s' is not a recognized content code" % field)
         except Exception, e:
-            self.log_debug("ListItemsCommand caught exception: %s" % e)
+            logger.log_debug("ListItemsCommand caught exception: %s" % e)
         adbs = CodeBag("adbs")
         adbs.add(ContentCode("mstt", 200))      # status code
         adbs.add(ContentCode("muty", 1))        # always 0?
@@ -231,31 +213,29 @@ class ListItemsCommand(server.DAAPResource, DAAPLogger):
             record.add(ContentCode("asyr", 0))                      # song publication year
             listing.add(record)
         adbs.add(listing)
-        return server.DAAPResponse(200, 
-                                   {'Content-Type': 'application/x-dmap-tagged'},
-                                   render(adbs))
+        return adbs
         
-class StreamSongCommand(server.DAAPResource, DAAPLogger):
+class StreamSongCommand(Command):
     def __init__(self, songid):
         self.songid = songid
-    def renderDAAP(self, request):
-        self.log_debug("downloading songid %s" % self.songid)
+    def render(self, request):
+        logger.log_debug("downloading songid %s" % self.songid)
         song = Song.objects.filter(id=self.songid)
         if song == []:
-            return server.DAAPResponse(404)
+            return Response(404)
         try:
             f = open(song[0].file.path, "r")
         except:
-            return server.DAAPResponse(404) 
-        log_debug("[daap] songid %s -> %s" % (self.songid, song[0].file.path))
-        return server.DAAPResponse(200, 
-                                   {'Content-Type': song[0].file.mimetype },
-                                   server.DAAPFileStream(f))
+            return Response(404) 
+        mimetype = song[0].file.mimetype
+        logger.log_debug("songid %s -> %s (%s)" % (self.songid, song[0].file.path, mimetype))
+        mimetype = MimeType.fromString(mimetype)
+        return Response(200, {'content-type': mimetype}, FileStream(f, useMMap=False))
 
-class ListPlaylistsCommand(server.DAAPResource):
+class ListPlaylistsCommand(Command):
     def __init__(self, dbid):
         self.dbid = dbid
-    def locateResource(self, request, segments):
+    def locateChild(self, request, segments):
         if len(segments) == 1:
             return self, []
         if not len(segments) == 3:
@@ -269,37 +249,72 @@ class ListPlaylistsCommand(server.DAAPResource):
         aply = CodeBag("aply")
         aply.add(ContentCode("mstt", 200))      # status code
         aply.add(ContentCode("muty", 1))        # always 0?
-        aply.add(ContentCode("mtco", 0))        # total number of matching records
-        aply.add(ContentCode("mrco", 0))        # total number of records returned
+        aply.add(ContentCode("mtco", 1))        # total number of matching records
+        aply.add(ContentCode("mrco", 1))        # total number of records returned
+        songs = Song.objects.all()
         listing = CodeBag("mlcl")
         aply.add(listing)
-        return server.DAAPResponse(200, 
-                            {'Content-Type': 'application/x-dmap-tagged'},
-                            render(aply))
+        # base playlist
+        item = CodeBag("mlit")
+        item.add(ContentCode("miid", 1))
+        item.add(ContentCode("mper", 1))
+        item.add(ContentCode("minm", str(DaapConfig.DAAP_SHARE_NAME)))
+        item.add(ContentCode("mimc", int(len(songs))))
+        item.add(ContentCode("abpl", True))
+        listing.add(item)
+        # my top rated
+        item = CodeBag("mlit")
+        item.add(ContentCode("miid", 2))
+        item.add(ContentCode("mper", 2))
+        item.add(ContentCode("minm", "My Top Rated"))
+        item.add(ContentCode("mimc", 0))
+        listing.add(item)
+        # recently added
+        item = CodeBag("mlit")
+        item.add(ContentCode("miid", 3))
+        item.add(ContentCode("mper", 3))
+        item.add(ContentCode("minm", "Recently Added"))
+        item.add(ContentCode("mimc", 0))
+        listing.add(item)
+        # recently played
+        item = CodeBag("mlit")
+        item.add(ContentCode("miid", 4))
+        item.add(ContentCode("mper", 4))
+        item.add(ContentCode("minm", "Recently Played"))
+        item.add(ContentCode("mimc", 0))
+        listing.add(item)
+        return aply
 
-class ListPlaylistItemsCommand(server.DAAPResource):
+class ListPlaylistItemsCommand(Command):
     def __init__(self, plsid):
-        self.plsid
+        self.plsid = plsid
     def renderDAAP(self, request):
         apso = CodeBag("apso")
         apso.add(ContentCode("mstt", 200))      # status code
         apso.add(ContentCode("muty", 1))        # always 0?
-        apso.add(ContentCode("mtco", 0))        # total number of matching records
-        apso.add(ContentCode("mrco", 0))        # total number of records returned
         listing = CodeBag("mlcl")
+        if self.plsid == 1:
+            songs = Song.objects.all()
+            apso.add(ContentCode("mtco", len(songs)))   # total number of matching records
+            apso.add(ContentCode("mrco", len(songs)))   # total number of records returned
+            for song in songs:
+                item = CodeBag("mlit")
+                item.add(ContentCode("mikd", 2))
+                item.add(ContentCode("miid", song.id))
+                item.add(ContentCode("mcti", song.id))
+                listing.add(item)
+        else:
+            apso.add(ContentCode("mtco", 0))        # total number of matching records
+            apso.add(ContentCode("mrco", 0))        # total number of records returned
         apso.add(listing)
-        return server.DAAPResponse(200, 
-                            {'Content-Type': 'application/x-dmap-tagged'},
-                            render(apso))
+        return apso
 
-class LogoutCommand(server.DAAPResource):
-    def renderDAAP(self, request):
-        return server.DAAPResponse(200, 
-                            {'Content-Type': 'application/x-dmap-tagged'},
-                            "")
+class LogoutCommand(Command):
+    def render(self, request):
+        return Response(200, {'content-type': x_dmap_tagged}, "")
 
-class DAAPCommand(server.DAAPResource):
-    def locateResource(self, request, segments):
+class RootCommand(Resource):
+    def locateChild(self, request, segments):
         if segments[0] == "server-info":
             return ServerInfoCommand(), []
         if segments[0] == "content-codes":
@@ -313,3 +328,7 @@ class DAAPCommand(server.DAAPResource):
         if segments[0] == "logout":
             return LogoutCommand(), []
         return None, []
+
+class DAAPFactory(HTTPFactory):
+    def __init__(self):
+        HTTPFactory.__init__(self, Site(RootCommand()))

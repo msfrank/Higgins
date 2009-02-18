@@ -199,9 +199,12 @@ class Request(http.Request):
             if ';' in self.path:
                 self.path, self.params = self.path.split(';', 1)
         else:
+            scheme,the_rest = self.uri.split('://', 1)
+            fake_uri = 'http://' + the_rest
             # It is an absolute uri, use standard urlparse
             (self.scheme, self.host, self.path,
-             self.params, self.querystring, fragment) = urlparse.urlparse(self.uri)
+             self.params, self.querystring, fragment) = urlparse.urlparse(fake_uri)
+            self.scheme = scheme
 
         if self.querystring:
             self.args = cgi.parse_qs(self.querystring, True)

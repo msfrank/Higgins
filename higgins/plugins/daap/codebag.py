@@ -58,33 +58,35 @@ class CodeBag:
                  raise CodeBagException("content type is not 'list'")
         except KeyError:
             raise CodeBagException("couldn't find code with name '%s'" % name)
-    def __str__(self):
-        return "%s (%s): list containing %s items" % (self.name,self.fullname,len(self.children))
-    def add(self, code):
-        self.children.append(code)
 
-def render(bag):
-    if not isinstance(bag, CodeBag):
-        raise CodeBagException("parameter is not a CodeBag")
-    buf = ""
-    for child in bag.children:
-        if isinstance(child, CodeBag):
-            buf = buf + render(child)
-        elif child.type == ContentType.String:
-            buf = buf + pack('>4si', child.name, len(child.value)) + child.value
-        elif child.type == ContentType.Byte:
-            buf = buf + pack('>4sib', child.name, 1, child.value)
-        elif child.type == ContentType.Short:
-            buf = buf + pack('>4sih', child.name, 2, child.value)
-        elif child.type == ContentType.Long:
-            buf = buf + pack('>4sil', child.name, 4, child.value)
-        elif child.type == ContentType.LongLong:
-            buf = buf + pack('>4siq', child.name, 8, child.value)
-        elif child.type == ContentType.Date:
-            buf = buf + pack('>4sil', child.name, 4, child.value)
-        elif child.type == ContentType.Version:
-            buf = buf + pack('>4sihbb', child.name, 4, child.value[0], child.value[1], child.value[2])
-        else:
-            raise CodeBagException("unknown content type")
-    temp = pack('>4si', bag.name, len(buf))
-    return temp + buf
+    def add(self, child):
+        if not isinstance(child, CodeBag) and not isinstance(child, ContentCode):
+            return CodeBagException("child type isn't CodeBag or ContentCode")
+        self.children.append(child)
+
+    def render(self):
+        buf = ""
+        for child in self.children:
+            if isinstance(child, CodeBag):
+                buf = buf + child.render()
+            elif child.type == ContentType.String:
+                buf = buf + pack('>4si', child.name, len(child.value)) + child.value
+            elif child.type == ContentType.Byte:
+                buf = buf + pack('>4sib', child.name, 1, child.value)
+            elif child.type == ContentType.Short:
+                buf = buf + pack('>4sih', child.name, 2, child.value)
+            elif child.type == ContentType.Long:
+                buf = buf + pack('>4sil', child.name, 4, child.value)
+            elif child.type == ContentType.LongLong:
+                buf = buf + pack('>4siq', child.name, 8, child.value)
+            elif child.type == ContentType.Date:
+                buf = buf + pack('>4sil', child.name, 4, child.value)
+            elif child.type == ContentType.Version:
+                buf = buf + pack('>4sihbb', child.name, 4, child.value[0], child.value[1], child.value[2])
+            else:
+                raise CodeBagException("unknown content type")
+        temp = pack('>4si', self.name, len(buf))
+        return temp + buf
+
+    def __repr__(self):
+        return "<%s: contains %s children>" % (self.fullname, len(self.children))
