@@ -6,9 +6,9 @@ from higgins.plugins.daap.logger import logger
 class DaapConfig(configurator.Configurator):
     pretty_name = "DAAP"
     description = "Configure DAAP sharing"
-    DAAP_SHARE_NAME = configurator.StringSetting("Share Name", "Higgins DAAP Share")
+    SHARE_NAME = configurator.StringSetting("Share Name", "Higgins DAAP Share")
 
-class DaapPrivConfig(configurator.Configurator):
+class DaapPrivate(configurator.Configurator):
     REVISION_NUMBER = configurator.IntegerSetting("Revision Number", 5)
 
 from higgins.plugins.daap.commands import DAAPFactory
@@ -41,7 +41,7 @@ class DaapService(Service):
         self.avahi_group.AddService(avahi.IF_UNSPEC,
                                     avahi.PROTO_UNSPEC,
                                     0,
-                                    DaapConfig.DAAP_SHARE_NAME,
+                                    DaapConfig.SHARE_NAME,
                                     "_daap._tcp", 
                                     "", "", 3689, [])
         self.avahi_group.Commit()

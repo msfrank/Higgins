@@ -14,7 +14,7 @@ from higgins.upnp import upnp_service
 class CoreHttpConfig(Configurator):
     pretty_name = "HTTP Server"
     description = "Configure the built-in HTTP Server"
-    CORE_HTTP_PORT = IntegerSetting("Listening Port", 8000, min_value=0, max_value=65535)
+    HTTP_PORT = IntegerSetting("Listening Port", 8000, min_value=0, max_value=65535)
 
 class BrowserResource(wsgi.WSGIResource):
     def __init__(self):
@@ -55,7 +55,7 @@ class CoreService(MultiService, TCPServer, CoreLogger):
         from higgins.http import server, channel
         site = server.Site(RootResource())
         MultiService.__init__(self)
-        TCPServer.__init__(self, CoreHttpConfig.CORE_HTTP_PORT, channel.HTTPFactory(site))
+        TCPServer.__init__(self, CoreHttpConfig.HTTP_PORT, channel.HTTPFactory(site))
 
     def startService(self):
         MultiService.startService(self)

@@ -26,13 +26,13 @@ class ConfiguratorDeclarativeParser(type):
         new_class = super(ConfiguratorDeclarativeParser,cls).__new__(cls, name, bases, attrs)
         # For each field, set the default value if it hasn't already been set.
         initial = config_cls({})
-        for name,field in initial.fields.items():
-            if not name in conf:
+        for key,field in initial.fields.items():
+            if not key in conf:
                 try:
-                    conf[name] = field.clean(field.default)
-                    logger.log_debug("set initial value for %s to '%s'" % (name, field.default))
+                    conf[name + '__' + key] = field.clean(field.default)
+                    logger.log_debug("set initial value for %s.%s to '%s'" % (name, key, field.default))
                 except forms.ValidationError:
-                    e = ConfiguratorException("'%s' is not a valid value for %s" % (field.default, name))
+                    e = ConfiguratorException("'%s' is not a valid value for %s.%s" % (field.default, name, key))
                     logger.log_warning("failed to set initial value: %s" % e)
                     raise e
         return new_class
@@ -43,7 +43,7 @@ class ConfiguratorDeclarativeParser(type):
         # Note that this method will only be called if 'name' *doesn't* exist
         # as a class attribute.
         if name in cls._config_fields:
-            return conf[name]
+            return conf[cls._config_name + '__' + name]
         raise AttributeError("Configurator is missing config field %s" % name)
 
     def __setattr__(cls, name, value):
@@ -51,7 +51,7 @@ class ConfiguratorDeclarativeParser(type):
         # store.  Otherwise try to set the class attribute to 'value'.
         try:
             field = cls._config_fields[name]
-            conf[name] = field.clean(value)
+            conf[cls._config_name + '__' + name] = field.clean(value)
             logger.log_debug("%s: %s => %s" % (cls._config_name, name, value))
         except:
             type.__setattr__(cls, name, value)

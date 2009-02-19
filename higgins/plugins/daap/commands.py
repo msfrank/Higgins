@@ -6,7 +6,7 @@ from higgins.http.resource import Resource
 from higgins.http.stream import SimpleStream, FileStream
 from higgins.http.http_headers import MimeType
 from higgins.core.models import File, Song
-from higgins.plugins.daap import DaapConfig, DaapPrivConfig
+from higgins.plugins.daap import DaapConfig, DaapPrivate
 from higgins.plugins.daap.codebag import CodeBag, ContentCode
 from higgins.plugins.daap.content_codes import content_codes, content_code_str_to_int
 from higgins.plugins.daap.logger import logger
@@ -44,7 +44,7 @@ class ServerInfoCommand(Command):
         msrv.add(ContentCode("mstt", 200))
         msrv.add(ContentCode("mpro", (2,0,0)))  # version 0.2.0.0
         msrv.add(ContentCode("apro", (3,0,0)))  # version 0.3.0.0
-        msrv.add(ContentCode("minm", str(DaapConfig.DAAP_SHARE_NAME)))
+        msrv.add(ContentCode("minm", str(DaapConfig.SHARE_NAME)))
         msrv.add(ContentCode("msau", 0))        # authentication method
         msrv.add(ContentCode("mslr", 1))        # login required?
         msrv.add(ContentCode("mstm", 300))      # timeout interval
@@ -99,13 +99,13 @@ class UpdateCommand(Command):
             rid = int(rid)
             logger.log_debug("UpdateCommand: revision-number is %i" % rid)
             # if revision-number is not current revision number
-            if not rid == DaapPrivConfig.REVISION_NUMBER:
+            if not rid == DaapPrivate.REVISION_NUMBER:
                 if rid < 0:
                     raise Exception("invalid revision-number %s" % rid)
                 # return the current revision number
                 mupd = CodeBag("mupd")
                 mupd.add(ContentCode("mstt", 200))
-                mupd.add(ContentCode("musr", int(DaapPrivConfig.REVISION_NUMBER)))
+                mupd.add(ContentCode("musr", int(DaapPrivate.REVISION_NUMBER)))
                 return Response(200, { 'content-type': x_dmap_tagged }, mupd.render())
             # wait forever
             # FIXME: don't just wait forever ;)  actually respond to updates
@@ -135,11 +135,11 @@ class DatabaseCommand(Command):
         avdb.add(ContentCode("mrco", 1))         # total number of records returned
         listing = CodeBag("mlcl")
         record = CodeBag("mlit")
-        record.add(ContentCode("miid", 1))                                  # database ID
-        record.add(ContentCode("mper", 1))                                  # database persistent ID
-        record.add(ContentCode("minm", str(DaapConfig.DAAP_SHARE_NAME)))    # db name
-        record.add(ContentCode("mimc", len(Song.objects.all())))            # number of db items
-        record.add(ContentCode("mctc", 1))                                  # container count
+        record.add(ContentCode("miid", 1))                              # database ID
+        record.add(ContentCode("mper", 1))                              # database persistent ID
+        record.add(ContentCode("minm", str(DaapConfig.SHARE_NAME)))     # db name
+        record.add(ContentCode("mimc", len(Song.objects.all())))        # number of db items
+        record.add(ContentCode("mctc", 1))                              # container count
         listing.add(record)
         avdb.add(listing)
         return avdb
@@ -219,18 +219,18 @@ class StreamSongCommand(Command):
     def __init__(self, songid):
         self.songid = songid
     def render(self, request):
-        logger.log_debug("downloading songid %s" % self.songid)
         song = Song.objects.filter(id=self.songid)
         if song == []:
             return Response(404)
         try:
-            f = open(song[0].file.path, "r")
+            f = open(song[0].file.path, 'rb')
         except:
             return Response(404) 
         mimetype = song[0].file.mimetype
-        logger.log_debug("songid %s -> %s (%s)" % (self.songid, song[0].file.path, mimetype))
+        logger.log_debug("%s -> %s (%s)" % (request.path, song[0].file.path, mimetype))
         mimetype = MimeType.fromString(mimetype)
-        return Response(200, {'content-type': mimetype}, FileStream(f, useMMap=False))
+        #return Response(200, {'content-type': mimetype}, FileStream(f, useMMap=False))
+        return Response(200, {'content-type': x_dmap_tagged}, FileStream(f, useMMap=False))
 
 class ListPlaylistsCommand(Command):
     def __init__(self, dbid):
@@ -258,7 +258,7 @@ class ListPlaylistsCommand(Command):
         item = CodeBag("mlit")
         item.add(ContentCode("miid", 1))
         item.add(ContentCode("mper", 1))
-        item.add(ContentCode("minm", str(DaapConfig.DAAP_SHARE_NAME)))
+        item.add(ContentCode("minm", str(DaapConfig.SHARE_NAME)))
         item.add(ContentCode("mimc", int(len(songs))))
         item.add(ContentCode("abpl", True))
         listing.add(item)
