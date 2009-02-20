@@ -1,4 +1,5 @@
 from django import forms
+from django.http import QueryDict
 from higgins.conf import conf
 from higgins.core.logger import logger
 
@@ -65,9 +66,24 @@ class Configurator(object):
     pretty_name = None
     description = None
 
-    def __call__(self, settings):
+    def __call__(self, settings=None):
         # Return an instance of the Configurator form.
-        return self._config_cls(settings)
+        logger.log_debug("Configurator: settings: %s" % settings)
+        current = QueryDict('').copy()
+        for key in self._config_fields.keys():
+            current[key] = conf[self._config_name + '__' + key]
+        logger.log_debug("Configurator: current: %s" % current)
+        if settings:
+            for key,value in settings.items():
+                current[key] = value
+        config = self._config_cls(current)
+        logger.log_debug("Configurator: updated: %s" % current)
+        if config.is_valid():
+            for key in config.fields.keys():
+                value = config.cleaned_data[key]
+                logger.log_debug("Configurator: new value: %s = %s" % (key, value))
+                conf[self._config_name + '__' + key] = value
+        return config
 
 class IntegerSetting(forms.IntegerField):
     """An integer setting."""

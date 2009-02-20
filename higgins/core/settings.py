@@ -35,19 +35,12 @@ def configure_toplevel(request, name):
         raise Http404
     # if method is GET, then return a prefilled form
     if request.method == 'GET':
-        config = factory(conf)
+        config = factory()
         return render_to_response('settings-plugin.t',
             { 'config': config, 'config_items': core_service._config_items.values() }
             )
     # otherwise method is POST, parse the form data
     config = factory(request.POST)
-    if config.is_valid():
-        new_values = {}
-        for name in config.fields.keys():
-            new_values[name] = config.cleaned_data[name]
-        conf.set(**new_values)
-    else:
-        logger.log_warning("config form is not valid")
     return render_to_response('settings-plugin.t',
         { 'config': config, 'config_items': core_service._config_items.values() }
         )
@@ -62,19 +55,12 @@ def configure_plugin(request, name):
         raise Http404
     # if method is GET, then return a prefilled form
     if request.method == 'GET':
-        config = plugin.plugin_config(conf)
+        config = plugin.plugin_config()
         return render_to_response('settings-plugin.t',
             { 'config': config, 'config_items': core_service._config_items.values() }
             )
     # otherwise method is POST, parse the form data
     config = plugin.plugin_config(request.POST)
-    if config.is_valid():
-        new_values = {}
-        for name in config.fields.keys():
-            new_values[name] = config.cleaned_data[name]
-        conf.set(**new_values)
-    else:
-        logger.log_debug("config form is not valid")
     return render_to_response('settings-plugin.t',
         { 'config': config, 'config_items': core_service._config_items.values() }
         )
