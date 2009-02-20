@@ -23,18 +23,18 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
             # advertise the device
             self.sendAlive("upnp:rootdevice",
                            "uuid:%s::upnp:rootdevice" % device.upnp_UDN,
-                           "http://%s:1901/%s/root-device.xml" % (iface,device.upnp_UDN))
+                           "http://%s:1901/%s" % (iface,device.upnp_UDN.replace(':','_')))
             self.sendAlive("uuid:%s" % device.upnp_UDN,
                            "uuid:%s" % device.upnp_UDN,
-                           "http://%s:1901/%s/root-device.xml" % (iface,device.upnp_UDN))
+                           "http://%s:1901/%s" % (iface,device.upnp_UDN.replace(':','_')))
             self.sendAlive(device.upnp_device_type,
                            "uuid:%s::%s" % (device.upnp_UDN, device.upnp_device_type),
-                           "http://%s:1901/%s/root-device.xml" % (iface,device.upnp_UDN))
+                           "http://%s:1901/%s" % (iface,device.upnp_UDN.replace(':','_')))
             # advertise each service on the device
-            for svc in device._upnp_services:
+            for svc in device._upnp_services.values():
                 self.sendAlive(svc.upnp_service_type,
                                "uuid:%s::%s" % (device.upnp_UDN, svc.upnp_service_type),
-                               "http://%s:1901/%s/root-device.xml" % (iface,device.upnp_UDN))
+                               "http://%s:1901/%s" % (iface,device.upnp_UDN.replace(':','_')))
             self.log_debug("registered device %s on %s" % (device.upnp_UDN, iface))
         self.devices[device.upnp_UDN] = device
 
@@ -47,7 +47,7 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
             self.sendByebye("uuid:%s" % device.upnp_UDN, "uuid:%s" % device.upnp_UDN)
             self.sendByebye(device.upnp_device_type, "uuid:%s::%s" % (device.upnp_UDN, device.upnp_device_type))
             # advertise each service on the device
-            for svc in device._upnp_services:
+            for svc in device._upnp_services.values():
                 self.sendByebye(svc.upnp_service_type, "uuid:%s::%s" % (device.upnp_UDN, svc.upnp_service_type))
             self.log_debug("unregistered device %s on %s" % (device.upnp_UDN, iface))
         del self.devices[device.upnp_UDN]
@@ -102,6 +102,7 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
             return '\r\n'.join(resp) + '\r\n'
         # if the MAN header is present, make sure its ssdp:discover
         if not headers.get('MAN', '') == '"ssdp:discover"':
+            self.log_warning("MAN header for discovery request is not 'ssdp:discover', ignoring")
             return
         self.log_debug('received discovery request from %s for %s' % (host, headers['ST']))
         # Generate a response
@@ -113,18 +114,18 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
                     # advertise the device
                     responses.append(makeResponse("upnp:rootdevice",
                                      "uuid:%s::upnp:rootdevice" % udn,
-                                     "http://%s:1901/%s/root-device.xml" % (iface,udn)))
+                                     "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
                     responses.append(makeResponse("uuid:%s" % udn,
                                      "uuid:%s" % udn,
-                                     "http://%s:1901/%s/root-device.xml" % (iface,udn)))
+                                     "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
                     responses.append(makeResponse(device.upnp_device_type,
                                      "uuid:%s::%s" % (udn, device.upnp_device_type),
-                                     "http://%s:1901/%s/root-device.xml" % (iface,udn)))
+                                     "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
                     # advertise each service on the device
-                    for svc in device._upnp_services:
+                    for svc in device._upnp_services.values():
                         responses.append(makeResponse(svc.upnp_service_type,
                                          "uuid:%s::%s" % (udn, svc.upnp_service_type),
-                                         "http://%s:1901/%s/root-device.xml" % (iface,udn)))
+                                         "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
         # return each root device
         elif headers['ST'] == 'upnp:rootdevice':
             for udn,device in self.devices.items():
@@ -132,7 +133,7 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
                     # advertise the root device
                     responses.append(makeResponse("upnp:rootdevice",
                                      "uuid:%s::upnp:rootdevice" % udn,
-                                     "http://%s:1901/%s/root-device.xml" % (iface,udn)))
+                                     "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
         # return the specific device
         elif headers['ST'].startswith('uuid:'): 
             pass
@@ -145,23 +146,27 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
         # introduce a random delay between 0 and MX
         delayMax = int(headers['MX'])
         # send the responses
-        reactor.callLater(random.randint(0, delayMax),
-                          self._doWriteResponse,
-                          host,
-                          port,
-                          responses,
-                          delayMax)
+        if len(responses) > 0:
+            self.log_debug("sending %i responses" % len(responses))
+            reactor.callLater(random.randint(0, delayMax),
+                              self._doWriteResponse,
+                              host,
+                              port,
+                              responses,
+                              delayMax)
+        else:
+            self.log_warning("no responses generated for ssdp request")
 
     def _doWriteResponse(self, host, port, responses, delayMax):
-        if responses == []:
-            return
         self.transport.write(responses.pop(0) + '\r\n', (host,port))
-        reactor.callLater(random.randint(0, delayMax),
-                          self._doWriteResponse,
-                          host,
-                          port,
-                          responses,
-                          delayMax)
+        self.log_debug("wrote ssdp response to %s:%i" % (host, port))
+        if len(responses) > 0:
+            reactor.callLater(random.randint(0, delayMax),
+                              self._doWriteResponse,
+                              host,
+                              port,
+                              responses,
+                              delayMax)
 
     def doStop(self):
         for udn,device in self.devices.items():

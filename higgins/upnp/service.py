@@ -26,11 +26,22 @@ class StateVar(object):
     TYPE_URI = "uri"
     TYPE_UUID = "uuid"
 
-    def __init__(self, type, **params):
+    def __init__(self, type, sendEvents="no", defaultValue=None, allowedValueList=None, allowedMin=None, allowedMax=None, allowedStep=None):
         self.type = type
-        self.params = params
+        self.sendEvents = sendEvents
+        self.defaultValue = defaultValue
+        self.allowedValueList = allowedValueList
+        self.allowedMin = allowedMin
+        self.allowedMax = allowedMax
+        self.allowedStep = allowedStep
+
     def parse(self, text_value):
         pass
+
+class EventedStateVar(StateVar):
+    def __init__(self, type, **kwds):
+        kwds['sendEvents'] = 'yes'
+        StateVar.__init__(self, type, **kwds)
 
 class Argument(object):
     DIRECTION_IN = "in"
@@ -45,7 +56,10 @@ class Argument(object):
 
 class Action(object):
     def __init__(self, action, *args):
+        if not callable(action):
+            raise Exception("%s is not callable" % str(action))
         self.action = action
+        self.name = action.__name__
         self.in_args = []
         self.out_args = []
         for arg in args:
@@ -60,20 +74,22 @@ class ServiceDeclarativeParser(type):
     def __new__(cls, name, bases, attrs):
         # load state variables
         stateVars = {}
-        for name,object in attrs.items():
+        for key,object in attrs.items():
             if isinstance(object, StateVar):
-                stateVars[name] = object
+                stateVars[key] = object
         # load actions
         actions = {}
-        for name,object in attrs.items():
+        for key,object in attrs.items():
             if isinstance(object, Action):
-                actions[name] = object
+                actions[key] = object
         # load stateVars and actions from any base classes
         for base in bases:
             if hasattr(base, '_upnp_stateVars'):
-                stateVars.update(base._upnp_stateVars)
+                base._upnp_stateVars.update(stateVars)
+                stateVars = base._upnp_stateVars
             if hasattr(base, '_upnp_actions'):
-                actions.update(base._upnp_actions)
+                base._upnp_actions.update(actions)
+                actions = base._upnp_actions
         attrs['_upnp_stateVars'] = stateVars
         attrs['_upnp_actions'] = actions
         return super(ServiceDeclarativeParser,cls).__new__(cls, name, bases, attrs)
@@ -84,37 +100,39 @@ class Service(object):
     upnp_service_type = None
     upnp_service_id = None
 
-    def __repr__(self):
+    def get_description(self):
         scpd = Element("{urn:schemas-upnp-org:service-1-0}scpd")
         version = SubElement(scpd, "specVersion")
         SubElement(version, "major").text = "1"
         SubElement(version, "minor").text = "0"
         action_list = SubElement(scpd, "actionList")
-        for upnp_action in self._upnp_actions:
+        for action_name,upnp_action in self._upnp_actions.items():
             action = SubElement(action_list, "action")
-            SubElement(action, "name").text = upnp_action.name
+            SubElement(action, "name").text = action_name
             arg_list = SubElement(action, "argumentList")
-            for upnp_arg in upnp_action.args:
-                arg = SubElement(arg_list, "name").text = upnp_arg.name
+            all_args = upnp_action.in_args + upnp_action.out_args
+            for upnp_arg in all_args:
+                arg = SubElement(arg_list, "argument")
+                SubElement(arg, "name").text = upnp_arg.name
                 SubElement(arg, "direction").text = upnp_arg.direction
                 SubElement(arg, "relatedStateVariable").text = upnp_arg.related
                 if upnp_arg.retval:
                     SubElement(arg, "retval")
         var_list = SubElement(scpd, "serviceStateTable")
-        for upnp_stateVar in self._upnp_stateVars:
+        for var_name,upnp_stateVar in self._upnp_stateVars.items():
             stateVar = SubElement(var_list, "stateVariable")
-            SubElement(stateVar, "name").text = upnp_stateVar.name
+            SubElement(stateVar, "name").text = var_name
             SubElement(stateVar, "dataType").text = upnp_stateVar.type
-            if upnp_stateVar.defaultValue:
+            if not upnp_stateVar.defaultValue == None:
                 SubElement(stateVar, "defaultValue").text = upnp_stateVar.defaultValue
-            if upnp_stateVar.allowedValues:
+            if not upnp_stateVar.allowedValueList == None:
                 allowed_list = SubElement(stateVar, "allowedValueList")
-                for allowed in upnp_stateVar.allowedValues:
+                for allowed in upnp_stateVar.allowedValueList:
                     SubElement(allowed_list, "allowedValue").text = allowed
-            if upnp_stateVar.allowedValueRange:
+            if not upnp_stateVar.allowedMin == None and not upnp_stateVar.allowedMax == None:
                 allowed_range = SubElement(stateVar, "allowedValueRange")
-                SubElement(allowed_range, "minimum").text = str(upnp_stateVar.allowedValueRange[0])
-                SubElement(allowed_range, "maximum").text = str(upnp_stateVar.allowedValueRange[1])
-                if len(upnp_stateVar.allowedValueRange) > 2:
-                    SubElement(allowed_range, "step").text = str(upnp_stateVar.allowedValueRange[2])
-        return xmltostring(root)
+                SubElement(allowed_range, "minimum").text = str(upnp_stateVar.allowedMin)
+                SubElement(allowed_range, "maximum").text = str(upnp_stateVar.allowedMax)
+                if not upnp_stateVar.allowedStep == None:
+                    SubElement(allowed_range, "step").text = str(upnp_stateVar.allowedStep)
+        return xmltostring(scpd)

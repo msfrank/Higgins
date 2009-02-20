@@ -12,8 +12,16 @@ class RootResource(resource.Resource):
         self.server = server
     def locateChild(self, request, segments):
         logger.log_debug("request URI: %s" % '/' + '/'.join(segments))
-        # the first segment is the device UDN
-        device_id = segments[0]
+        # we need the Host header
+        host = request.headers.getHeader('host')
+        if host == None:
+            logger.log_warning("request has no Host header, ignoring")
+            return None, []
+        # / returns 404
+        if segments == []:
+            return None, []
+        # the first segment is the device UDN with ':' escaped as '_'
+        device_id = segments[0].replace('_',':')
         try:
             device = self.server.devices[device_id]
         except:
@@ -21,10 +29,10 @@ class RootResource(resource.Resource):
             return None, []
         # if the next segment is 'root-device.xml', return the device description
         segments = segments[1:]
-        if segments[0] == 'root-device.xml':
-            return StaticResource(str(device), 'text/xml'), []
+        if segments == []:
+            return StaticResource(device.get_description(host), 'text/xml'), []
         # otherwise the next segment is the service ID
-        service_id = segments[0]
+        service_id = segments[0].replace('_',':')
         try:
             service = device._upnp_services[service_id]
         except:
@@ -32,7 +40,7 @@ class RootResource(resource.Resource):
             return None, []
         segments = segments[1:]
         if segments == []:
-            return StaticResource(str(service), 'text/xml'), []
+            return StaticResource(service.get_description(), 'text/xml'), []
         if segments[0] == 'control':
             return ControlResource(service), []
         #if segments[0] == 'event':

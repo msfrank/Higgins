@@ -18,13 +18,14 @@ class DeviceDeclarativeParser(type):
         attrs['upnp_UDN'] = udn
         logger.log_debug("UDN for %s is %s" % (name, udn))
         # load services
-        services = []
-        for name,object in attrs.items():
-            if isinstance(object, UPnPService):
-                services.append(object)
+        services = {}
+        for key,svc in attrs.items():
+            if isinstance(svc, UPnPService):
+                services[svc.upnp_service_id] = svc
         for base in bases:
             if hasattr(base, '_upnp_services'):
-                services = base._upnp_services + services
+                base._upnp_services.update(services)
+                services = base._upnp_services
         attrs['_upnp_services'] = services
         return super(DeviceDeclarativeParser,cls).__new__(cls, name, bases, attrs)
 
@@ -46,7 +47,7 @@ class Device(object, Service):
         Service.stopService(self)
         upnp_service.unregisterUPnPDevice(self)
 
-    def __repr__(self):
+    def get_description(self, host=''):
         root = Element("{urn:schemas-upnp-org:device-1-0}root")
         version = SubElement(root, "specVersion")
         SubElement(version, "major").text = "1"
@@ -58,11 +59,17 @@ class Device(object, Service):
         SubElement(device, "modelName").text = self.upnp_model_name
         SubElement(device, "UDN").text = self.upnp_UDN
         svc_list = SubElement(device, "serviceList")
-        for svc in self._upnp_services:
+        for svc in self._upnp_services.values():
             service = SubElement(svc_list, "service")
             SubElement(service, "serviceType").text = svc.upnp_service_type
             SubElement(service, "serviceId").text = svc.upnp_service_id
-            SubElement(service, "SCPDURL").text = "%s" % svc.upnp_service_id
-            SubElement(service, "controlURL").text = "%s/control" % svc.upnp_service_id
-            SubElement(service, "eventSubURL").text = "%s/event" % svc.upnp_service_id
+            SubElement(service, "SCPDURL").text = "http://%s/%s/%s" % (
+                host, self.upnp_UDN.replace(':','_'), svc.upnp_service_id.replace(':', '_')
+                )
+            SubElement(service, "controlURL").text = "http://%s/%s/%s/control" % (
+                host, self.upnp_UDN.replace(':','_'), svc.upnp_service_id.replace(':', '_')
+                )
+            SubElement(service, "eventSubURL").text = "http://%s/%s/%s/event" % (
+                host, self.upnp_UDN.replace(':','_'), svc.upnp_service_id.replace(':', '_')
+                )
         return xmltostring(root)
