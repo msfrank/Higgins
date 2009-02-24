@@ -32,27 +32,22 @@ class ControlResource(resource.Resource):
             # determine UPnP action
             action = body.find("{%s}%s" % (request.soap_ns, request.soap_action))
             # look up the action in the service
-            try:
-                upnp_action = self.service._upnp_actions[action.name]
-            except:
-                raise Exception("no such action '%s'" % action.name)
-            parsed_args = []
-            for upnp_in_arg in upnp_action.in_args:
-                try:
-                    arg = action.find(upnp_in_arg.name)
-                except:
-                    raise Exception("missing required in_arg '%s'" % upnp_in_arg.name)
-                parsed_arg = upnp_in_arg.parse(arg.text)
-                parsed_args.append(parsed_arg)
+            upnp_action = self.service._upnp_actions[action.tag]
+            # build a list of the action arguments
+            in_args = {}
+            for arg in action:
+                in_args[arg.tag] = arg.text
         except Exception, e:
             logger.log_debug("failed to parse SOAP request: %s" % e)
             return HttpResponse(400)
         try:
-            out_args = upnp_action(self.service, parsed_args)
+            # execute the UPnP action
+            out_args = upnp_action(self.service, in_args)
+            # return the action response
             env = Element("{http://schemas.xmlsoap.org/soap/envelope/}Envelope")
             body = SubElement(env, "{http://schemas.xmlsoap.org/soap/envelope/}Body")
             resp = SubElement(body, "{%s}%sResponse" % (request.soap_ns,request.soap_action))
-            for name,(type,value) in results.args.items():
+            for (name,type,value) in out_args:
                 arg = SubElement(resp, name)
                 arg.attrib["{http://www.w3.org/1999/XMLSchema-instance}type"] = type
                 arg.text = str(value)

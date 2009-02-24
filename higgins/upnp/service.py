@@ -68,7 +68,21 @@ class Action(object):
             else:
                 self.out_args.append(arg)
     def __call__(self, service, arguments):
-        return self.action(service, *arguments)
+        # arguments is a dict.  key is the argument name, value is
+        # the argument value as a string.
+        a = self.in_args.copy()
+        parsed_args = []
+        while not a == []:
+            arg = a.pop(0)
+            try:
+                arg_value = arguments[arg.name]
+                parsed_args.append(arg.parse(arg_value))
+            except KeyError:
+                raise Exception("missing required argument %s" % arg.name)
+            except Exception, e:
+                raise e
+        out_args = self.action(service, *parsed_args)
+        for arg_name,arg_value in out_args.items():
 
 class ServiceDeclarativeParser(type):
     def __new__(cls, name, bases, attrs):

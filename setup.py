@@ -43,7 +43,7 @@ setup(
         'console_scripts': ['higgins-media-server=higgins:run_application',],
         'higgins.plugin': [
             'daap=higgins.plugins.daap:DaapService',
-            'mediaserver=higgins.plugins.mediaserver:MediaserverDevice',
+#            'mediaserver=higgins.plugins.mediaserver:MediaserverDevice',
             ],
         },
 )
