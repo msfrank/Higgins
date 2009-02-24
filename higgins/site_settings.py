@@ -20,6 +20,7 @@ site_settings = {
     'MEDIA_URL': '',
     'ADMIN_MEDIA_PREFIX': '',
     'SECRET_KEY': '',
+    'APPEND_SLASH': True,
     'TEMPLATE_LOADERS': (
         'higgins.loader.load_template_source',
         'django.template.loaders.app_directories.load_template_source',

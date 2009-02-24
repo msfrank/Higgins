@@ -93,7 +93,8 @@ class PostableResource(resource.Resource, CoreLogger):
                 if request.ctxt.state == Context.STATE_READ_BODY:
                     request.ctxt.state = Context.STATE_PROCESS_BODY
                 else:
-                    self.log_error("reached end of request, state is %s" % request.ctxt.state)
+                    if request.ctxt.state != Context.STATE_READ_HEADERS:
+                        self.log_error("reached end of request, state is %s" % request.ctxt.state)
                     break
 
             ##########################################################
@@ -194,7 +195,7 @@ class PostableResource(resource.Resource, CoreLogger):
             # STATE_PROCESS_BODY                                     #
             ##########################################################
             if request.ctxt.state == Context.STATE_PROCESS_BODY:
-                self.log_debug("[core] STATE_PROCESS_BODY")
+                self.log_debug("STATE_PROCESS_BODY")
                 if request.ctxt.handle:
                     # add the form data to the http.Request.post dictionary
                     if isinstance(request.ctxt.handle, list):
