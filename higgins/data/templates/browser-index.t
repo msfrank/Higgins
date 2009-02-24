@@ -38,8 +38,8 @@
     <ul>
         {% for song in popular_list %}
         <li id="popular-list">
-            <a href="/browse/bysong/{{ song.id }}">{{ song.name }}</a> by
-            <a href="/browse/byartist/{{song.artist.id }}">{{ song.artist.name }}</a>
+            <a href="/browse/bysong/{{ song.id }}/">{{ song.name }}</a> by
+            <a href="/browse/byartist/{{song.artist.id }}/">{{ song.artist.name }}</a>
         </li>
     {% endfor %}
     </ul>

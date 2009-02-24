@@ -12,7 +12,7 @@
         {% for album in album_list %}
             <tr>
                 <td>{{ album.release_date }}</td>
-                <td><a href="/browse/byalbum/{{album.id}}">{{ album.name }}</a></td>
+                <td><a href="/browse/byalbum/{{album.id}}/">{{ album.name }}</a></td>
             </tr>
         {% endfor %}
         </table>

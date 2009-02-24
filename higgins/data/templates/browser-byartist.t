@@ -12,7 +12,7 @@
     <p>
         <ul>
         {% for artist in artist_list %}
-            <li><a href="/browse/byartist/{{artist.id}}">{{ artist.name }}</a></li>
+            <li><a href="/browse/byartist/{{artist.id}}/">{{ artist.name }}</a></li>
         {% endfor %}
         </ul>
     </p>

@@ -12,7 +12,7 @@
     <p>
         <ul>
         {% for genre in genre_list %}
-            <li><a href="/browse/bygenre/{{genre.id}}">{{ genre.name }}</a></li>
+            <li><a href="/browse/bygenre/{{genre.id}}/">{{ genre.name }}</a></li>
         {% endfor %}
         </ul>
     </p>
