@@ -195,22 +195,21 @@ class ListItemsCommand(Command):
             record.add(ContentCode("asdm", 1))                      # date modified
             record.add(ContentCode("asdc", 1))                      # disc count
             record.add(ContentCode("asdn", 1))                      # disc number
-            record.add(ContentCode("asdb", False))                   # song disabled?
-            record.add(ContentCode("aseq", str('')))                # song EQ preset
-            record.add(ContentCode("asfm", "mp3"))                  # file format
-            record.add(ContentCode("asgn", "Unknown"))              # genre name
-            #record.add(ContentCode("asgn", str(song.genre.name)))   # genre name
-            record.add(ContentCode("asdt", str('')))                # song description
-            record.add(ContentCode("asrv", 0))                      # relative volume
-            record.add(ContentCode("assr", 0))                      # sample rate
-            record.add(ContentCode("assz", int(song.file.size)))    # file size
-            record.add(ContentCode("asst", 0))                      # song start time
-            record.add(ContentCode("assp", 0))                      # song stop time
-            record.add(ContentCode("astm", int(song.duration)))     # song time in ms
-            record.add(ContentCode("astc", 1))                      # number of tracks on album
-            record.add(ContentCode("astn", 1))                      # track number on album
-            record.add(ContentCode("asur", 0))                      # song user rating
-            record.add(ContentCode("asyr", 0))                      # song publication year
+            record.add(ContentCode("asdb", False))                          # song disabled?
+            record.add(ContentCode("aseq", str('')))                        # song EQ preset
+            record.add(ContentCode("asfm", "mp3"))                          # file format
+            record.add(ContentCode("asgn", str(song.album.genre.name)))     # genre name
+            record.add(ContentCode("asdt", str('')))                        # song description
+            record.add(ContentCode("asrv", 0))                              # relative volume
+            record.add(ContentCode("assr", 0))                              # sample rate
+            record.add(ContentCode("assz", int(song.file.size)))            # file size
+            record.add(ContentCode("asst", 0))                              # song start time
+            record.add(ContentCode("assp", 0))                              # song stop time
+            record.add(ContentCode("astm", int(song.duration)))             # song time in ms
+            record.add(ContentCode("astc", 1))                              # number of tracks on album
+            record.add(ContentCode("astn", int(song.track_number)))         # track number on album
+            record.add(ContentCode("asur", 0))                              # song user rating
+            record.add(ContentCode("asyr", 0))                              # song publication year
             listing.add(record)
         adbs.add(listing)
         return adbs
