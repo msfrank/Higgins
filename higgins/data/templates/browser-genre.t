@@ -1,6 +1,6 @@
 {% extends "base.t" %}
 
-{% block title %}{{ genre.name }{% endblock %}
+{% block title %}{{ genre.name }}{% endblock %}
 
 {% block content %}
 <div>

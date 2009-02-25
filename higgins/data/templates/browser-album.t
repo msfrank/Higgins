@@ -1,6 +1,6 @@
 {% extends "base.t" %}
 
-{% block title %}{{ album.name }{% endblock %}
+{% block title %}{{ album.name }}{% endblock %}
 
 {% block content %}
 <div>
