@@ -1,3 +1,9 @@
+# Higgins - A multi-media server
+# Copyright (c) 2007-2009  Michael Frank <msfrank@syntaxjockey.com>
+#
+# This program is free software; for license information see
+# the COPYING file.
+
 from twisted.internet import defer
 from higgins.http import http, resource, http_headers
 from higgins.http.http_headers import DefaultHTTPHandler, tokenize, parseArgs

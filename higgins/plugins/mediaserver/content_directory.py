@@ -1,8 +1,8 @@
-# Portions of this code from the pymeds project  are licensed under
-# the MIT license: http://opensource.org/licenses/mit-license.php
+# Higgins - A multi-media server
+# Copyright (c) 2007-2009  Michael Frank <msfrank@syntaxjockey.com>
 #
-# Copyright 2005, Tim Potter <tpot@samba.org>
-# Copyright 2006 John-Mark Gurney <gurney_j@resnet.uroegon.edu>
+# This program is free software; for license information see
+# the COPYING file.
 
 from xml.etree.ElementTree import Element, SubElement, tostring as xmltostring
 from higgins.upnp.service import Service, Action, Argument, StateVar
