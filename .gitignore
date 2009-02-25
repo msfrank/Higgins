@@ -2,6 +2,8 @@ env
 build
 dist
 dumps
+*.swp
+*.tmp
 *.pyc
 Higgins.egg-info
 MANIFEST
