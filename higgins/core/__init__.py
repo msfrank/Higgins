@@ -16,6 +16,7 @@ from higgins.core.configurator import Configurator, IntegerSetting
 from higgins.core.manager import ManagerResource
 from higgins.core.logger import CoreLogger
 from higgins.upnp import upnp_service
+from higgins.upnp.device import Device as UPnPDevice
 
 class CoreHttpConfig(Configurator):
     pretty_name = "HTTP Server"
@@ -67,8 +68,7 @@ class CoreService(MultiService, TCPServer, CoreLogger):
         MultiService.startService(self)
         TCPServer.startService(self)
         self.log_debug("started core service")
-        # start the UPnP service
-        upnp_service.setServiceParent(self)
+        self.upnp_service = upnp_service
         # load enabled services
         try:
             for name in conf.get("CORE_ENABLED_PLUGINS", []):
@@ -128,6 +128,12 @@ class CoreService(MultiService, TCPServer, CoreLogger):
             if self.pluginIsEnabled(name):
                 raise Exception("plugin is already enabled")
             plugin = self._plugins[name]
+            # if plugin is a UPnP device, then check if the UPnP server is running
+            if isinstance(plugin, UPnPDevice):
+                # if it isn't, then start it
+                if self.upnp_service.running == 0:
+                    # setServiceParent() implicitly calls startService()
+                    self.upnp_service.setServiceParent(self)
             if plugin.parent == None:
                 plugin.setServiceParent(self)
             else:
@@ -146,6 +152,8 @@ class CoreService(MultiService, TCPServer, CoreLogger):
                 raise Exception("plugin is not enabled")
             plugin = self._plugins[name]
             plugin.stopService()
+            if not self.upnp_service.running == 0:
+                self.upnp_service.disownParent()
             conf.set(CORE_ENABLED_PLUGINS=[name for name,plugin in self._plugins.items() if plugin.running])
             self.log_debug("disabled plugin '%s'" % name)
         except Exception, e:

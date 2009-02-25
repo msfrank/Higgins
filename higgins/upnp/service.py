@@ -89,6 +89,8 @@ class Action(object):
                 raise e
         out_args = self.action(service, *parsed_args)
         for arg_name,arg_value in out_args.items():
+            pass
+            # FIXME
 
 class ServiceDeclarativeParser(type):
     def __new__(cls, name, bases, attrs):
