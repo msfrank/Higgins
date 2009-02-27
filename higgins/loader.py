@@ -9,8 +9,8 @@ from pkg_resources import Environment, working_set, resource_string
 from django.template import TemplateDoesNotExist
 from higgins.service import Service
 from higgins.logging import Loggable
-from higgins.core import core_service
 from higgins.conf import conf
+from higgins.core.service import core_service
 
 class LoaderLogger(Loggable):
     log_domain = "loader"

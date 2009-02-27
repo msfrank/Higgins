@@ -61,7 +61,7 @@ class Server(Loggable):
         # start the core service
         from twisted.application import service
         self.app = service.Application("Higgins")
-        from core import core_service
+        from higgins.core.service import core_service
         core_service.setServiceParent(self.app)
         core_service.startService()
 
@@ -140,10 +140,14 @@ class ServerOptions(usage.Options):
         print "Usage: %s [OPTION]... ENV" % os.path.basename(sys.argv[0])
         print ""
         print "  -c,--create        Create the environment if necessary"
-        print "  -d,--debug         Run in the foreground, and log everything to stdout"
-        print "  -v                 Increase verbosity"
-        print "  --help"
-        print "  --version"
+        print "  -d,--debug         Run in the foreground, and log to stdout"
+        #print "  -q                 Log errors only"
+        #print "  -qq                Don't log anything"
+        #print "  -v                 Log informational messages"
+        #print "  -vv                Log informational and debug messages"
+        #print "  -vvv               Log everything"
+        print "  --help             Display this help"
+        print "  --version          Display the version"
         sys.exit(0)
 
     def opt_version(self):
