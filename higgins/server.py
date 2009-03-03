@@ -169,7 +169,7 @@ def run_application():
         print "Try %s --help for usage information." % os.path.basename(sys.argv[0])
         sys.exit(1)
     except Exception, e:
-        self.log_error("%s" % e)
+        print "%s, exiting" % e
         sys.exit(1)
     # initialize the server
     server = Server(options)
