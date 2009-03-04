@@ -1,3 +1,9 @@
+# Higgins - A multi-media server
+# Copyright (c) 2007-2009  Michael Frank <msfrank@syntaxjockey.com>
+#
+# This program is free software; for license information see
+# the COPYING file.
+
 from twisted.internet import defer, reactor
 from higgins.http.channel import HTTPFactory
 from higgins.http.server import Site
@@ -156,7 +162,60 @@ class ListItemsCommand(Command):
         except:
             return None, []
         return StreamSongCommand(songid), []
-    def renderDAAP(self, request):
+    def _retrieveSongs(self, d, adbs, listing, songs):
+        try:
+            for n in range(10):
+                song = songs.next()
+                item = CodeBag("mlit")
+                item.add(ContentCode("mikd", 2))                      # item kind (2 for music)
+                item.add(ContentCode("miid", int(song.id)))           # item id
+                item.add(ContentCode("minm", str(song.name)))         # item name (track name)
+                item.add(ContentCode("mper", int(song.id)))           # persistent id
+                item.add(ContentCode("asdk", 0))                      # song data kind
+                item.add(ContentCode("asul", str('')))                # song data URL
+                item.add(ContentCode("asal", str(song.album.name)))
+                item.add(ContentCode("agrp", str('')))                # album group?
+                item.add(ContentCode("asar", str(song.artist.name)))  # artist name
+                item.add(ContentCode("asbr", 0))                      # song bitrate
+                item.add(ContentCode("asbt", 0))                      # song beats-per-minute
+                item.add(ContentCode("ascm", str('')))                # song comment
+                item.add(ContentCode("asco", False))                  # song is compilation?
+                item.add(ContentCode("ascp", str('')))                #
+                item.add(ContentCode("asda", 1))                      # date added
+                item.add(ContentCode("asdm", 1))                      # date modified
+                item.add(ContentCode("asdc", 1))                      # disc count
+                item.add(ContentCode("asdn", 1))                      # disc number
+                item.add(ContentCode("asdb", False))                          # song disabled?
+                item.add(ContentCode("aseq", str('')))                        # song EQ preset
+                item.add(ContentCode("asfm", "mp3"))                          # file format
+                item.add(ContentCode("asgn", str(song.album.genre.name)))     # genre name
+                item.add(ContentCode("asdt", str('')))                        # song description
+                item.add(ContentCode("asrv", 0))                              # relative volume
+                item.add(ContentCode("assr", 0))                              # sample rate
+                item.add(ContentCode("assz", int(song.file.size)))            # file size
+                item.add(ContentCode("asst", 0))                              # song start time
+                item.add(ContentCode("assp", 0))                              # song stop time
+                item.add(ContentCode("astm", int(song.duration)))             # song time in ms
+                item.add(ContentCode("astc", 1))                              # number of tracks on album
+                item.add(ContentCode("astn", int(song.track_number)))         # track number on album
+                item.add(ContentCode("asur", 0))                              # song user rating
+                item.add(ContentCode("asyr", 0))                              # song publication year
+                listing.add(item)
+            # pass control back to twisted for a while
+            reactor.callLater(0, self._retrieveSongs, d, adbs, listing, songs)
+        except StopIteration:
+            d.callback(adbs)
+        except Exception, e:
+            d.errback(e)
+
+    def _renderDAAP(self, adbs):
+        return Response(200, { 'content-type': x_dmap_tagged }, adbs.render())
+
+    def _errDAAP(self, failure):
+        logger.log_error("ListItemsCommand failed: %s" % failure)
+        return Response(400, { 'content-type': MimeType('text','plain') }, str(failure))
+
+    def render(self, request):
         try:
             meta = ''.join(request.args['meta'])
             #log_debug("[daap] ListItemsCommand requesting metadata fields: %s" % meta)
@@ -175,45 +234,13 @@ class ListItemsCommand(Command):
         adbs.add(ContentCode("mtco", len(songs)))       # total number of matching records
         adbs.add(ContentCode("mrco", len(songs)))       # total number of records returned
         listing = CodeBag("mlcl")
-        for song in songs:
-            record = CodeBag("mlit")
-            record.add(ContentCode("mikd", 2))                      # item kind (2 for music)
-            record.add(ContentCode("miid", int(song.id)))           # item id
-            record.add(ContentCode("minm", str(song.name)))         # item name (track name)
-            record.add(ContentCode("mper", int(song.id)))           # persistent id
-            record.add(ContentCode("asdk", 0))                      # song data kind
-            record.add(ContentCode("asul", str('')))                # song data URL
-            record.add(ContentCode("asal", str(song.album.name)))
-            record.add(ContentCode("agrp", str('')))                # album group?
-            record.add(ContentCode("asar", str(song.artist.name)))  # artist name
-            record.add(ContentCode("asbr", 0))                      # song bitrate
-            record.add(ContentCode("asbt", 0))                      # song beats-per-minute
-            record.add(ContentCode("ascm", str('')))                # song comment
-            record.add(ContentCode("asco", False))                  # song is compilation?
-            record.add(ContentCode("ascp", str('')))                #
-            record.add(ContentCode("asda", 1))                      # date added
-            record.add(ContentCode("asdm", 1))                      # date modified
-            record.add(ContentCode("asdc", 1))                      # disc count
-            record.add(ContentCode("asdn", 1))                      # disc number
-            record.add(ContentCode("asdb", False))                          # song disabled?
-            record.add(ContentCode("aseq", str('')))                        # song EQ preset
-            record.add(ContentCode("asfm", "mp3"))                          # file format
-            record.add(ContentCode("asgn", str(song.album.genre.name)))     # genre name
-            record.add(ContentCode("asdt", str('')))                        # song description
-            record.add(ContentCode("asrv", 0))                              # relative volume
-            record.add(ContentCode("assr", 0))                              # sample rate
-            record.add(ContentCode("assz", int(song.file.size)))            # file size
-            record.add(ContentCode("asst", 0))                              # song start time
-            record.add(ContentCode("assp", 0))                              # song stop time
-            record.add(ContentCode("astm", int(song.duration)))             # song time in ms
-            record.add(ContentCode("astc", 1))                              # number of tracks on album
-            record.add(ContentCode("astn", int(song.track_number)))         # track number on album
-            record.add(ContentCode("asur", 0))                              # song user rating
-            record.add(ContentCode("asyr", 0))                              # song publication year
-            listing.add(record)
         adbs.add(listing)
-        return adbs
-        
+        d = defer.Deferred()
+        d.addCallback(self._renderDAAP)
+        d.addErrback(self._errDAAP)
+        reactor.callLater(0, self._retrieveSongs, d, adbs, listing, iter(songs))
+        return d
+
 class StreamSongCommand(Command):
     def __init__(self, songid):
         self.songid = songid

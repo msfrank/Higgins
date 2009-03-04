@@ -1,3 +1,9 @@
+# Higgins - A multi-media server
+# Copyright (c) 2007-2009  Michael Frank <msfrank@syntaxjockey.com>
+#
+# This program is free software; for license information see
+# the COPYING file.
+
 from django import forms
 from django.http import QueryDict
 from higgins.conf import conf
@@ -28,9 +34,10 @@ class ConfiguratorDeclarativeParser(type):
         # For each field, set the default value if it hasn't already been set.
         initial = config_cls({})
         for key,field in initial.fields.items():
-            if not key in conf:
+            full_key = 'CFG__' + name + '__' + key
+            if not full_key in conf:
                 try:
-                    conf[name + '__' + key] = field.clean(field.default)
+                    conf[full_key] = field.clean(field.default)
                     logger.log_debug("set initial value for %s.%s to '%s'" % (name, key, field.default))
                 except forms.ValidationError:
                     e = ConfiguratorException("'%s' is not a valid value for %s.%s" % (field.default, name, key))
@@ -44,7 +51,7 @@ class ConfiguratorDeclarativeParser(type):
         # Note that this method will only be called if 'name' *doesn't* exist
         # as a class attribute.
         if name in cls._config_fields:
-            return conf[cls._config_name + '__' + name]
+            return conf['CFG__' + cls._config_name + '__' + name]
         raise AttributeError("Configurator is missing config field %s" % name)
 
     def __setattr__(cls, name, value):
@@ -52,7 +59,7 @@ class ConfiguratorDeclarativeParser(type):
         # store.  Otherwise try to set the class attribute to 'value'.
         try:
             field = cls._config_fields[name]
-            conf[cls._config_name + '__' + name] = field.clean(value)
+            conf['CFG__' + cls._config_name + '__' + name] = field.clean(value)
             logger.log_debug("%s: %s => %s" % (cls._config_name, name, value))
         except:
             type.__setattr__(cls, name, value)
@@ -68,21 +75,20 @@ class Configurator(object):
 
     def __call__(self, settings=None):
         # Return an instance of the Configurator form.
-        logger.log_debug("Configurator: settings: %s" % settings)
         current = QueryDict('').copy()
         for key in self._config_fields.keys():
-            current[key] = conf[self._config_name + '__' + key]
-        logger.log_debug("Configurator: current: %s" % current)
+            current[key] = conf['CFG__' + self._config_name + '__' + key]
         if settings:
             for key,value in settings.items():
                 current[key] = value
         config = self._config_cls(current)
-        logger.log_debug("Configurator: updated: %s" % current)
-        if config.is_valid():
+        if settings and config.is_valid():
             for key in config.fields.keys():
                 value = config.cleaned_data[key]
-                logger.log_debug("Configurator: new value: %s = %s" % (key, value))
-                conf[self._config_name + '__' + key] = value
+                full_key = 'CFG__' + self._config_name + '__' + key
+                if conf[full_key] != value:
+                    logger.log_debug("%s: %s => %s" % (self._config_name, key, value))
+                    conf[full_key] = value
         return config
 
 class IntegerSetting(forms.IntegerField):

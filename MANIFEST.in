@@ -1,3 +1,7 @@
+include ez_setup.py
 include AUTHORS ChangeLog COPYING INSTALL NEWS README
 include *.doc *.txt *.doc *.pdf *.html
 include higgins/netif/netif-internal.h
+include higgins/data/templates/*.t
+include higgins/data/static/css/*
+include higgins/data/static/images/*

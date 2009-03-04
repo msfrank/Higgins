@@ -4,11 +4,10 @@
 # This program is free software; for license information see
 # the COPYING file.
 
-from logging import Loggable
+import os, pickle
 from django.conf import settings as django_settings
+from higgins.logging import Loggable
 from higgins.site_settings import site_settings
-import os
-import pickle
 
 class LocalSettings(Loggable):
     log_domain = "conf"

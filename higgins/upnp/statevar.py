@@ -1,3 +1,8 @@
+# Higgins - A multi-media server
+# Copyright (c) 2007-2009  Michael Frank <msfrank@syntaxjockey.com>
+#
+# This program is free software; for license information see
+# the COPYING file.
 
 class StateVar(object):
     TYPE_I1 = "i1"
@@ -43,7 +48,7 @@ class I4StateVar(StateVar):
 
     def parse(self, text_value):
         i4 = int(text_value)
-        if i4 < -2,147,483,648 or i4 > 2,147,483,647:
+        if i4 < -2147483648 or i4 > 2147483647:
             raise Exception("text_value is out-of-bounds")
         return i4
 

@@ -1,3 +1,9 @@
+# Higgins - A multi-media server
+# Copyright (c) 2007-2009  Michael Frank <msfrank@syntaxjockey.com>
+#
+# This program is free software; for license information see
+# the COPYING file.
+
 from xml.etree.ElementTree import Element, SubElement, tostring as xmltostring
 
 class StateVar(object):
@@ -83,6 +89,8 @@ class Action(object):
                 raise e
         out_args = self.action(service, *parsed_args)
         for arg_name,arg_value in out_args.items():
+            pass
+            # FIXME
 
 class ServiceDeclarativeParser(type):
     def __new__(cls, name, bases, attrs):

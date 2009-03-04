@@ -1,8 +1,14 @@
+# Higgins - A multi-media server
+# Copyright (c) 2007-2009  Michael Frank <msfrank@syntaxjockey.com>
+#
+# This program is free software; for license information see
+# the COPYING file.
+#
 # Portions of this code from the pymeds project  are licensed under
 # the MIT license: http://opensource.org/licenses/mit-license.php
 #
-# Copyright 2005, Tim Potter <tpot@samba.org>
-# Copyright 2006 John-Mark Gurney <gurney_j@resnet.uroegon.edu>
+#   Copyright 2005, Tim Potter <tpot@samba.org>
+#   Copyright 2006 John-Mark Gurney <gurney_j@resnet.uroegon.edu>
 
 import random, string
 from higgins.service import Service

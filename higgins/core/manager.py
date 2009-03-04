@@ -1,15 +1,20 @@
+# Higgins - A multi-media server
+# Copyright (c) 2007-2009  Michael Frank <msfrank@syntaxjockey.com>
+#
+# This program is free software; for license information see
+# the COPYING file.
+
+import os, tempfile
 from higgins.http import resource, http_headers
 from higgins.http.http import Response as HttpResponse
 from higgins.core.models import File, Artist, Album, Song, Genre
 from higgins.core.postable_resource import PostableResource
-from logger import CoreLogger
-import os
-from tempfile import mkstemp
+from higgins.core.logger import CoreLogger
 
 class UniqueFile:
     def __init__(self, filename, mimetype='application/octet-stream'):
         self.mimetype = mimetype
-        self._fd,self.path = mkstemp(prefix=filename + '.', dir='.')
+        self._fd,self.path = tempfile.mkstemp(prefix=filename + '.', dir='.')
     def write(self, data):
         os.write(self._fd, data)
     def close(self):

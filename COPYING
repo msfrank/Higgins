@@ -506,9 +506,9 @@ That's all there is to it!
 
 -------------------------------------------------------------------------------
 
-Portions of this software (notably the HTTP server implementation) come from
-the Twisted Project (see http://twistedmatrix.com) and are licensed under the
-MIT license:
+Portions of this software, including the HTTP server implementation from
+the Twisted project and portions of the UPNP server from the pymeds project
+are licensed under the MIT license:
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
