@@ -2,26 +2,33 @@
 # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/146306
 
 from sys import argv, exit
-from getopt import gnu_getopt
-import httplib, urllib
 from os import stat
 from os.path import abspath,basename
+import httplib, urllib
 from mutagen import File
+from twisted.python import usage,log
+from higgins.logging import Loggable, LEVELS
 
-class Uploader(object):
+class UploaderException(Exception):
+    def __init__(self, reason):
+        self.reason = reason
+    def __str__(self):
+        return self.reason
 
+class Uploader(object, Loggable):
+    domain = 'uploader'
     boundary = '----------ThIs_Is_tHe_bouNdaRY_$'
 
-    def __init__(self, files, host='localhost', port=8000, isLocal=True):
+    def __init__(self, files, host='localhost', port=8000, isLocal=False):
         self.files = files
         self.host = host
+        self.log_debug("host: %s" % host)
         self.port = port
+        self.log_debug("port: %i" % port)
         self.isLocal = isLocal
+        self.log_debug("local-mode: %s" % str(isLocal))
 
-    def _log(self):
-        pass
-
-    def _get_metadata(path):
+    def _get_metadata(self, path):
         metadata = {}
         try:
             f = File(path)
@@ -42,7 +49,7 @@ class Uploader(object):
                 metadata['track'] = str(a[0])
             return metadata
         except KeyError, e:
-            raise Exception("missing metadata field %s" % e)
+            raise UploaderException("missing metadata field %s" % e)
         except Exception, e:
             raise e
 
@@ -51,7 +58,6 @@ class Uploader(object):
         lines = []
         # add each metadata part
         for (key, value) in metadata.items():
-            print "form-data: '%s' => '%s' (%i bytes)" % (key,value,len(value))
             lines.append('--' + self.boundary)
             lines.append('Content-Disposition: form-data; name="%s"' % key)
             lines.append('')
@@ -71,7 +77,7 @@ class Uploader(object):
             file_size = st.st_size
         output = '\r\n'.join(lines)
         # create the http client connection
-        request = httplib.HTTPConnection(host)
+        request = httplib.HTTPConnection("%s:%i" % (self.host,self.port))
         request.putrequest('POST', post_uri)
         request.putheader('User-Agent', 'higgins-uploader')
         request.putheader('Content-Type', 'multipart/form-data; boundary=%s' % self.boundary)
@@ -90,75 +96,94 @@ class Uploader(object):
                 request.send(output)
                 nread += len(output)
             f.close()
-        print "wrote %i bytes" % nread
+        self.log_debug("wrote %i bytes" % nread)
         response = request.getresponse()
-        print "Server returned status %s: %s" % (response.status,response.read())
+        self.log_debug("server returned status code %s: %s" % (response.status,response.read()))
         return response.status  
         
     def run(self):
-        for path in args:
+        failed = []
+        for file in self.files:
             try:
-                path = abspath(path)
-                metadata = get_metadata(path)
-                if local_mode:
+                path = abspath(file)
+                metadata = self._get_metadata(path)
+                if self.isLocal:
                     metadata['local_path'] = path
-                for datum in metadata.items():
-                    print "    %s: %s" % datum
-                print "----------------------------------------"
-                print "Uploading file to media server at %s ..." % host
-                if local_mode:
-                    result = do_local_upload(host, path, metadata)
-                else:
-                    result = do_upload(host, path, metadata)
+                self.log_debug("parsed metadata: %s" % metadata)
+                result = self._upload(path, metadata)
+                self.log_info("uploaded %s" % file)
             except Exception, e:
-                print "Failed to process %s: %s" % (path, e)
+                failed.append((path,e))
+        for file,e in failed:
+            self.log_warning("skipped %s: %s" % (path, e))
  
-def run_application():
+class UploaderObserver(log.DefaultObserver):
+    def __init__(self, verbosity=0):
+        self.verbosity = verbosity
+    def _emit(self, params):
+        level = params['level']
+        if level <= self.verbosity:
+            print ''.join(params['message'])
 
-    from twisted.python import usage
+def run_application():
     class HigginsOptions(usage.Options):
         optFlags = [
-            ["create", "c", "Create the environment if necessary"],
-            ["debug", "d", "Run Higgins in the foreground, and log everything to stdout"],
+            ['local-mode', 'l', None],
+        ]
+        optParameters = [
+            ['host', 'h', 'localhost', None],
+            ['port', 'p', 8000, None, int],
         ]
 
         def __init__(self):
             usage.Options.__init__(self)
-            self['verbose'] = 0
+            self['verbose'] = 2
+
+        def opt_quiet(self):
+            if self['verbose'] > 0: 
+                self['verbose'] = self['verbose'] - 1
+        opt_q = opt_quiet
 
         def opt_verbose(self):
-            if self['verbose'] < 3: 
+            if self['verbose'] < 5: 
                 self['verbose'] = self['verbose'] + 1
         opt_v = opt_verbose
 
         def parseArgs(self, *files):
+            if len(files) == 0:
+                raise UploaderException("No media files specified.")
             self['files'] = files
-
-        def postOptions(self):
-            pass
 
         def opt_help(self):
             import sys
-            print "Usage: %s [-h HOST] [-l] FILE..." % sys.argv[0]
+            print "Usage: %s [OPTIONS...] FILE..." % basename(argv[0])
             print ""
-            print "  -h HOST       The host to upload to.  Default is 'localhost:8000'"
-            print "  -l            Enables local mode (File itself will not be uploaded)"
+            print "  --local-mode,-l        File itself will not be uploaded"
+            print "  --host,-h HOST         The host to upload to.  Default is 'localhost'"
+            print "  --port,-p PORT         The port higgins is running on.  Default is '8000'"
+            print "  --recursive,-r         Recursively upload media files in directories"
+            print "  --help                 Display this help"
+            print "  --version              Display the version"
             print ""
-            sys.exit(0)
+            exit(0)
 
         def opt_version(self):
-            print "Higgins uploader version 0.1"
-            sys.exit(0)
+            from higgins import VERSION
+            print "Higgins uploader version " + VERSION
+            exit(0)
     try:
-        o = HigginsOptions(self)
-        o.parseOptions(options)
-        uploader = Uploader(o.files)
+        o = HigginsOptions()
+        o.parseOptions(argv[1:])
+        observer = UploaderObserver(verbosity=o['verbose'])
+        observer.start()
+        uploader = Uploader(o['files'], host=o['host'], port=o['port'], isLocal=o['local-mode'])
         uploader.run()
+        observer.stop()
         exit(0)
     except usage.UsageError, e:
         print "Error parsing options: %s" % e
         print ""
-        print "Try --help for usage information.")
-    except Exception, e:
+        print "Try %s --help for usage information." % basename(argv[0])
+    except UploaderException, e:
         print "%s" % e
-    sys.exit(1)
+    exit(1)

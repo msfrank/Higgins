@@ -8,22 +8,26 @@ from time import ctime
 import traceback
 from twisted.python import log, logfile, util
 
+LEVELS = ['FATAL','ERROR','WARNING','info','debug','debug2']
+
 class Loggable:
     log_domain = "default"
     def log_fatal(self, reason):
-        log.msg(reason, level="FATAL", domain=self.log_domain)
+        log.msg(reason, level=0, domain=self.log_domain)
     def log_error(self, reason):
-        log.msg(reason, level="ERROR", domain=self.log_domain)
+        log.msg(reason, level=1, domain=self.log_domain)
     def log_warning(self, reason):
-        log.msg(reason, level="warning", domain=self.log_domain)
+        log.msg(reason, level=2, domain=self.log_domain)
     def log_info(self, reason):
-        log.msg(reason, level="info", domain=self.log_domain)
+        log.msg(reason, level=3, domain=self.log_domain)
     def log_debug(self, reason):
-        log.msg(reason, level="debug", domain=self.log_domain)
+        log.msg(reason, level=4, domain=self.log_domain)
+    def log_debug2(self, reason):
+        log.msg(reason, level=5, domain=self.log_domain)
 
 class CommonObserver(log.DefaultObserver):
     def _formatMessage(self, params):
-        level = params.get('level', 'debug')
+        level = params.get('level', 4)
         time_t = params.get('time', None)
         domain = params.get('domain', 'twisted')
         if params.get('printed') == True:
@@ -35,7 +39,7 @@ class CommonObserver(log.DefaultObserver):
             time = ctime(time_t)
         else:
             time = ''
-        return "%s [%s] %s: %s" % (time, domain, level, ''.join(params['message']))
+        return "%s [%s] %s: %s" % (time, domain, LEVELS[level], ''.join(params['message']))
 
 class LogfileObserver(CommonObserver):
     def __init__(self, f):
@@ -61,10 +65,10 @@ class StdoutObserver(CommonObserver):
     def _emit(self, params):
         level = params.get('level', 'debug')
         msg = self._formatMessage(params)
-        if level == 'FATAL' or level == 'ERROR':
+        if level < 2:
             print self.START_RED + msg + self.END
             print traceback.print_exc()
-        elif level == 'warning':
+        elif level == 2:
             print self.START_YELLOW + msg + self.END
         else:
             print msg

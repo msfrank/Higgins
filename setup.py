@@ -13,7 +13,7 @@ setup(
     url="http://www.syntaxjockey.com/higgins",
     # package requirements
     install_requires=[
-#        'Twisted >= 8.1.0',
+#        'Twisted >= 8.0.0',
 #        'Django >= 1.0.0',
 #        'pysqlite >= 2.5.0',
 #        'pybonjour >= 1.1.1',
@@ -44,10 +44,12 @@ setup(
         ],
     # declare static data
     package_data={'higgins.data': ['static/css/*.css', 'templates/*.t', 'static/images/*.*']},
-    scripts=['scripts/higgins-upload',],
     entry_points={
-        # auto-generate the higgins-media-server script
-        'console_scripts': ['higgins-media-server=higgins.server:run_application',],
+        # auto-generate scripts
+        'console_scripts': [
+            'higgins-media-server=higgins.server:run_application',
+            'higgins-upload=higgins.core.upload:run_application',
+            ],
         # declare packaged plugins
         'higgins.plugin': [
             'daap=higgins.plugins.daap:DaapService',
