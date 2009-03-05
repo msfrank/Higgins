@@ -38,23 +38,37 @@ class StateVar(object):
         self.allowedMin = allowedMin
         self.allowedMax = allowedMax
         self.allowedStep = allowedStep
-
     def parse(self, text_value):
         raise Exception("no parser available")
+    def write(self, value):
+        raise Exception("no writer available")
 
 class I4StateVar(StateVar):
     def __init__(self, **kwds):
         StateVar.__init__(self, StateVar.TYPE_I4, **kwds)
-
     def parse(self, text_value):
         i4 = int(text_value)
         if i4 < -2147483648 or i4 > 2147483647:
             raise Exception("text_value is out-of-bounds")
         return i4
+    def write(self, value):
+        return str(value)
+
+class UI4StateVar(StateVar):
+    def __init__(self, **kwds):
+        StateVar.__init__(self, StateVar.TYPE_UI4, **kwds)
+    def parse(self, text_value):
+        i4 = int(text_value)
+        if i4 < 0 or i4 > 4294967295:
+            raise Exception("text_value is out-of-bounds")
+        return i4
+    def write(self, value):
+        return str(value)
 
 class StringStateVar(StateVar):
     def __init__(self, **kwds):
         StateVar.__init__(self, StateVar.TYPE_STRING, **kwds)
-
     def parse(self, text_value):
         return str(text_value)
+    def write(self, value):
+        return str(value)

@@ -4,15 +4,15 @@
 # This program is free software; for license information see
 # the COPYING file.
 
+import urllib
+from twisted.internet import defer
+from xml.etree.ElementTree import XML, Element, SubElement, tostring as xmltostring
 from higgins.http import resource
 from higgins.http.static import Data as StaticResource
 from higgins.http.http import Response as HttpResponse
 from higgins.http.http_headers import DefaultHTTPHandler, last, parseKeyValue
 from higgins.http.stream import BufferedStream
-from twisted.internet import defer
-from xml.etree.ElementTree import XML, Element, SubElement, tostring as xmltostring
-import urllib
-from logger import logger
+from higgins.upnp.logger import logger
 
 def _parseSoapAction(header):
     return ''.join(header.split('"')).split('#', 1)
@@ -38,7 +38,8 @@ class ControlResource(resource.Resource):
             # determine UPnP action
             action = body.find("{%s}%s" % (request.soap_ns, request.soap_action))
             # look up the action in the service
-            upnp_action = self.service._upnp_actions[action.tag]
+            upnp_action = self.service._upnp_actions[request.soap_action]
+            logger.log_debug("found action %s in service" % request.soap_action)
             # build a list of the action arguments
             in_args = {}
             for arg in action:
@@ -48,6 +49,7 @@ class ControlResource(resource.Resource):
             return HttpResponse(400)
         try:
             # execute the UPnP action
+            logger.log_debug("executing %s, args=%s" % (request.soap_action, in_args))
             out_args = upnp_action(self.service, in_args)
             # return the action response
             env = Element("{http://schemas.xmlsoap.org/soap/envelope/}Envelope")
@@ -56,12 +58,12 @@ class ControlResource(resource.Resource):
             for (name,type,value) in out_args:
                 arg = SubElement(resp, name)
                 arg.attrib["{http://www.w3.org/1999/XMLSchema-instance}type"] = type
-                arg.text = str(value)
+                arg.text = value
             output = xmltostring(env)
-            logger.log_debug("executed UPnP action '%s'" % request.soap_action)
+            logger.log_debug("action %s returned %s" % (request.soap_action, out_args))
             return HttpResponse(200, stream=output)
         except Exception, e:
-            logger.log_debug("failed to execute UPnP action '%s': %s" % (action.name, e))
+            logger.log_debug("failed to execute action %s: %s" % (request.soap_action, e))
             return HttpResponse(400)
 
     def http_POST(self, request):
