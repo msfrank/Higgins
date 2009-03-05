@@ -5,37 +5,43 @@
 # the COPYING file.
 
 from xml.etree.ElementTree import Element, SubElement, tostring as xmltostring
-from higgins.upnp.service import Service, Action, Argument, StateVar
 from higgins.core.models import File, Song
+from higgins.upnp.service import Service
+from higgins.upnp.statevar import StringStateVar, UI4StateVar
+from higgins.upnp.action import Action, InArgument, OutArgument
 from higgins.plugins.mediaserver.logger import logger
 
 class ContentDirectory(Service):
     upnp_service_type = "urn:schemas-upnp-org:service:ContentDirectory:1"
     upnp_service_id = "urn:upnp-org:serviceId:urn:schemas-upnp-org:service:ContentDirectory"
 
-    A_ARG_TYPE_BrowserFlag = StateVar(StateVar.TYPE_STRING,
-                                      sendEvents="no",
-                                      allowedValueList=("BrowseMetadata", "BrowseDirectChildren")
-        )
-    A_ARG_TYPE_SearchCriteria = StateVar(StateVar.TYPE_STRING, sendEvents="no")
-    SystemUpdateID = StateVar(StateVar.TYPE_UI4, sendEvents="yes")
-    A_ARG_TYPE_Count = StateVar(StateVar.TYPE_UI4, sendEvents="no")
-    A_ARG_TYPE_SortCriteria = StateVar(StateVar.TYPE_STRING, sendEvents="no")
-    SortCapabilities = StateVar(StateVar.TYPE_STRING, sendEvents="no")
-    A_ARG_TYPE_Index = StateVar(StateVar.TYPE_UI4, sendEvents="no")
-    A_ARG_TYPE_ObjectID = StateVar(StateVar.TYPE_STRING, sendEvents="no")
-    A_ARG_TYPE_UpdateID = StateVar(StateVar.TYPE_UI4, sendEvents="no")
-    A_ARG_TYPE_Result = StateVar(StateVar.TYPE_STRING, sendEvents="no")
-    SearchCapabilities = StateVar(StateVar.TYPE_STRING, sendEvents="no")
-    A_ARG_TYPE_Filter = StateVar(StateVar.TYPE_STRING, sendEvents="no")
+    #######################################################
+    # State Variable declarations                         #
+    #######################################################
 
-    def GetSystemUpdateID(self):
+    A_ARG_TYPE_BrowseFlag = StringStateVar(allowedValueList=("BrowseMetadata", "BrowseDirectChildren"))
+    A_ARG_TYPE_SearchCriteria = StringStateVar()
+    SystemUpdateID = UI4StateVar(sendEvents="yes")
+    A_ARG_TYPE_Count = UI4StateVar()
+    A_ARG_TYPE_SortCriteria = StringStateVar()
+    SortCapabilities = StringStateVar()
+    A_ARG_TYPE_Index = UI4StateVar()
+    A_ARG_TYPE_ObjectID = StringStateVar()
+    A_ARG_TYPE_UpdateID = UI4StateVar()
+    A_ARG_TYPE_Result = StringStateVar()
+    SearchCapabilities = StringStateVar()
+    A_ARG_TYPE_Filter = StringStateVar()
+
+    #######################################################
+    # Action definitions                                  #
+    #######################################################
+
+    def GetSystemUpdateID(self, request):
         return { "Id": 1 }
-    GetSystemUpdateID = Action(GetSystemUpdateID,
-        Argument("Id", Argument.DIRECTION_OUT, "SystemUpdateID")
-        )
 
-    def Browse(self, objectID, browseFlag, filter, startingIndex, requestedCount, sortCriteria):
+    def Browse(self, request, objectID, browseFlag, filter, startingIndex, requestedCount, sortCriteria):
+        host = request.headers.getHeader('host').split(':',1)[0]
+        logger.log_debug("Browse: host=%s" % host)
         # get the matching songs
         songs = Song.objects.all()[startingIndex:startingIndex + requestedCount]
         # generate the DIDL
@@ -51,10 +57,12 @@ class ContentDirectory(Service):
             #item.attrib["size"] = song.file.size
             #item.attrib["duration"] = song.duration
             upnp_class = SubElement(item, "upnp:class")
-            upnp_class.text = "object.item.audioItem"
+            upnp_class.text = "object.item.audioItem.musicTrack"
             title = SubElement(item, "dc:title")
             title.text = song.name
             upnp_artist = SubElement(item, "upnp:artist")
+            upnp_artist.text = str(song.artist.name)
+            upnp_artist = SubElement(item, "dc:creator")
             upnp_artist.text = str(song.artist.name)
             upnp_album = SubElement(item, "upnp:album")
             upnp_album.text = str(song.album.name)
@@ -63,24 +71,29 @@ class ContentDirectory(Service):
             resource = SubElement(item, "res")
             resource.attrib["protocolInfo"] = "http-get:*:audio/mpeg:*"
             #resource.attrib["size"] = 
-            resource.text = "http://%s:%i/content/%i" % (self.addr, self.port, song.id)
+            #resource.text = "http://%s:%i/content/%i" % (self.addr, self.port, song.id)
+            resource.text = "http://%s:8000/content/%i" % (host, song.id)
         result = xmltostring(didl)
         return { 'NumberReturned': len(songs), 'TotalMatches': len(songs), 'Result': result, 'UpdateID': 1 }
-    Browse = Action(Browse,
-        Argument("ObjectID", Argument.DIRECTION_IN, "A_ARG_TYPE_ObjectID"),
-        Argument("BrowseFlag", Argument.DIRECTION_IN, "A_ARG_TYPE_BrowseFlag"),
-        Argument("Filter", Argument.DIRECTION_IN, "A_ARG_TYPE_Filter"),
-        Argument("StartingIndex", Argument.DIRECTION_IN, "A_ARG_TYPE_Index"),
-        Argument("RequestedCount", Argument.DIRECTION_IN, "A_ARG_TYPE_Count"),
-        Argument("SortCriteria", Argument.DIRECTION_IN, "A_ARG_TYPE_SortCriteria"),
-        Argument("Result", Argument.DIRECTION_OUT, "A_ARG_TYPE_Result"),
-        Argument("NumberReturned", Argument.DIRECTION_OUT, "A_ARG_TYPE_Count"),
-        Argument("TotalMatches", Argument.DIRECTION_OUT, "A_ARG_TYPE_Count"),
-        Argument("UpdateID", Argument.DIRECTION_OUT, "A_ARG_TYPE_UpdateID")
-        )
 
-    #def GetSortCapabilities(self):
-    #    pass
-    #GetSortCapabilities = Action(GetSortCapabilities,
-    #    Argument("SortCaps", Argument.DIRECTION_OUT, "SortCapabilities"),
-    #    )
+    def GetSortCapabilities(self, request):
+        pass
+
+    #######################################################
+    # Action definitions                                  #
+    #######################################################
+
+    GetSystemUpdateID = Action(GetSystemUpdateID, OutArgument("Id", SystemUpdateID))
+    Browse = Action(Browse,
+        InArgument("ObjectID", A_ARG_TYPE_ObjectID),
+        InArgument("BrowseFlag", A_ARG_TYPE_BrowseFlag),
+        InArgument("Filter", A_ARG_TYPE_Filter),
+        InArgument("StartingIndex", A_ARG_TYPE_Index),
+        InArgument("RequestedCount", A_ARG_TYPE_Count),
+        InArgument("SortCriteria", A_ARG_TYPE_SortCriteria),
+        OutArgument("Result", A_ARG_TYPE_Result),
+        OutArgument("NumberReturned", A_ARG_TYPE_Count),
+        OutArgument("TotalMatches", A_ARG_TYPE_Count),
+        OutArgument("UpdateID", A_ARG_TYPE_UpdateID)
+        )
+    GetSortCapabilities = Action(GetSortCapabilities, OutArgument("SortCaps", SortCapabilities))

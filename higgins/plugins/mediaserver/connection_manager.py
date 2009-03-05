@@ -25,28 +25,28 @@ class ConnectionManager(Service):
         allowedValueList=("OK", "ContentFormatMismatch", "InsufficientBandwidth", "UnreliableChannel", "Unknown")
         )
 
-    def GetCurrentConnectionInfo(self, connection_id):
+    def GetCurrentConnectionInfo(self, request, connection_id):
         pass
     GetCurrentConnectionInfo = Action(GetCurrentConnectionInfo,
-        InArgument("ConnectionID", "A_ARG_TYPE_ConnectionID"),
-        OutArgument("RcsID", "A_ARG_TYPE_RcsID"),
-        OutArgument("AvTransportID", "A_ARG_TYPE_AVTransportID"),
-        OutArgument("ProtocolInfo", "A_ARG_TYPE_ProtocolInfo"),
-        OutArgument("PeerConnectionManager", "A_ARG_TYPE_ConnectionManager"),
-        OutArgument("PeerConnectionID", "A_ARG_TYPE_ConnectionID"),
-        OutArgument("Direction", "A_ARG_TYPE_Direction"),
-        OutArgument("Status", "A_ARG_TYPE_ConnectionStatus"),
+        InArgument("ConnectionID", A_ARG_TYPE_ConnectionID),
+        OutArgument("RcsID", A_ARG_TYPE_RcsID),
+        OutArgument("AvTransportID", A_ARG_TYPE_AVTransportID),
+        OutArgument("ProtocolInfo", A_ARG_TYPE_ProtocolInfo),
+        OutArgument("PeerConnectionManager", A_ARG_TYPE_ConnectionManager),
+        OutArgument("PeerConnectionID", A_ARG_TYPE_ConnectionID),
+        OutArgument("Direction", A_ARG_TYPE_Direction),
+        OutArgument("Status", A_ARG_TYPE_ConnectionStatus),
         )
 
-    def GetProtocolInfo(self):
+    def GetProtocolInfo(self, request):
         pass
     GetProtocolInfo = Action(GetProtocolInfo,
-        OutArgument("Source", "SourceProtocolInfo"),
-        OutArgument("Sink", "SinkProtocolInfo")
+        OutArgument("Source", SourceProtocolInfo),
+        OutArgument("Sink", SinkProtocolInfo)
         )
 
-    def GetCurrentConnectionIDs(self):
+    def GetCurrentConnectionIDs(self, request):
         pass
     GetCurrentConnectionIDs = Action(GetCurrentConnectionIDs,
-        OutArgument("ConnectionIDs", "CurrentConnectionIDs")
+        OutArgument("ConnectionIDs", CurrentConnectionIDs)
         )
