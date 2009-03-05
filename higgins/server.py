@@ -12,6 +12,12 @@ from higgins.logging import Loggable, StdoutObserver, LogfileObserver
 from higgins.site_settings import site_settings
 from higgins import VERSION
 
+class ServerException(Exception):
+    def __init__(self, reason):
+        self.reason = reason
+    def __str__(self):
+        return str(self.reason)
+
 class Server(Loggable):
     log_domain = "core"
 
@@ -27,8 +33,29 @@ class Server(Loggable):
             import mutagen
             import setuptools
         except ImportError, e:
-            print "%s: make sure the corresponding python package is installed and in your PYTHONPATH." % e
-            sys.exit(1)
+            raise ServerException("%s: make sure the corresponding python package is installed and in your PYTHONPATH." % e)
+        # create environment directory if necessary
+        env_dir = options['env']
+        if options['create']:
+            try:
+                os.makedirs(env_dir, 0755)
+                os.makedirs(os.path.join(env_dir, 'logs'), 0755)
+                os.makedirs(os.path.join(env_dir, 'plugins'), 0755)
+                os.makedirs(os.path.join(env_dir, 'media'), 0755)
+            except Exception, e:
+                raise ServerException("Startup failed: couldn't create directory %s (%s)" % (env_dir, e.strerror))
+        # verify that environment directory exists and is sane
+        if not os.access(env_dir, os.F_OK):
+            raise ServerException("Startup failed: Environment directory %s doesn't exist." % env_dir)
+        if not os.access(env_dir, os.R_OK):
+            raise ServerException("Startup failed: %s is not readable by Higgins." % env_dir)
+        if not os.access(env_dir, os.W_OK):
+            raise ServerException("Startup failed: %s is not writable by Higgins." % env_dir)
+        if not os.access(env_dir, os.X_OK):
+            raise ServerException("Startup failed: %s is not executable by Higgins." % env_dir)
+        # set HIGGINS_DIR and DATABASE name
+        site_settings['HIGGINS_DIR'] = options['env']
+        site_settings['DATABASE_NAME'] = os.path.join(env_dir, "database.dat")
         # if debug flag is specified, then don't request to daemonize and log to stdout
         if options['debug']:
             self.daemonize = False
@@ -39,6 +66,8 @@ class Server(Loggable):
             self.observer = LogfileObserver(LogFile('higgins.log', os.path.join(options['env'], 'logs')))
         self.observer.start()
         self.log_debug("Higgins version is %s" % VERSION)
+        if options['create']:
+            self.log_debug("created new environment in " + env_dir)
         # set pid file
         self._pidfile = os.path.join(options['env'], "higgins.pid")
         if os.path.exists(self._pidfile):
@@ -48,10 +77,9 @@ class Server(Loggable):
                 f.close()
             except Exception, e:
                 self.log_error("failed to parse PID file '%s': %s" % (self._pidfile, e))
-                sys.exit(1)
             else:
-                self.log_error("failed to start Higgins: another instance is already running with PID %i" % pid)
-                sys.exit(1)
+                self.log_error("Startup failed: another instance is already running with PID %i" % pid)
+            raise ServerException("failed to start Higgins")
         # we import conf after parsing options, but before syncing the db tables
         from higgins.conf import conf
         # create db tables if necessary
@@ -111,30 +139,6 @@ class ServerOptions(usage.Options):
 
     def parseArgs(self, env):
         self['env'] = env
-
-    def postOptions(self):
-        # create environment directory if necessary
-        env_dir = self['env']
-        if self['create']:
-            try:
-                os.makedirs(env_dir, 0755)
-                os.makedirs(os.path.join(env_dir, 'logs'), 0755)
-                os.makedirs(os.path.join(env_dir, 'plugins'), 0755)
-                os.makedirs(os.path.join(env_dir, 'media'), 0755)
-            except Exception, e:
-                raise Exception("Startup failed: couldn't create directory %s (%s)" % (env_dir, e.strerror))
-        # verify that environment directory exists and is sane
-        if not os.access(env_dir, os.F_OK):
-            raise Exception("Startup failed: Environment directory %s doesn't exist." % env_dir)
-        if not os.access(env_dir, os.R_OK):
-            raise Exception("Startup failed: %s is not readable by Higgins." % env_dir)
-        if not os.access(env_dir, os.W_OK):
-            raise Exception("Startup failed: %s is not writable by Higgins." % env_dir)
-        if not os.access(env_dir, os.X_OK):
-            raise Exception("Startup failed: %s is not executable by Higgins." % env_dir)
-        # set HIGGINS_DIR and DATABASE name
-        site_settings['HIGGINS_DIR'] = self['env']
-        site_settings['DATABASE_NAME'] = os.path.join(self['env'], "database.dat")
 
     def opt_help(self):
         print "Usage: %s [OPTION]... ENV" % os.path.basename(sys.argv[0])

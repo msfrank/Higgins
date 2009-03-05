@@ -26,7 +26,7 @@ class LocalSettings(Loggable):
                 # ignore empty file error
                 pass
             except Exception, e:
-                self.log_error("failed to load local settings from '%s': %s" % (self.local_settings_path,e))
+                self.log_error("failed to load local settings from %s: %s" % (self.local_settings_path,e))
                 raise e
         if 'SECRET_KEY' not in self._local_settings:
             # generate a secret key
@@ -41,7 +41,7 @@ class LocalSettings(Loggable):
         # load the site_settings into the django_settings object
         django_settings.configure(**site_settings)
         self._doFlush()
-        self.log_debug("loaded settings from '%s'" % self.local_settings_path)
+        self.log_debug("loaded settings from %s" % self.local_settings_path)
 
     def __getitem__(self, name):
         try:
