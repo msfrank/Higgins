@@ -45,7 +45,7 @@ class Action(object):
                 self.in_args.append(arg)
             else:
                 self.out_args.append(arg)
-    def __call__(self, service, arguments):
+    def __call__(self, request, service, arguments):
         # arguments is a dict.  key is the argument name, value is
         # the argument value as a string.
         a = self.in_args[:]
@@ -61,7 +61,7 @@ class Action(object):
                 raise Exception("missing required InArgument %s" % arg.name)
             except Exception, e:
                 raise e
-        out_args = self.action(service, *parsed_args)
+        out_args = self.action(service, request, *parsed_args)
         a = self.out_args[:]
         parsed_args = []
         while not a == []:

@@ -50,7 +50,7 @@ class ControlResource(resource.Resource):
         try:
             # execute the UPnP action
             logger.log_debug("executing %s, args=%s" % (request.soap_action, in_args))
-            out_args = upnp_action(self.service, in_args)
+            out_args = upnp_action(request, self.service, in_args)
             # return the action response
             env = Element("{http://schemas.xmlsoap.org/soap/envelope/}Envelope")
             body = SubElement(env, "{http://schemas.xmlsoap.org/soap/envelope/}Body")
