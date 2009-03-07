@@ -4,7 +4,7 @@
 # This program is free software; for license information see
 # the COPYING file.
 
-from higgins.logging import Loggable
+from higgins.logger import Loggable
 
 class DAAPLogger(Loggable):
     log_domain = "daap"

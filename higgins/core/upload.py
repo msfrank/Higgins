@@ -7,7 +7,7 @@ from os.path import abspath,basename
 import httplib, urllib
 from mutagen import File
 from twisted.python import usage,log
-from higgins.logging import Loggable, LEVELS
+from higgins.logger import Loggable, LEVELS
 
 class UploaderException(Exception):
     def __init__(self, reason):
@@ -125,54 +125,55 @@ class UploaderObserver(log.DefaultObserver):
         if level <= self.verbosity:
             print ''.join(params['message'])
 
+class UploaderOptions(usage.Options):
+    optFlags = [
+        ['local-mode', 'l', None],
+    ]
+    optParameters = [
+        ['host', 'h', 'localhost', None],
+        ['port', 'p', 8000, None, int],
+    ]
+
+    def __init__(self):
+        usage.Options.__init__(self)
+        self['verbose'] = 2
+
+    def opt_quiet(self):
+        if self['verbose'] > 0: 
+            self['verbose'] = self['verbose'] - 1
+    opt_q = opt_quiet
+
+    def opt_verbose(self):
+        if self['verbose'] < 5: 
+            self['verbose'] = self['verbose'] + 1
+    opt_v = opt_verbose
+
+    def parseArgs(self, *files):
+        if len(files) == 0:
+            raise UploaderException("No media files specified.")
+        self['files'] = files
+
+    def opt_help(self):
+        import sys
+        print "Usage: %s [OPTIONS...] FILE..." % basename(argv[0])
+        print ""
+        print "  --local-mode,-l        File itself will not be uploaded"
+        print "  --host,-h HOST         The host to upload to.  Default is 'localhost'"
+        print "  --port,-p PORT         The port higgins is running on.  Default is '8000'"
+        print "  --recursive,-r         Recursively upload media files in directories"
+        print "  --help                 Display this help"
+        print "  --version              Display the version"
+        print ""
+        exit(0)
+
+    def opt_version(self):
+        from higgins import VERSION
+        print "Higgins uploader version " + VERSION
+        exit(0)
+
 def run_application():
-    class HigginsOptions(usage.Options):
-        optFlags = [
-            ['local-mode', 'l', None],
-        ]
-        optParameters = [
-            ['host', 'h', 'localhost', None],
-            ['port', 'p', 8000, None, int],
-        ]
-
-        def __init__(self):
-            usage.Options.__init__(self)
-            self['verbose'] = 2
-
-        def opt_quiet(self):
-            if self['verbose'] > 0: 
-                self['verbose'] = self['verbose'] - 1
-        opt_q = opt_quiet
-
-        def opt_verbose(self):
-            if self['verbose'] < 5: 
-                self['verbose'] = self['verbose'] + 1
-        opt_v = opt_verbose
-
-        def parseArgs(self, *files):
-            if len(files) == 0:
-                raise UploaderException("No media files specified.")
-            self['files'] = files
-
-        def opt_help(self):
-            import sys
-            print "Usage: %s [OPTIONS...] FILE..." % basename(argv[0])
-            print ""
-            print "  --local-mode,-l        File itself will not be uploaded"
-            print "  --host,-h HOST         The host to upload to.  Default is 'localhost'"
-            print "  --port,-p PORT         The port higgins is running on.  Default is '8000'"
-            print "  --recursive,-r         Recursively upload media files in directories"
-            print "  --help                 Display this help"
-            print "  --version              Display the version"
-            print ""
-            exit(0)
-
-        def opt_version(self):
-            from higgins import VERSION
-            print "Higgins uploader version " + VERSION
-            exit(0)
     try:
-        o = HigginsOptions()
+        o = UploaderOptions()
         o.parseOptions(argv[1:])
         observer = UploaderObserver(verbosity=o['verbose'])
         observer.start()

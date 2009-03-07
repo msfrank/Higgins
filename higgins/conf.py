@@ -6,7 +6,7 @@
 
 import os, pickle
 from django.conf import settings as django_settings
-from higgins.logging import Loggable
+from higgins.logger import Loggable
 from higgins.site_settings import site_settings
 
 class LocalSettings(Loggable):

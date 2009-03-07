@@ -25,7 +25,7 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
 
     def registerDevice(self, device):
         if device.upnp_UDN in self.devices:
-            raise UPnPRuntimeException("%s is already a registered device" % device)
+            raise Exception("%s is already a registered device" % device)
         for iface in self.interfaces:
             # advertise the device
             self.sendAlive("upnp:rootdevice",
@@ -47,7 +47,7 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
 
     def unregisterDevice(self, device):
         if not device.upnp_UDN in self.devices:
-            raise UPnPRuntimeException("%s is not a registered device" % device)
+            raise Exception("%s is not a registered device" % device)
         for iface in self.interfaces:
             # advertise the device
             self.sendByebye("upnp:rootdevice", "uuid:%s::upnp:rootdevice" % device.upnp_UDN)

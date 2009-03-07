@@ -11,39 +11,39 @@
 #   Copyright 2006 John-Mark Gurney <gurney_j@resnet.uroegon.edu>
 
 import random, string
-from higgins.service import Service
+from twisted.application.service import MultiService
 from higgins.conf import conf
 from higgins.upnp.ssdp_server import SSDPServer
 from higgins.upnp.upnp_server import UPnPServer
 from higgins.upnp.logger import UPnPLogger
 
-class UPnPRuntimeException(Exception):
-    def __init__(self, reason):
-        self.reason = reason
-    def __str__(self):
-        return self.reason
-
-class UPnPService(Service, UPnPLogger):
+class UPnPService(MultiService, UPnPLogger):
 
     def __init__(self):
+        MultiService.__init__(self)
         self.upnp_devices = {}
 
     def registerUPnPDevice(self, device):
-        if self.running == 0:
-            raise UPnPRuntimeException("UPnP service is not running")
+        # FIXME: needed?
+        #if self.running == 0:
+        #    raise Exception("UPnP service is not running")
         self.ssdp.registerDevice(device)
         self.upnp.registerDevice(device)
         self.upnp_devices[device.upnp_UDN] = device
 
     def unregisterUPnPDevice(self, device):
-        if self.running == 0:
-            raise UPnPRuntimeException("UPnP service is not running")
-        self.ssdp.unregisterDevice(device)
-        self.upnp.unregisterDevice(device)
-        del self.upnp_devices[device.upnp_UDN]
+        # FIXME: needed?
+        #if self.running == 0:
+        #    raise Exception("UPnP service is not running")
+        try:
+            self.ssdp.unregisterDevice(device)
+            self.upnp.unregisterDevice(device)
+            del self.upnp_devices[device.upnp_UDN]
+        except Exception, e:
+            self.log_debug("failed to unregister device: %s" % e)
 
     def startService(self):
-        Service.startService(self)
+        MultiService.startService(self)
         self.ssdp = SSDPServer()
         self.ssdp.start()
         self.upnp = UPnPServer()
@@ -54,9 +54,9 @@ class UPnPService(Service, UPnPLogger):
         self.log_debug("started UPnP service")
 
     def stopService(self):
+        MultiService.stopService(self)
         self.ssdp.stop()
         self.upnp.stop()
-        Service.stopService(self)
         self.log_debug("stopped UPnP service")
         return None
 

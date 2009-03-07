@@ -7,9 +7,10 @@
 from os.path import join as pathjoin
 from pkg_resources import resource_string
 from twisted.application.service import MultiService
-from twisted.application.internet import TCPServer
+from twisted.internet import reactor
 from higgins.conf import conf
 from higgins.service import Service
+from higgins.http import server, channel
 from higgins.http import resource, wsgi
 from higgins.http.http import Response
 from higgins.core.configurator import Configurator, IntegerSetting
@@ -51,7 +52,7 @@ class RootResource(resource.Resource):
             return ManagerResource(), segments[1:]
         return self.browser, segments
 
-class CoreService(MultiService, TCPServer, CoreLogger):
+class CoreService(MultiService, CoreLogger):
     def __init__(self):
         self._plugins = {}
         # register the standard configs
@@ -59,14 +60,12 @@ class CoreService(MultiService, TCPServer, CoreLogger):
             'http': { 'name': 'http', 'config': CoreHttpConfig() }
             }
         # start the webserver
-        from higgins.http import server, channel
-        site = server.Site(RootResource())
+        self._site = server.Site(RootResource())
         MultiService.__init__(self)
-        TCPServer.__init__(self, CoreHttpConfig.HTTP_PORT, channel.HTTPFactory(site))
 
     def startService(self):
         MultiService.startService(self)
-        TCPServer.startService(self)
+        self._listener = reactor.listenTCP(CoreHttpConfig.HTTP_PORT, channel.HTTPFactory(self._site))
         self.log_debug("started core service")
         self.upnp_service = upnp_service
         # load enabled services
@@ -76,6 +75,11 @@ class CoreService(MultiService, TCPServer, CoreLogger):
             self.log_debug ("finished starting enabled services")
         except Exception, e:
             raise e
+
+    def stopService(self):
+        MultiService.stopService(self)
+        self._listener.stopListening()
+        self.log_debug("stopped core service")
 
     def registerPlugin(self, name, plugin):
         """
@@ -134,10 +138,17 @@ class CoreService(MultiService, TCPServer, CoreLogger):
                 if self.upnp_service.running == 0:
                     # setServiceParent() implicitly calls startService()
                     self.upnp_service.setServiceParent(self)
-            if plugin.parent == None:
-                plugin.setServiceParent(self)
+                if plugin.parent == None:
+                    plugin.setServiceParent(self.upnp_service)
+                else:
+                    plugin.startService()
+            # otherwise plugin is a simple Service
             else:
-                plugin.startService(self)
+                if plugin.parent == None:
+                    plugin.setServiceParent(self)
+                else:
+                    plugin.startService()
+            # update the list of enabled plugins
             conf.set(CORE_ENABLED_PLUGINS=[name for name,plugin in self._plugins.items() if plugin.running])
             self.log_debug("enabled plugin '%s'" % name)
         except Exception, e:
@@ -152,8 +163,8 @@ class CoreService(MultiService, TCPServer, CoreLogger):
                 raise Exception("plugin is not enabled")
             plugin = self._plugins[name]
             plugin.stopService()
-            if not self.upnp_service.running == 0:
-                self.upnp_service.disownParent()
+            #if not self.upnp_service.running == 0:
+            #    self.upnp_service.disownParent()
             conf.set(CORE_ENABLED_PLUGINS=[name for name,plugin in self._plugins.items() if plugin.running])
             self.log_debug("disabled plugin '%s'" % name)
         except Exception, e:

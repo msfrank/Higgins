@@ -8,7 +8,7 @@ import os
 from pkg_resources import Environment, working_set, resource_string
 from django.template import TemplateDoesNotExist
 from higgins.service import Service
-from higgins.logging import Loggable
+from higgins.logger import Loggable
 from higgins.conf import conf
 from higgins.core.service import core_service
 

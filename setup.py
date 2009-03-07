@@ -35,6 +35,7 @@ setup(
         'higgins.netif',
         'higgins.plugins',
         'higgins.plugins.daap',
+        'higgins.plugins.mediaserver',
         'higgins.upnp',
         ],
     namespace_packages=['higgins', 'higgins.plugins'],
@@ -53,6 +54,7 @@ setup(
         # declare packaged plugins
         'higgins.plugin': [
             'daap=higgins.plugins.daap:DaapService',
+            'mediaserver=higgins.plugins.mediaserver:MediaserverDevice',
             ],
         },
 )
