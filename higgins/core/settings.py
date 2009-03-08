@@ -7,15 +7,14 @@
 from django.shortcuts import render_to_response, get_object_or_404
 from django.http import Http404
 from higgins.conf import conf
-from higgins.core.service import core_service
 from higgins.core.logger import CoreLogger
 
 logger = CoreLogger()
 
-def front(request):
+def front(request, core_service):
     return render_to_response('settings-front.t', {'config_items': core_service._config_items.values() })
 
-def list_plugins(request):
+def list_plugins(request, core_service):
     # if method is GET, then display the form
     if request.method == 'GET':
         return render_to_response('settings-plugins.t',
@@ -33,7 +32,7 @@ def list_plugins(request):
         {'plugins': core_service._plugins.values(), 'config_items': core_service._config_items.values() }
         )
 
-def configure_toplevel(request, name):
+def configure_toplevel(request, core_service, name):
     # if there is no configurator named module, then return a 404
     try:
         factory = core_service._config_items[name]['config']
@@ -51,7 +50,7 @@ def configure_toplevel(request, name):
         { 'config': config, 'config_items': core_service._config_items.values() }
         )
 
-def configure_plugin(request, name):
+def configure_plugin(request, core_service, name):
     # if there is no plugin named module, then return a 404
     try:
         plugin = core_service._plugins[name]

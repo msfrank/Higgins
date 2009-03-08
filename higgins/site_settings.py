@@ -22,7 +22,7 @@ site_settings = {
     'SECRET_KEY': '',
     'APPEND_SLASH': True,
     'TEMPLATE_LOADERS': (
-        'higgins.loader.load_template_source',
+        'higgins.data.load_template_source',
         'django.template.loaders.app_directories.load_template_source',
         'django.template.loaders.filesystem.load_template_source',
         ),
@@ -32,7 +32,7 @@ site_settings = {
         'django.contrib.auth.middleware.AuthenticationMiddleware',
         'django.middleware.doc.XViewMiddleware',
         ),
-    'ROOT_URLCONF': 'higgins.core.urls',
+    'ROOT_URLCONF': 'higgins.core.service',
     'TEMPLATE_DIRS': (),
     'INSTALLED_APPS': (
         'django.contrib.auth',

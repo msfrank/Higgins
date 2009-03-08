@@ -9,6 +9,7 @@ from django.core.management import call_command as django_admin_command
 from twisted.python import usage
 from twisted.python.logfile import LogFile
 from higgins.site_settings import site_settings
+from higgins.loader import PluginLoader
 from higgins import logger, VERSION
 
 class ServerException(Exception):
@@ -80,16 +81,11 @@ class Server(object, logger.Loggable):
             raise ServerException("failed to start Higgins")
         # we import conf after parsing options, but before syncing the db tables
         from higgins.conf import conf
+        self._conf = conf
         # create db tables if necessary
         django_admin_command('syncdb')
-        # importing higgins.loader implicitly loads plugins
-        import higgins.loader
-        # start the core service
-        #from twisted.application import service
-        #self.app = service.Application("Higgins")
-        from higgins.core.service import core_service
-        #core_service.setServiceParent(self.app)
-        core_service.startService()
+        # load the list of plugins
+        self._plugins = PluginLoader()
 
     def run(self):
         """
@@ -101,13 +97,20 @@ class Server(object, logger.Loggable):
             self.log_error("failed to create PID file '%s': %s" % (self._pidfile, e))
             raise ServerException("failed to create PID file")
         try:
+            from higgins.core.service import CoreService
+            self._core_service = CoreService()
+            # register plugins
+            for name,plugin in self._plugins:
+                self._core_service.registerPlugin(name, plugin)
+            # start the core service
+            self._core_service.startService()
             # pass control to reactor
             from twisted.internet import reactor
             self.log_debug("Server.run(): starting reactor")
             reactor.run()
             self.log_debug("Server.run(): returned from reactor")
             self.stop()
-            self.log_debug("Server.run(): returned from self.stop()")
+            self.log_debug("Server.run(): stopped")
         finally:
             self._removePID()
             self.observer.stop()
@@ -117,18 +120,16 @@ class Server(object, logger.Loggable):
         Stop the twisted reactor
         """
         self.log_debug("Server.stop(): stopping Higgins")
-        from higgins.core.service import core_service
-        if core_service.running:
-            core_service.stopService()
+        if self._core_service.running:
+            self._core_service.stopService()
             self.log_debug("Server.stop(): stopped core service")
         from twisted.internet import reactor
         if reactor.running:
             reactor.stop()
             self.log_debug("Server.stop(): stopped reactor")
         # save configuration settings
-        from higgins.conf import conf
-        conf.flush()
-        self.log_debug("Server.stop(): Higgins is stopped")
+        self._conf.flush()
+        self.log_debug("Server.stop(): done cleaning up")
 
     def _removePID(self):
         try:
@@ -208,8 +209,5 @@ def run_application():
             os.dup2(null, i)
         os.close(null)
     # run the server
-    try:
-        server.run()
-        sys.exit(0)
-    except:
-        sys.exit(1)
+    server.run()
+    sys.exit(0)

@@ -8,6 +8,7 @@ from os.path import join as pathjoin
 from pkg_resources import resource_string
 from twisted.application.service import MultiService
 from twisted.internet import reactor
+from django.conf.urls.defaults import *
 from higgins.conf import conf
 from higgins.service import Service
 from higgins.http import server, channel
@@ -18,6 +19,9 @@ from higgins.core.manager import ManagerResource
 from higgins.core.logger import CoreLogger
 from higgins.upnp import upnp_service
 from higgins.upnp.device import Device as UPnPDevice
+
+# our Django URLConf.  we set this dynamically in CoreService.__init__()
+urlpatterns = None
 
 class CoreHttpConfig(Configurator):
     pretty_name = "HTTP Server"
@@ -59,6 +63,25 @@ class CoreService(MultiService, CoreLogger):
         self._config_items = {
             'http': { 'name': 'http', 'config': CoreHttpConfig() }
             }
+        # register URL patterns
+        global urlpatterns
+        urlpatterns = patterns('',
+            (r'^/?$', 'higgins.core.front.index'),
+            (r'^admin/', include('django.contrib.admin.urls')),
+            (r'^browse/$', 'higgins.core.browser.index'),
+            (r'^browse/byartist/(?P<artist_id>\d+)/$', 'higgins.core.browser.byartist'),
+            (r'^browse/bysong/(?P<song_id>\d+)/$', 'higgins.core.browser.bysong'),
+            (r'^browse/byalbum/(?P<album_id>\d+)/$', 'higgins.core.browser.byalbum'),
+            (r'^browse/bygenre/(?P<genre_id>\d+)/$', 'higgins.core.browser.bygenre'),
+            (r'^browse/artists/$', 'higgins.core.browser.artists'),
+            (r'^browse/genres/$', 'higgins.core.browser.genres'),
+            (r'^browse/tags/$', 'higgins.core.browser.tags'),
+            (r'^search/$', 'higgins.core.search.index'),
+            (r'^settings/plugins/$', 'higgins.core.settings.list_plugins', {'core_service': self}),
+            (r'^settings/plugins/(?P<name>\w+)/$', 'higgins.core.settings.configure_plugin', {'core_service': self}),
+            (r'^settings/$', 'higgins.core.settings.front', {'core_service': self}),
+            (r'^settings/(?P<name>\w+)/$', 'higgins.core.settings.configure_toplevel', {'core_service': self}),
+            )
         # start the webserver
         self._site = server.Site(RootResource())
         MultiService.__init__(self)
@@ -181,5 +204,3 @@ class CoreService(MultiService, CoreLogger):
         if plugin.running:
             return True
         return False
-
-core_service = CoreService()
