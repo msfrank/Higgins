@@ -176,8 +176,9 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
                               delayMax)
 
     def doStop(self):
-        for udn,device in self.devices.items():
-            self.unregisterDevice(device)
+        #self.log_debug("called doStop")
+        #for udn,device in self.devices.items():
+        #    self.unregisterDevice(device)
         DatagramProtocol.doStop(self)
 
 class SSDPServer(UPnPLogger):
@@ -196,6 +197,7 @@ class SSDPServer(UPnPLogger):
 
     def stop(self):
         self.listener.stopListening()
+        self.log_debug("SSDP server stopped listening")
         self.server = None
 
     def registerDevice(self, device):

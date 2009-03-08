@@ -5,6 +5,7 @@
 # the COPYING file.
 
 import random, string, urllib
+from twisted.internet.defer import maybeDeferred
 from xml.etree.ElementTree import Element, SubElement, tostring as xmltostring
 from higgins.service import Service
 from higgins.conf import conf
@@ -50,8 +51,9 @@ class Device(object, Service):
         upnp_service.registerUPnPDevice(self)
 
     def stopService(self):
-        Service.stopService(self)
+        d = maybeDeferred(Service.stopService, self)
         upnp_service.unregisterUPnPDevice(self)
+        return d
 
     def get_description(self, host=''):
         root = Element("{urn:schemas-upnp-org:device-1-0}root")
@@ -79,3 +81,6 @@ class Device(object, Service):
                 host, self.upnp_UDN.replace(':','_'), svc.upnp_service_id.replace(':', '_')
                 )
         return xmltostring(root)
+
+    def __str__(self):
+        return self.upnp_UDN

@@ -11,6 +11,7 @@
 #   Copyright 2006 John-Mark Gurney <gurney_j@resnet.uroegon.edu>
 
 import random, string
+from twisted.internet.defer import maybeDeferred
 from twisted.application.service import MultiService
 from higgins.conf import conf
 from higgins.upnp.ssdp_server import SSDPServer
@@ -53,11 +54,14 @@ class UPnPService(MultiService, UPnPLogger):
             self.ssdp.registerDevice(device)
         self.log_debug("started UPnP service")
 
-    def stopService(self):
-        MultiService.stopService(self)
+    def _doStopService(self, result):
         self.ssdp.stop()
         self.upnp.stop()
         self.log_debug("stopped UPnP service")
-        return None
+
+    def stopService(self):
+        d = maybeDeferred(MultiService.stopService, self)
+        d.addCallback(self._doStopService)
+        return d
 
 upnp_service = UPnPService()

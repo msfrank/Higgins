@@ -58,6 +58,6 @@ class DaapService(Service):
         self.avahi_group.Reset()
         self.avahi_group = None
         self.listener.stopListening()
-        logger.log_debug("stopped DAAP service")
         Service.stopService(self)
+        logger.log_debug("stopped DAAP service")
         return None

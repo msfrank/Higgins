@@ -9,12 +9,18 @@ from django.conf import settings as django_settings
 from higgins.logger import Loggable
 from higgins.site_settings import site_settings
 
-class LocalSettings(Loggable):
+class LocalSettings(object, Loggable):
     log_domain = "conf"
 
     def __init__(self):
         self._local_settings = {}
-        self.local_settings_path = os.path.join(site_settings['HIGGINS_DIR'], "settings.dat")
+        self._is_loaded = False
+
+    def load(self, path):
+        if self._is_loaded:
+            raise Exception("settings have already been loaded")
+        self._is_loaded = True
+        self.local_settings_path = path
         # check for the existence of a local settings file
         if os.access(self.local_settings_path, os.F_OK):
             # load the local settings
@@ -44,6 +50,8 @@ class LocalSettings(Loggable):
         self.log_debug("loaded settings from %s" % self.local_settings_path)
 
     def __getitem__(self, name):
+        if not self._is_loaded:
+            raise Exception("settings have not been loaded")
         try:
             return self._local_settings[name]
         except:
@@ -51,19 +59,19 @@ class LocalSettings(Loggable):
         return django_settings.__getattr__(name)
 
     def __setitem__(self, name, value):
+        if not self._is_loaded:
+            raise Exception("settings have not been loaded")
         self._local_settings[name] = value
 
     def __iter__(self):
-        print "called __iter__"
+        if not self._is_loaded:
+            raise Exception("settings have not been loaded")
         class LocalSettingsIter:
             def __init__(self, settings):
-                print "localsettingsiter __init__"
                 self.keys = settings.keys()
             def __iter__(self):
-                print "localsettingsiter __iter__"
                 return self
             def next(self):
-                print "localsettingsiter next"
                 if self.keys == []:
                     raise StopIteration()
                 return self.keys.pop(0)
@@ -72,6 +80,8 @@ class LocalSettings(Loggable):
         return LocalSettingsIter(copy)
 
     def __contains__(self, name):
+        if not self._is_loaded:
+            raise Exception("settings have not been loaded")
         if name in self._local_settings:
             return True
         try:
@@ -81,6 +91,8 @@ class LocalSettings(Loggable):
             return False
 
     def _doFlush(self):
+        if not self._is_loaded:
+            raise Exception("settings have not been loaded")
         f = open(self.local_settings_path, 'w')
         pickle.dump(self._local_settings, f, 0)
         f.close()
@@ -90,6 +102,8 @@ class LocalSettings(Loggable):
         Returns the value of the named setting.  If there is no such setting,
         then the default value is returned.
         """
+        if not self._is_loaded:
+            raise Exception("settings have not been loaded")
         try:
             return self._local_settings[name]
         except:
@@ -102,11 +116,15 @@ class LocalSettings(Loggable):
 
     def set(self, **settings):
         """Saves one or more settings."""
+        if not self._is_loaded:
+            raise Exception("settings have not been loaded")
         for key,value in settings.items():
             self._local_settings[key] = value
 
     def flush(self):
         """Flushes settings to disk."""
+        if not self._is_loaded:
+            raise Exception("settings have not been loaded")
         self._doFlush()
         self.log_debug("flushed settings changes")
 

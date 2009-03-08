@@ -4,11 +4,13 @@
 # This program is free software; for license information see
 # the COPYING file.
 
-import sys, pwd, grp, os
+import sys, pwd, grp, os, signal
 from django.core.management import call_command as django_admin_command
+from twisted.internet import reactor
 from twisted.python import usage
 from twisted.python.logfile import LogFile
 from higgins.site_settings import site_settings
+from higgins.conf import conf
 from higgins.loader import PluginLoader
 from higgins import logger, VERSION
 
@@ -79,13 +81,16 @@ class Server(object, logger.Loggable):
             else:
                 self.log_error("Startup failed: another instance is already running with PID %i" % pid)
             raise ServerException("failed to start Higgins")
-        # we import conf after parsing options, but before syncing the db tables
-        from higgins.conf import conf
-        self._conf = conf
+        # we load conf after parsing options, but before syncing the db tables
+        conf.load(os.path.join(env, 'settings.dat'))
         # create db tables if necessary
         django_admin_command('syncdb')
         # load the list of plugins
         self._plugins = PluginLoader()
+
+    def _caughtSignal(self, signum, stack):
+        self.log_debug("caught signal %i" % signum)
+        self.stop()
 
     def run(self):
         """
@@ -105,7 +110,7 @@ class Server(object, logger.Loggable):
             # start the core service
             self._core_service.startService()
             # pass control to reactor
-            from twisted.internet import reactor
+            signal.signal(signal.SIGINT, self._caughtSignal)
             self.log_debug("Server.run(): starting reactor")
             reactor.run()
             self.log_debug("Server.run(): returned from reactor")
@@ -123,12 +128,11 @@ class Server(object, logger.Loggable):
         if self._core_service.running:
             self._core_service.stopService()
             self.log_debug("Server.stop(): stopped core service")
-        from twisted.internet import reactor
         if reactor.running:
             reactor.stop()
             self.log_debug("Server.stop(): stopped reactor")
         # save configuration settings
-        self._conf.flush()
+        conf.flush()
         self.log_debug("Server.stop(): done cleaning up")
 
     def _removePID(self):
