@@ -36,6 +36,7 @@ setup(
         'higgins.plugins',
         'higgins.plugins.daap',
         'higgins.plugins.mediaserver',
+        'higgins.plugins.mrss',
         'higgins.upnp',
         ],
     namespace_packages=['higgins', 'higgins.plugins'],
@@ -55,6 +56,7 @@ setup(
         'higgins.plugin': [
             'daap=higgins.plugins.daap:DaapService',
             'mediaserver=higgins.plugins.mediaserver:MediaserverDevice',
+            'mrss=higgins.plugins.mrss:MRSSService',
             ],
         },
 )
