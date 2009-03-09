@@ -10,12 +10,14 @@ from higgins.conf import conf
 from higgins.core.logger import logger
 
 def front(request, core_service):
-    return render_to_response('settings-front.t', {'config_items': core_service._config_items.values() })
+    return render_to_response('templates/settings-front.t',
+        {'config_items': core_service._config_items.values() }
+        )
 
 def list_plugins(request, core_service):
     # if method is GET, then display the form
     if request.method == 'GET':
-        return render_to_response('settings-plugins.t',
+        return render_to_response('templates/settings-plugins.t',
             {'plugins': core_service._plugins.values(), 'config_items': core_service._config_items.values() }
             )
     # if method is POST, then validate the form
@@ -26,7 +28,7 @@ def list_plugins(request, core_service):
                 core_service.enablePlugin(name)
         elif not do_enable and is_enabled:
             core_service.disablePlugin(name)
-    return render_to_response('settings-plugins.t',
+    return render_to_response('templates/settings-plugins.t',
         {'plugins': core_service._plugins.values(), 'config_items': core_service._config_items.values() }
         )
 
@@ -39,12 +41,12 @@ def configure_toplevel(request, core_service, name):
     # if method is GET, then return a prefilled form
     if request.method == 'GET':
         config = factory()
-        return render_to_response('settings-plugin.t',
+        return render_to_response('templates/settings-plugin.t',
             { 'config': config, 'config_items': core_service._config_items.values() }
             )
     # otherwise method is POST, parse the form data
     config = factory(request.POST)
-    return render_to_response('settings-plugin.t',
+    return render_to_response('templates/settings-plugin.t',
         { 'config': config, 'config_items': core_service._config_items.values() }
         )
 
@@ -64,11 +66,11 @@ def configure_plugin(request, core_service, name):
     # if method is GET, then return a prefilled form
     if request.method == 'GET':
         config = plugin.configs()
-        return render_to_response('settings-plugin.t',
+        return render_to_response('templates/settings-plugin.t',
             { 'config': config, 'config_items': core_service._config_items.values() }
             )
     # otherwise method is POST, parse the form data
     config = plugin.configs(request.POST)
-    return render_to_response('settings-plugin.t',
+    return render_to_response('templates/settings-plugin.t',
         { 'config': config, 'config_items': core_service._config_items.values() }
         )

@@ -1,4 +1,4 @@
-{% extends "base.t" %}
+{% extends "templates/base.t" %}
 
 {% block stylesheet %}
 <link href="/static/css/browse.css" rel="stylesheet" type="text/css" media="screen"/>

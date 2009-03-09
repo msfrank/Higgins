@@ -1,4 +1,4 @@
-{% extends "base.t" %}
+{% extends "templates/base.t" %}
 
 {% block stylesheet %}{% endblock %}
 {% block title %}{% endblock %}

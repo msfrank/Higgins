@@ -1,4 +1,4 @@
-{% extends "settings-base.t" %}
+{% extends "templates/settings-base.t" %}
 
 {% block title %}Settings{% endblock %}
 
