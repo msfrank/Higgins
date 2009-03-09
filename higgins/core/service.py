@@ -82,6 +82,7 @@ class CoreService(MultiService, CoreLogger):
             (r'^settings/plugins/(?P<name>\w+)/$', 'higgins.core.settings.configure_plugin', {'core_service': self}),
             (r'^settings/$', 'higgins.core.settings.front', {'core_service': self}),
             (r'^settings/(?P<name>\w+)/$', 'higgins.core.settings.configure_toplevel', {'core_service': self}),
+            (r'^view/(?P<name>\w+)/', 'higgins.core.frontend.show', {'core_service': self}),
             )
         # start the webserver
         self._site = server.Site(RootResource())

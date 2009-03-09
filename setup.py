@@ -45,7 +45,10 @@ setup(
             ['higgins/netif/commands.pyx', 'higgins/netif/netif-internal.c'])
         ],
     # declare static data
-    package_data={'higgins.data': ['static/css/*.css', 'templates/*.t', 'static/images/*.*']},
+    package_data={
+        'higgins.data': ['static/css/*.css', 'templates/*.t', 'static/images/*.*'],
+        'higgins.plugins.mrss': ['templates/*.t',],
+        },
     entry_points={
         # auto-generate scripts
         'console_scripts': [
