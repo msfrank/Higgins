@@ -4,11 +4,12 @@
 # This program is free software; for license information see
 # the COPYING file.
 
-from higgins.upnp.service import Service, Action, InArgument, OutArgument
+from higgins.upnp.device_service import UPNPDeviceService
+from higgins.upnp.action import Action, InArgument, OutArgument
 from higgins.upnp.statevar import StringStateVar, I4StateVar
 from higgins.plugins.mediaserver.logger import logger
 
-class ConnectionManager(Service):
+class ConnectionManager(UPNPDeviceService):
     upnp_service_type = "urn:schemas-upnp-org:service:ConnectionManager:1"
     upnp_service_id = "urn:upnp-org:serviceId:urn:schemas-upnp-org:service:ConnectionManager"
 

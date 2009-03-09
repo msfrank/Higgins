@@ -6,7 +6,7 @@
 
 from twisted.application.service import Service as TwistedService
 
-class Service(TwistedService):
+class Service(object, TwistedService):
     pretty_name = None
     description = None
     configs = None

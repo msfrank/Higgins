@@ -6,12 +6,12 @@
 
 from xml.etree.ElementTree import Element, SubElement, tostring as xmltostring
 from higgins.core.models import File, Song
-from higgins.upnp.service import Service
+from higgins.upnp.device_service import UPNPDeviceService
 from higgins.upnp.statevar import StringStateVar, UI4StateVar
 from higgins.upnp.action import Action, InArgument, OutArgument
 from higgins.plugins.mediaserver.logger import logger
 
-class ContentDirectory(Service):
+class ContentDirectory(UPNPDeviceService):
     upnp_service_type = "urn:schemas-upnp-org:service:ContentDirectory:1"
     upnp_service_id = "urn:upnp-org:serviceId:urn:schemas-upnp-org:service:ContentDirectory"
 

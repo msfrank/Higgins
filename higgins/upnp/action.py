@@ -76,3 +76,5 @@ class Action(object):
             except Exception, e:
                 raise e
         return parsed_args
+
+__all__ = ['Action', 'InArgument', 'OutArgument']

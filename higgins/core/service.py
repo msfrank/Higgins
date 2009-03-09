@@ -8,6 +8,7 @@ from os.path import join as pathjoin
 from pkg_resources import resource_string
 from twisted.application.service import MultiService
 from twisted.internet import reactor
+from twisted.internet.defer import maybeDeferred
 from django.conf.urls.defaults import *
 from higgins.conf import conf
 from higgins.service import Service
@@ -17,8 +18,8 @@ from higgins.http.http import Response
 from higgins.core.configurator import Configurator, IntegerSetting
 from higgins.core.manager import ManagerResource
 from higgins.core.logger import CoreLogger
-from higgins.upnp import upnp_service
-from higgins.upnp.device import Device as UPnPDevice
+from higgins.upnp.service import UPNPService
+from higgins.upnp.device import UPNPDevice
 
 # our Django URLConf.  we set this dynamically in CoreService.__init__()
 urlpatterns = None
@@ -90,7 +91,7 @@ class CoreService(MultiService, CoreLogger):
         MultiService.startService(self)
         self._listener = reactor.listenTCP(CoreHttpConfig.HTTP_PORT, channel.HTTPFactory(self._site))
         self.log_debug("started core service")
-        self.upnp_service = upnp_service
+        self.upnp_service = UPNPService()
         # load enabled services
         try:
             for name in conf.get("CORE_ENABLED_PLUGINS", []):
@@ -99,10 +100,14 @@ class CoreService(MultiService, CoreLogger):
         except Exception, e:
             raise e
 
-    def stopService(self):
-        MultiService.stopService(self)
+    def _doStopService(self, result):
         self._listener.stopListening()
         self.log_debug("stopped core service")
+
+    def stopService(self):
+        d = maybeDeferred(MultiService.stopService, self)
+        d.addCallback(self._doStopService)
+        return d
 
     def registerPlugin(self, name, plugin):
         """
@@ -156,7 +161,7 @@ class CoreService(MultiService, CoreLogger):
                 raise Exception("plugin is already enabled")
             plugin = self._plugins[name]
             # if plugin is a UPnP device, then check if the UPnP server is running
-            if isinstance(plugin, UPnPDevice):
+            if isinstance(plugin, UPNPDevice):
                 # if it isn't, then start it
                 if self.upnp_service.running == 0:
                     # setServiceParent() implicitly calls startService()
@@ -165,6 +170,8 @@ class CoreService(MultiService, CoreLogger):
                     plugin.setServiceParent(self.upnp_service)
                 else:
                     plugin.startService()
+                # register UPNP device
+                self.upnp_service.registerUPNPDevice(plugin)
             # otherwise plugin is a simple Service
             else:
                 if plugin.parent == None:
@@ -177,6 +184,14 @@ class CoreService(MultiService, CoreLogger):
         except Exception, e:
             self.log_error("failed to enable plugin '%s': %s" % (name, e))
 
+    def _doDisablePlugin(self, result, name, plugin):
+        #if not self.upnp_service.running == 0:
+        #    self.upnp_service.disownParent()
+        if isinstance(plugin, UPNPDevice):
+            self.upnp_service.unregisterUPNPDevice(plugin)
+        conf.set(CORE_ENABLED_PLUGINS=[name for name,plugin in self._plugins.items() if plugin.running])
+        self.log_debug("disabled plugin '%s'" % name)
+
     def disablePlugin(self, name):
         """Disables the named service."""
         try:
@@ -185,11 +200,8 @@ class CoreService(MultiService, CoreLogger):
             if not self.pluginIsEnabled(name):
                 raise Exception("plugin is not enabled")
             plugin = self._plugins[name]
-            plugin.stopService()
-            #if not self.upnp_service.running == 0:
-            #    self.upnp_service.disownParent()
-            conf.set(CORE_ENABLED_PLUGINS=[name for name,plugin in self._plugins.items() if plugin.running])
-            self.log_debug("disabled plugin '%s'" % name)
+            d = maybeDeferred(plugin.stopService)
+            d.addCallback(self._doDisablePlugin, name, plugin)
         except Exception, e:
             self.log_error("failure while disabling plugin '%s': %s" % (name, e))
 

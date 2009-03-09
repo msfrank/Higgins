@@ -175,11 +175,13 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
                               responses,
                               delayMax)
 
-    def doStop(self):
-        #self.log_debug("called doStop")
-        #for udn,device in self.devices.items():
-        #    self.unregisterDevice(device)
-        DatagramProtocol.doStop(self)
+    def sendAllByebyes(self):
+        """
+        We call this as the last step to server shutdown, to make sure any devices
+        which were not unregistered get their byebyes sent.
+        """
+        for udn,device in self.devices.items():
+            self.unregisterDevice(device)
 
 class SSDPServer(UPnPLogger):
     def __init__(self, interfaces=None):
@@ -196,12 +198,16 @@ class SSDPServer(UPnPLogger):
         self.listener.setLoopbackMode(0)
 
     def stop(self):
+        self.server.sendAllByebyes()
         self.listener.stopListening()
-        self.log_debug("SSDP server stopped listening")
+        self.listener = None
         self.server = None
+        self.log_debug("SSDP server stopped listening")
 
     def registerDevice(self, device):
         self.server.registerDevice(device)
 
     def unregisterDevice(self, device):
         self.server.unregisterDevice(device)
+
+__all__ = ['SSDPServer',]

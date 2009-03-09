@@ -9,8 +9,7 @@ from twisted.internet.defer import maybeDeferred
 from xml.etree.ElementTree import Element, SubElement, tostring as xmltostring
 from higgins.service import Service
 from higgins.conf import conf
-from higgins.upnp import upnp_service
-from higgins.upnp.service import Service as UPnPService
+from higgins.upnp.device_service import UPNPDeviceService
 from higgins.upnp.logger import logger
 
 class DeviceDeclarativeParser(type):
@@ -27,7 +26,7 @@ class DeviceDeclarativeParser(type):
         # load services
         services = {}
         for key,svc in attrs.items():
-            if isinstance(svc, UPnPService):
+            if isinstance(svc, UPNPDeviceService):
                 services[svc.upnp_service_id] = svc
         for base in bases:
             if hasattr(base, '_upnp_services'):
@@ -36,7 +35,7 @@ class DeviceDeclarativeParser(type):
         attrs['_upnp_services'] = services
         return super(DeviceDeclarativeParser,cls).__new__(cls, name, bases, attrs)
 
-class Device(object, Service):
+class UPNPDevice(Service):
     __metaclass__ = DeviceDeclarativeParser
 
     upnp_manufacturer = "Higgins Project"
@@ -48,12 +47,9 @@ class Device(object, Service):
 
     def startService(self):
         Service.startService(self)
-        upnp_service.registerUPnPDevice(self)
 
     def stopService(self):
-        d = maybeDeferred(Service.stopService, self)
-        upnp_service.unregisterUPnPDevice(self)
-        return d
+        return maybeDeferred(Service.stopService, self)
 
     def get_description(self, host=''):
         root = Element("{urn:schemas-upnp-org:device-1-0}root")
@@ -84,3 +80,6 @@ class Device(object, Service):
 
     def __str__(self):
         return self.upnp_UDN
+
+# Define the public API
+__all__ = ['UPNPDevice',]

@@ -7,7 +7,7 @@
 from twisted.internet import reactor
 from higgins.conf import conf
 from higgins.core.models import Song
-from higgins.upnp.device import Device
+from higgins.upnp.device import UPNPDevice
 from higgins.http import channel, resource, static
 from higgins.http.http import Response as HttpResponse
 from higgins.http.stream import FileStream
@@ -44,7 +44,7 @@ class MediaServer(resource.Resource):
             return Content(), segments[1:]
         return None, []
 
-class MediaserverDevice(Device):
+class MediaserverDevice(UPNPDevice):
     pretty_name = "UPnP Media Server"
     description = "Share media using UPnP"
     upnp_manufacturer = "Higgins Project"
@@ -59,11 +59,11 @@ class MediaserverDevice(Device):
         pass
 
     def startService(self):
-        Device.startService(self)
+        UPNPDevice.startService(self)
         self.server = reactor.listenTCP(31338, channel.HTTPFactory(Site(MediaServer())))
         logger.log_debug("started mediaserver service")
 
     def stopService(self):
         self.server.stopListening()
-        Device.stopService(self)
         logger.log_debug("stopped mediaserver service")
+        return UPNPDevice.stopService(self)
