@@ -22,7 +22,7 @@ from higgins.plugins.daap.commands import DAAPFactory
 class DaapService(Service):
     pretty_name = "DAAP"
     description = "Exposes the Higgins media store as a DAAP (iTunes) share"
-    configs = DaapConfig
+    configs = DaapConfig()
 
     def __init__(self):
         try:
