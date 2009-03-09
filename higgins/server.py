@@ -7,6 +7,7 @@
 import sys, pwd, grp, os, signal
 from django.core.management import call_command as django_admin_command
 from twisted.internet import reactor
+from twisted.internet.defer import maybeDeferred
 from twisted.python import usage
 from twisted.python.logfile import LogFile
 from higgins.site_settings import site_settings
@@ -110,36 +111,36 @@ class Server(object, logger.Loggable):
             # start the core service
             self._core_service.startService()
             # pass control to reactor
-            signal.signal(signal.SIGINT, self._caughtSignal)
             self.log_debug("Server.run(): starting reactor")
+            self._oldsignal = signal.signal(signal.SIGINT, self._caughtSignal)
             reactor.run()
+            signal.signal(signal.SIGINT, self._oldsignal)
             self.log_debug("Server.run(): returned from reactor")
-            self.stop()
-            self.log_debug("Server.run(): stopped")
+            # save configuration settings
+            conf.flush()
         finally:
-            self._removePID()
+            try:
+                os.unlink(self._pidfile)
+            except Exception, e:
+                self.log_warning("failed to remove PID file '%s': %s" % (self._pidfile, e))
             self.observer.stop()
+
+    def _doStop(self, result):
+        self.log_debug("Server._doStop(): stopped core service")
+        reactor.stop()
+        self.log_debug("Server._doStop(): stopped reactor")
 
     def stop(self):
         """
         Stop the twisted reactor
         """
-        self.log_debug("Server.stop(): stopping Higgins")
-        if self._core_service.running:
-            self._core_service.stopService()
-            self.log_debug("Server.stop(): stopped core service")
-        if reactor.running:
-            reactor.stop()
-            self.log_debug("Server.stop(): stopped reactor")
-        # save configuration settings
-        conf.flush()
-        self.log_debug("Server.stop(): done cleaning up")
-
-    def _removePID(self):
-        try:
-            os.unlink(self._pidfile)
-        except Exception, e:
-            self.log_warning("failed to remove PID file '%s': %s" % (self._pidfile, e))
+        if not reactor.running:
+            raise Exception("Server is not running")
+        if not self._core_service.running:
+            raise Exception("CoreService is not running")
+        # stops everything
+        d = maybeDeferred(self._core_service.stopService)
+        d.addCallback(self._doStop)
 
 class ServerOptions(usage.Options):
     optFlags = [
