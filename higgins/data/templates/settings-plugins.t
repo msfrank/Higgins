@@ -23,7 +23,7 @@
                     <span class="higgins-settings-plugin-descripton">{{plugin.description}}<span>
                 </td>
                 <td>
-                    {% ifnotequal item.plugin_config None %}<a href="{{plugin.name}}/">Settings</a>{% endifnotequal %}
+                    {% ifnotequal plugin.configs None %}<a href="{{plugin.name}}/">Settings</a>{% endifnotequal %}
                 </td>
             </tr>
         {% endfor %}</table>

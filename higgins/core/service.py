@@ -123,13 +123,13 @@ class CoreService(MultiService, CoreLogger):
             def init_configs_recursive(configs):
                 if configs == None:
                     return
-                if issubclass(configs, Configurator):
+                if isinstance(configs, Configurator):
                     configs()
-                elif issubclass(configs, dict):
+                elif isinstance(configs, dict):
                     for name,config in configs.items():
-                        if issubclass(config, Configurator):
+                        if isinstance(config, Configurator):
                             config()
-                        elif issubclass(config, dict):
+                        elif isinstance(config, dict):
                             init_configs_recursive(config)
             init_configs_recursive(plugin.configs)                
             self._plugins[name] = plugin
@@ -179,7 +179,7 @@ class CoreService(MultiService, CoreLogger):
                 else:
                     plugin.startService()
             # update the list of enabled plugins
-            conf.set(CORE_ENABLED_PLUGINS=[name for name,plugin in self._plugins.items() if plugin.running])
+            conf.set(CORE_ENABLED_PLUGINS=[pname for pname,plugin in self._plugins.items() if plugin.running])
             self.log_debug("enabled plugin '%s'" % name)
         except Exception, e:
             self.log_error("failed to enable plugin '%s': %s" % (name, e))
@@ -189,7 +189,7 @@ class CoreService(MultiService, CoreLogger):
         #    self.upnp_service.disownParent()
         if isinstance(plugin, UPNPDevice):
             self.upnp_service.unregisterUPNPDevice(plugin)
-        conf.set(CORE_ENABLED_PLUGINS=[name for name,plugin in self._plugins.items() if plugin.running])
+        conf.set(CORE_ENABLED_PLUGINS=[pname for pname,plugin in self._plugins.items() if plugin.running])
         self.log_debug("disabled plugin '%s'" % name)
 
     def disablePlugin(self, name):
