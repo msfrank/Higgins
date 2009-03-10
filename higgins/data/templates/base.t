@@ -14,8 +14,10 @@
             <td class="higgins-nav-item"><a href="/">Home</a></td>
             <td class="higgins-nav-item"><a href="/browse/">Browse</a></td>
             <td class="higgins-nav-item"><a href="/search/">Search</a></td>
+            {% for page in toplevel_pages %}
+            <td class="higgins-nav-item"><a href="/view/{{page}}/">{{page}}</td>
+            {% endfor %}
             <td class="higgins-nav-item"><a href="/settings/">Settings</a></td>
-            <td> </td>
         </tr>
     </table>
     <div class="higgins-separator" />

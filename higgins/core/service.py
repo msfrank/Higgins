@@ -64,11 +64,12 @@ class CoreService(MultiService, CoreLogger):
         self._config_items = {
             'http': { 'name': 'http', 'config': CoreHttpConfig() }
             }
+        # 
+        self._toplevel_pages = []
         # register URL patterns
         global urlpatterns
         urlpatterns = patterns('',
             (r'^/?$', 'higgins.core.front.index'),
-            (r'^admin/', include('django.contrib.admin.urls')),
             (r'^browse/$', 'higgins.core.browser.index'),
             (r'^browse/byartist/(?P<artist_id>\d+)/$', 'higgins.core.browser.byartist'),
             (r'^browse/bysong/(?P<song_id>\d+)/$', 'higgins.core.browser.bysong'),
@@ -217,3 +218,6 @@ class CoreService(MultiService, CoreLogger):
         if plugin.running:
             return True
         return False
+
+    def renderToResponse(self, template, context):
+        return render_to_response(template, context)
