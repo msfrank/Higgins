@@ -6,6 +6,7 @@
 
 from xml.etree.ElementTree import Element, SubElement, tostring as xmltostring
 from higgins.core.models import File, Song
+from higgins.core.service import CoreHttpConfig
 from higgins.upnp.device_service import UPNPDeviceService
 from higgins.upnp.statevar import StringStateVar, UI4StateVar
 from higgins.upnp.action import Action, InArgument, OutArgument
@@ -41,7 +42,8 @@ class ContentDirectory(UPNPDeviceService):
 
     def Browse(self, request, objectID, browseFlag, filter, startingIndex, requestedCount, sortCriteria):
         host = request.headers.getHeader('host').split(':',1)[0]
-        logger.log_debug("Browse: host=%s" % host)
+        port = CoreHttpConfig.HTTP_PORT
+        logger.log_debug("Browse: host=%s, port=%i" % (host,port))
         # get the matching songs
         songs = Song.objects.all()[startingIndex:startingIndex + requestedCount]
         # generate the DIDL
@@ -69,10 +71,9 @@ class ContentDirectory(UPNPDeviceService):
             #upnp_genre = SubElement(item, "upnp:genre")
             #upnp_genre.text = 
             resource = SubElement(item, "res")
-            resource.attrib["protocolInfo"] = "http-get:*:audio/mpeg:*"
-            #resource.attrib["size"] = 
-            #resource.text = "http://%s:%i/content/%i" % (self.addr, self.port, song.id)
-            resource.text = "http://%s:8000/content/%i" % (host, song.id)
+            resource.attrib["protocolInfo"] = "http-get:*:%s:*" % str(song.file.mimetype)
+            resource.attrib["size"] = str(song.file.size)
+            resource.text = "http://%s:%i/content/%i" % (host, port, song.id)
         result = xmltostring(didl)
         return { 'NumberReturned': len(songs), 'TotalMatches': len(songs), 'Result': result, 'UpdateID': 1 }
 
