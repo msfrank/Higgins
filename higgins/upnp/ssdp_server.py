@@ -61,17 +61,24 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
 
     def datagramReceived(self, data, (host, port)):
         try:
-            header, payload = data.split('\r\n\r\n')
+            try:
+                header, payload = data.split('\r\n\r\n')
+            except:
+                header = data
+            lines = header.split('\r\n')
+            try:
+                cmd,uri,unused = string.split(lines[0], ' ')
+            except Exception, e:
+                self.log_debug("failed to parse request line '%s'" % lines[0])
+                raise e
+            lines = map(lambda x: x.replace(': ', ':', 1), lines[1:])
+            lines = filter(lambda x: len(x) > 0, lines)
+            headers = [string.split(x, ':', 1) for x in lines]
+            headers = dict(map(lambda x: (x[0].upper(), x[1]), headers))
+            if cmd == 'M-SEARCH' and uri == '*':
+                self.discoveryRequest(headers, (host, port))
         except:
-            header = data
-        lines = header.split('\r\n')
-        cmd,uri,unused = string.split(lines[0], ' ')
-        lines = map(lambda x: x.replace(': ', ':', 1), lines[1:])
-        lines = filter(lambda x: len(x) > 0, lines)
-        headers = [string.split(x, ':', 1) for x in lines]
-        headers = dict(map(lambda x: (x[0].upper(), x[1]), headers))
-        if cmd == 'M-SEARCH' and uri == '*':
-            self.discoveryRequest(headers, (host, port))
+            self.log_debug("discarding malformed datagram from %s" % host)
 
     def sendAlive(self, nt, usn, location, cacheControl=1800, server='Twisted, UPnP/1.0, Higgins'):
         for iface in self.interfaces:
