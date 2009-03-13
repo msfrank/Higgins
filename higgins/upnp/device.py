@@ -57,7 +57,7 @@ class UPNPDevice(Service):
     def stopService(self):
         return maybeDeferred(Service.stopService, self)
 
-    def get_description(self, host=''):
+    def get_description(self, host, relativeUrls=False):
         root = Element("root")
         root.attrib['xmlns'] = 'urn:schemas-upnp-org:device-1-0'
         version = SubElement(root, "specVersion")
@@ -74,15 +74,28 @@ class UPNPDevice(Service):
         SubElement(device, "modelNumber").text = self.upnp_model_number
         SubElement(device, "serialNumber").text = self.upnp_serial_number
         SubElement(device, "UDN").text = "uuid:%s" % self.upnp_UDN
-        SubElement(device, "URLBase").text = "%s/%s/" % (host, self.upnp_UDN)
+        if relativeUrls:
+            urlbase = ''
+            SubElement(device, "URLBase").text = "%s/%s/" % (host, self.upnp_UDN)
+        else:
+            urlbase = "http://%s/%s/" % (host, self.upnp_UDN)
         svc_list = SubElement(device, "serviceList")
         for svc in self._upnp_services.values():
             service = SubElement(svc_list, "service")
             SubElement(service, "serviceType").text = svc.upnp_service_type
             SubElement(service, "serviceId").text = svc.upnp_service_id
-            SubElement(service, "SCPDURL").text = "%s" % (svc.upnp_service_id.replace(':', '_'))
-            SubElement(service, "controlURL").text = "%s/control" % (svc.upnp_service_id.replace(':', '_'))
-            SubElement(service, "eventSubURL").text = "%s/event" % (svc.upnp_service_id.replace(':', '_'))
+            SubElement(service, "SCPDURL").text = "%s%s" % (
+                urlbase,
+                svc.upnp_service_id.replace(':', '_')
+                )
+            SubElement(service, "controlURL").text = "%s%s/control" % (
+                urlbase,
+                svc.upnp_service_id.replace(':', '_')
+                )
+            SubElement(service, "eventSubURL").text = "%s%s/event" % (
+                urlbase,
+                svc.upnp_service_id.replace(':', '_')
+                )
         return prettyprint(root)
 
     def __str__(self):
