@@ -7,6 +7,7 @@
 from xml.etree.ElementTree import Element, SubElement, tostring as xmltostring
 from higgins.upnp.statevar import StateVar
 from higgins.upnp.action import Action, InArgument, OutArgument
+from higgins.upnp.prettyprint import prettyprint
 
 class DeviceServiceDeclarativeParser(type):
     def __new__(cls, name, bases, attrs):
@@ -75,7 +76,7 @@ class UPNPDeviceService(object):
                 SubElement(allowed_range, "maximum").text = str(upnp_stateVar.allowedMax)
                 if not upnp_stateVar.allowedStep == None:
                     SubElement(allowed_range, "step").text = str(upnp_stateVar.allowedStep)
-        return xmltostring(scpd)
+        return prettyprint(scpd)
 
     def __str__(self):
         return self.upnp_service_id

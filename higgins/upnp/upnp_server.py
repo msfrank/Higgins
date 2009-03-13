@@ -18,7 +18,8 @@ class RootResource(Resource):
         Resource.__init__(self)
         self.server = server
     def locateChild(self, request, segments):
-        logger.log_debug("request URI: %s" % '/' + '/'.join(segments))
+        segments = [part for part in segments if part != '']
+        logger.log_debug("%s" % '/' + '/'.join(segments))
         # we need the Host header
         host = request.headers.getHeader('host')
         if host == None:

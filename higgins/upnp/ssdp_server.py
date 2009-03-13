@@ -29,18 +29,18 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
             # advertise the device
             self.sendAlive("upnp:rootdevice",
                            "uuid:%s::upnp:rootdevice" % device.upnp_UDN,
-                           "http://%s:1901/%s" % (iface,device.upnp_UDN.replace(':','_')))
+                           "http://%s:1901/%s/" % (iface,device.upnp_UDN.replace(':','_')))
             self.sendAlive("uuid:%s" % device.upnp_UDN,
                            "uuid:%s" % device.upnp_UDN,
-                           "http://%s:1901/%s" % (iface,device.upnp_UDN.replace(':','_')))
+                           "http://%s:1901/%s/" % (iface,device.upnp_UDN.replace(':','_')))
             self.sendAlive(device.upnp_device_type,
                            "uuid:%s::%s" % (device.upnp_UDN, device.upnp_device_type),
-                           "http://%s:1901/%s" % (iface,device.upnp_UDN.replace(':','_')))
+                           "http://%s:1901/%s/" % (iface,device.upnp_UDN.replace(':','_')))
             # advertise each service on the device
             for svc in device._upnp_services.values():
                 self.sendAlive(svc.upnp_service_type,
                                "uuid:%s::%s" % (device.upnp_UDN, svc.upnp_service_type),
-                               "http://%s:1901/%s" % (iface,device.upnp_UDN.replace(':','_')))
+                               "http://%s:1901/%s/" % (iface,device.upnp_UDN.replace(':','_')))
             self.log_debug("registered device %s on %s" % (device.upnp_UDN, iface))
         self.devices[device.upnp_UDN] = device
 
@@ -123,18 +123,18 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
                     # advertise the device
                     responses.append(makeResponse("upnp:rootdevice",
                                      "uuid:%s::upnp:rootdevice" % udn,
-                                     "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
+                                     "http://%s:1901/%s/" % (iface,udn.replace(':','_'))))
                     responses.append(makeResponse("uuid:%s" % udn,
                                      "uuid:%s" % udn,
-                                     "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
+                                     "http://%s:1901/%s/" % (iface,udn.replace(':','_'))))
                     responses.append(makeResponse(device.upnp_device_type,
                                      "uuid:%s::%s" % (udn, device.upnp_device_type),
-                                     "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
+                                     "http://%s:1901/%s/" % (iface,udn.replace(':','_'))))
                     # advertise each service on the device
                     for svc in device._upnp_services.values():
                         responses.append(makeResponse(svc.upnp_service_type,
                                          "uuid:%s::%s" % (udn, svc.upnp_service_type),
-                                         "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
+                                         "http://%s:1901/%s/" % (iface,udn.replace(':','_'))))
         # return each root device
         elif headers['ST'] == 'upnp:rootdevice':
             for udn,device in self.devices.items():
@@ -142,7 +142,7 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
                     # advertise the root device
                     responses.append(makeResponse("upnp:rootdevice",
                                      "uuid:%s::upnp:rootdevice" % udn,
-                                     "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
+                                     "http://%s:1901/%s/" % (iface,udn.replace(':','_'))))
         # return the specific device
         elif headers['ST'].startswith('uuid:'): 
             pass
