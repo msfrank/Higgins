@@ -57,5 +57,6 @@ setup(
             'mediaserver=higgins.plugins.mediaserver:MediaserverDevice',
             ],
         },
+    test_suite="tests",
 )
 
