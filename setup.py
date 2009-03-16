@@ -7,10 +7,12 @@ from setuptools import setup, Extension
 setup(
     # package description
     name = "Higgins",
-    version = "0.1",
+    version = "0.2",
     description="Multi-protocol A/V Server",
     long_description="",
     url="http://www.syntaxjockey.com/higgins",
+    author="Michael Frank",
+    author_email="msfrank@syntaxockey.com",
     # package requirements
     install_requires=[
 #        'Twisted >= 8.0.0',
@@ -59,4 +61,3 @@ setup(
         },
     test_suite="tests",
 )
-

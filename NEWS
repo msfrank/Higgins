@@ -1,3 +1,17 @@
+0.2
+===
+Released 2009-03-15
+
+Fixed bug in the 'daap' plugin where sending a large library listing would
+cause the web interface to become unresponsive.
+Fixed bug where plugin-specific configuration was not exposed in the web
+interface.
+Fixed bug where UPnP devices were not being discovered in gupnp.
+Added recursive media uploading in higgins-upload.
+Enabled the mediaserver plugin, although all it can do at the moment is
+describe the library contents.
+Added tests/ directory, and created 3 tests.  Hopefully this is the start
+of many tests to come!
 
 0.1
 ===
