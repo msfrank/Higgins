@@ -10,6 +10,7 @@ from higgins.core.service import CoreHttpConfig
 from higgins.upnp.device_service import UPNPDeviceService
 from higgins.upnp.statevar import StringStateVar, UI4StateVar
 from higgins.upnp.action import Action, InArgument, OutArgument
+from higgins.upnp.error import UPNPError
 from higgins.plugins.mediaserver.logger import logger
 
 class ContentDirectory(UPNPDeviceService):
@@ -41,11 +42,28 @@ class ContentDirectory(UPNPDeviceService):
         return { "Id": 1 }
 
     def Browse(self, request, objectID, browseFlag, filter, startingIndex, requestedCount, sortCriteria):
+        # determine the host:port of content
         host = request.headers.getHeader('host').split(':',1)[0]
         port = CoreHttpConfig.HTTP_PORT
-        logger.log_debug("Browse: host=%s, port=%i" % (host,port))
-        # get the matching songs
-        songs = Song.objects.all()[startingIndex:startingIndex + requestedCount]
+        # browse the metadata of one specific item
+        if browseFlag == 'BrowseMetadata':
+            songs = Song.objects.filter(id=int(objectID))
+            total_matches = len(songs)
+        elif browseFlag == 'BrowseDirectChildren':
+            if objectID != '0':
+                raise UPNPError(701, "ObjectID %i is invalid" % objectID)
+            # don't return more than 250 items
+            if requestedCount > 100:
+                requestedCount = 100
+            # get the matching songs
+            total_matches = len(Song.objects.all())
+            if startingIndex >= total_matches:
+                raise UPNPError(402, "startingIndex %i is out of range" % startingIndex)
+            if startingIndex + requestedCount > total_matches:
+                requestedCount = total_matches - startingIndex
+            songs = Song.objects.all()[startingIndex:startingIndex + requestedCount]
+        else:
+            raise UPNPError(402, "unknown browse flag %s" % browseFlag)
         # generate the DIDL
         didl = Element("{urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/}DIDL-Lite")
         didl.attrib["xmlns"] = "urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"
@@ -56,8 +74,6 @@ class ContentDirectory(UPNPDeviceService):
             item.attrib["id"] = str(song.id)
             item.attrib["parentID"] = "0"
             item.attrib["restricted"] = "0"
-            #item.attrib["size"] = song.file.size
-            #item.attrib["duration"] = song.duration
             upnp_class = SubElement(item, "upnp:class")
             upnp_class.text = "object.item.audioItem.musicTrack"
             title = SubElement(item, "dc:title")
@@ -68,14 +84,19 @@ class ContentDirectory(UPNPDeviceService):
             upnp_artist.text = str(song.artist.name)
             upnp_album = SubElement(item, "upnp:album")
             upnp_album.text = str(song.album.name)
-            #upnp_genre = SubElement(item, "upnp:genre")
-            #upnp_genre.text = 
             resource = SubElement(item, "res")
             resource.attrib["protocolInfo"] = "http-get:*:%s:*" % str(song.file.mimetype)
             resource.attrib["size"] = str(song.file.size)
             resource.text = "http://%s:%i/content/%i" % (host, port, song.id)
         result = xmltostring(didl)
-        return { 'NumberReturned': len(songs), 'TotalMatches': len(songs), 'Result': result, 'UpdateID': 1 }
+        number_returned = len(songs)
+        update_id = 1
+        return {
+            'NumberReturned': number_returned,
+            'TotalMatches': total_matches,
+            'Result': result,
+            'UpdateID': update_id
+            }
 
     def GetSortCapabilities(self, request):
         pass
