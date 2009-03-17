@@ -13,6 +13,10 @@ class ConnectionManager(UPNPDeviceService):
     upnp_service_type = "urn:schemas-upnp-org:service:ConnectionManager:1"
     upnp_service_id = "urn:upnp-org:serviceId:urn:schemas-upnp-org:service:ConnectionManager"
 
+    #######################################################
+    # State Variable declarations                         #
+    #######################################################
+
     A_ARG_TYPE_AVTransportID = I4StateVar()
     A_ARG_TYPE_RcsID = I4StateVar()
     A_ARG_TYPE_ConnectionID = I4StateVar()
@@ -26,8 +30,31 @@ class ConnectionManager(UPNPDeviceService):
         allowedValueList=("OK", "ContentFormatMismatch", "InsufficientBandwidth", "UnreliableChannel", "Unknown")
         )
 
+    #######################################################
+    # Action definitions                                  #
+    #######################################################
+
+    def GetProtocolInfo(self, request):
+        return { 'Source': 'http-get', 'Sink': '' }
+
     def GetCurrentConnectionInfo(self, request, connection_id):
-        pass
+        return {
+            'RcsID': 0,
+            'AVTransportID': 0,
+            'ProtocolInfo': 'http-get',
+            'PeerConnectionManager': '',
+            'PeerConnectionID': -1,
+            'Direction': 'Input',
+            'Status': 'OK'
+            }
+
+    def GetCurrentConnectionIDs(self, request):
+        return { 'ConnectionIDs': '0' }
+
+    #######################################################
+    # Action declarations                                 #
+    #######################################################
+
     GetCurrentConnectionInfo = Action(GetCurrentConnectionInfo,
         InArgument("ConnectionID", A_ARG_TYPE_ConnectionID),
         OutArgument("RcsID", A_ARG_TYPE_RcsID),
@@ -38,16 +65,10 @@ class ConnectionManager(UPNPDeviceService):
         OutArgument("Direction", A_ARG_TYPE_Direction),
         OutArgument("Status", A_ARG_TYPE_ConnectionStatus),
         )
-
-    def GetProtocolInfo(self, request):
-        pass
     GetProtocolInfo = Action(GetProtocolInfo,
         OutArgument("Source", SourceProtocolInfo),
         OutArgument("Sink", SinkProtocolInfo)
         )
-
-    def GetCurrentConnectionIDs(self, request):
-        pass
     GetCurrentConnectionIDs = Action(GetCurrentConnectionIDs,
         OutArgument("ConnectionIDs", CurrentConnectionIDs)
         )

@@ -38,9 +38,6 @@ class ContentDirectory(UPNPDeviceService):
     # Action definitions                                  #
     #######################################################
 
-    def GetSystemUpdateID(self, request):
-        return { "Id": 1 }
-
     def Browse(self, request, objectID, browseFlag, filter, startingIndex, requestedCount, sortCriteria):
         # determine the host:port of content
         host = request.headers.getHeader('host').split(':',1)[0]
@@ -98,14 +95,20 @@ class ContentDirectory(UPNPDeviceService):
             'UpdateID': update_id
             }
 
+    def GetSearchCapabilities(self, request):
+        return { 'SearchCaps': '' }
+
     def GetSortCapabilities(self, request):
-        pass
+        return { 'SortCaps': '*' }
+
+    def GetSystemUpdateID(self, request):
+        return { "Id": 1 }
+
 
     #######################################################
-    # Action definitions                                  #
+    # Action declarations                                 #
     #######################################################
 
-    GetSystemUpdateID = Action(GetSystemUpdateID, OutArgument("Id", SystemUpdateID))
     Browse = Action(Browse,
         InArgument("ObjectID", A_ARG_TYPE_ObjectID),
         InArgument("BrowseFlag", A_ARG_TYPE_BrowseFlag),
@@ -118,4 +121,12 @@ class ContentDirectory(UPNPDeviceService):
         OutArgument("TotalMatches", A_ARG_TYPE_Count),
         OutArgument("UpdateID", A_ARG_TYPE_UpdateID)
         )
-    GetSortCapabilities = Action(GetSortCapabilities, OutArgument("SortCaps", SortCapabilities))
+    GetSearchCapabilities = Action(GetSearchCapabilities,
+        OutArgument("SearchCaps", SortCapabilities)
+        )
+    GetSortCapabilities = Action(GetSortCapabilities,
+        OutArgument("SortCaps", SortCapabilities)
+        )
+    GetSystemUpdateID = Action(GetSystemUpdateID,
+        OutArgument("Id", SystemUpdateID)
+        )
