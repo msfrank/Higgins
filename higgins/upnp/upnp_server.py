@@ -38,7 +38,7 @@ class RootResource(Resource):
         # if the next segment is 'root-device.xml', return the device description
         segments = segments[1:]
         if segments == []:
-            return StaticResource(device.get_description(host), 'text/xml'), []
+            return StaticResource(device.get_description(host, True), 'text/xml'), []
         # otherwise the next segment is the service ID
         service_id = segments[0].replace('_',':')
         try:

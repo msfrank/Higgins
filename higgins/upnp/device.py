@@ -76,24 +76,27 @@ class UPNPDevice(Service):
         SubElement(device, "UDN").text = "uuid:%s" % self.upnp_UDN
         if relativeUrls:
             urlbase = ''
-            SubElement(device, "URLBase").text = "%s/%s/" % (host, self.upnp_UDN)
+            SubElement(device, "URLBase").text = "http://%s" % host
         else:
-            urlbase = "http://%s/%s/" % (host, self.upnp_UDN)
+            urlbase = "http://%s" % host
         svc_list = SubElement(device, "serviceList")
         for svc in self._upnp_services.values():
             service = SubElement(svc_list, "service")
             SubElement(service, "serviceType").text = svc.upnp_service_type
             SubElement(service, "serviceId").text = svc.upnp_service_id
-            SubElement(service, "SCPDURL").text = "%s%s" % (
+            SubElement(service, "SCPDURL").text = "%s/%s/%s" % (
                 urlbase,
+                self.upnp_UDN.replace(':', '_'),
                 svc.upnp_service_id.replace(':', '_')
                 )
-            SubElement(service, "controlURL").text = "%s%s/control" % (
+            SubElement(service, "controlURL").text = "%s/%s/%s/control" % (
                 urlbase,
+                self.upnp_UDN.replace(':', '_'),
                 svc.upnp_service_id.replace(':', '_')
                 )
-            SubElement(service, "eventSubURL").text = "%s%s/event" % (
+            SubElement(service, "eventSubURL").text = "%s/%s/%s/event" % (
                 urlbase,
+                self.upnp_UDN.replace(':', '_'),
                 svc.upnp_service_id.replace(':', '_')
                 )
         return prettyprint(root)
