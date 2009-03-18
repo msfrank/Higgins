@@ -48,7 +48,12 @@ setup(
         ],
     # declare static data
     package_data={
-        'higgins.data': ['static/css/*.css', 'templates/*.t', 'static/images/*.*'],
+        'higgins.data': [
+            'static/css/*.css',
+            'static/images/*.*',
+            'static/js/*.js',
+            'templates/*.t',
+            ],
         'higgins.plugins.mrss': ['templates/*.t',],
         },
     entry_points={

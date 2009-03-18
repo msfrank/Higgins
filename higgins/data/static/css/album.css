@@ -15,4 +15,5 @@
 }
 #song-albuminfo { padding: 20px; }
 #song-listing { width: 100%; }
-#song-listing_info { font-size: 8pt; padding-top: 20px; }
+#song-listing_info { display: none; font-size: 8pt; padding-top: 20px; }
+#album-editor { display: none; z-index: 2; opacity: 1.0; border: 1px solid black; background-color: white; }
