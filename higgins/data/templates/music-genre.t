@@ -11,8 +11,8 @@
         <table>
         {% for album in album_list %}
             <tr><td>
-                <a href="/library/music/byalbum/{{album.id}}">{{ album.name }}</a> by 
-                <a href="/library/music/byartist/{{album.artist.id}}">{{ album.artist.name }}</a></td>
+                <a href="/library/music/byalbum/{{album.id}}/">{{ album.name }}</a> by 
+                <a href="/library/music/byartist/{{album.artist.id}}/">{{ album.artist.name }}</a></td>
             </tr>
         {% endfor %}
         </table>

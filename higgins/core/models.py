@@ -51,6 +51,18 @@ class Song(models.Model):
     volume_number = models.IntegerField(blank=True, null=True)
     tags = models.ManyToManyField('Tag', blank=True)
     rating = models.IntegerField(blank=True, null=True)
+
+    def print_duration(self):
+        duration = self.duration / 1000
+        if duration < 60:
+            return '0:%02i' % duration
+        if duration < 3600:
+            return '%i:%02i' % (duration / 60, duration % 60)
+        hrs = duration / 3600
+        sec = duration - (3600 * hrs)
+        min = sec / 60
+        return '%i:%02i:%02i' % (hrs, min, sec)
+
     def __str__(self):
         return self.name
         
