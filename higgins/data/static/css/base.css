@@ -10,6 +10,8 @@ img { border: none; }
 #higgins-title { font-size: 24pt; width: 800px; }
 #enclosure { width: 800px; margin-left: auto; margin-right: auto; margin-top: 20px; }
 #higgins-nav { margin-top: 10px; margin-bottom: 5px; }
+#higgins-base-subnav { padding-top: 10px; }
 #higgins-content { margin-top: 20px; }
-.higgins-nav-item { padding-right: 20px; }
+.higgins-nav-item { padding-right: 20px; font-size: 12pt; }
+.higgins-base-subnav-item { padding-right: 20px; font-size: 11pt; }
 .higgins-separator { border-top: 1px solid black; }

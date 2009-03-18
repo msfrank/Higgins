@@ -1,13 +1,13 @@
-{% extends "templates/base.t" %}
+{% extends "templates/library-base.t" %}
 
 {% block title %}{{ album.name }}{% endblock %}
 
-{% block content %}
+{% block library_content %}
 <div>
     <p>
     {{ album.name }}
     <br/>
-    by <a href="/browse/byartist/{{ album.artist.id }}/">{{ album.artist }}</a>
+    by <a href="/library/music/byartist/{{ album.artist.id }}/">{{ album.artist }}</a>
     <br/>
     {{ album.genre }}
     </p>
@@ -16,7 +16,7 @@
         {% for song in song_list %}
             <tr>
                 <td>{{ song.track_number }}</td>
-                <td><a href="/browse/bysong/{{song.id}}/">{{ song.name }}</a></td>
+                <td><a href="/library/music/bysong/{{song.id}}/">{{ song.name }}</a></td>
             </tr>
         {% endfor %}
         </table>

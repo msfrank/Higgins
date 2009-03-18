@@ -4,7 +4,5 @@
     border: 1px solid #D0D0D0;
 }
 #higgins-settings-plugins { width: 100%; }
-#higgins-settings-nav { padding-top: 10px; }
-.higgins-settings-nav-item { padding-right: 20px; font-size: 11pt; }
 span.higgins-settings-plugin-name { font-weight: bold; }
 span.higgins-settings-plugin-description { }

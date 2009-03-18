@@ -1,10 +1,10 @@
-{% extends "templates/base.t" %}
+{% extends "templates/library-base.t" %}
 
 {% block stylesheet %}{% endblock %}
 
 {% block title %}Browse by artist{% endblock %}
 
-{% block content %}
+{% block library_content %}
 <div>
     <p>
     Browsing by Artist
@@ -12,7 +12,7 @@
     <p>
         <ul>
         {% for artist in artist_list %}
-            <li><a href="/browse/byartist/{{artist.id}}/">{{ artist.name }}</a></li>
+            <li><a href="/library/music/byartist/{{artist.id}}/">{{ artist.name }}</a></li>
         {% endfor %}
         </ul>
     </p>

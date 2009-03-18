@@ -12,8 +12,7 @@
     <table id="higgins-nav">
         <tr id="higgins-nav-row">
             <td class="higgins-nav-item"><a href="/">Home</a></td>
-            <td class="higgins-nav-item"><a href="/browse/">Browse</a></td>
-            <td class="higgins-nav-item"><a href="/search/">Search</a></td>
+            <td class="higgins-nav-item"><a href="/library/">Library</a></td>
             {% for page in toplevel_pages %}
             <td class="higgins-nav-item"><a href="/view/{{page}}/">{{page}}</td>
             {% endfor %}
