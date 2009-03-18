@@ -11,7 +11,6 @@
 #   Copyright 2006 John-Mark Gurney <gurney_j@resnet.uroegon.edu>
 
 import random
-import string
 from higgins import netif
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
@@ -61,17 +60,20 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
 
     def datagramReceived(self, data, (host, port)):
         try:
-            header, payload = data.split('\r\n\r\n')
+            try:
+                header, payload = data.split('\r\n\r\n')
+            except:
+                header = data
+            lines = header.split('\r\n')
+            cmd,uri,unused = lines[0].split(' ', 3)
+            lines = map(lambda x: x.replace(': ', ':', 1), lines[1:])
+            lines = filter(lambda x: len(x) > 0, lines)
+            headers = [x.split(':', 1) for x in lines]
+            headers = dict(map(lambda x: (x[0].upper(), x[1]), headers))
+            if cmd == 'M-SEARCH' and uri == '*':
+                self.discoveryRequest(headers, (host, port))
         except:
-            header = data
-        lines = header.split('\r\n')
-        cmd,uri,unused = string.split(lines[0], ' ')
-        lines = map(lambda x: x.replace(': ', ':', 1), lines[1:])
-        lines = filter(lambda x: len(x) > 0, lines)
-        headers = [string.split(x, ':', 1) for x in lines]
-        headers = dict(map(lambda x: (x[0].upper(), x[1]), headers))
-        if cmd == 'M-SEARCH' and uri == '*':
-            self.discoveryRequest(headers, (host, port))
+            self.log_debug("discarding malformed datagram from %s" % host)
 
     def sendAlive(self, nt, usn, location, cacheControl=1800, server='Twisted, UPnP/1.0, Higgins'):
         for iface in self.interfaces:

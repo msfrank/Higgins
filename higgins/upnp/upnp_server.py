@@ -7,17 +7,19 @@
 import urllib
 from twisted.internet import reactor
 from higgins import netif
-from higgins.http import resource
+from higgins.http.resource import Resource
 from higgins.http.static import Data as StaticResource
 from higgins.upnp.control_resource import ControlResource
+from higgins.upnp.event_resource import EventResource
 from higgins.upnp.logger import logger
 
-class RootResource(resource.Resource):
+class RootResource(Resource):
     def __init__(self, server):
-        resource.Resource.__init__(self)
+        Resource.__init__(self)
         self.server = server
     def locateChild(self, request, segments):
-        logger.log_debug("request URI: %s" % '/' + '/'.join(segments))
+        segments = [part for part in segments if part != '']
+        logger.log_debug("%s" % '/' + '/'.join(segments))
         # we need the Host header
         host = request.headers.getHeader('host')
         if host == None:
@@ -36,7 +38,7 @@ class RootResource(resource.Resource):
         # if the next segment is 'root-device.xml', return the device description
         segments = segments[1:]
         if segments == []:
-            return StaticResource(device.get_description(host), 'text/xml'), []
+            return StaticResource(device.get_description(host, True), 'text/xml'), []
         # otherwise the next segment is the service ID
         service_id = segments[0].replace('_',':')
         try:
@@ -49,8 +51,8 @@ class RootResource(resource.Resource):
             return StaticResource(service.get_description(), 'text/xml'), []
         if segments[0] == 'control':
             return ControlResource(service), []
-        #if segments[0] == 'event':
-        #    return EventResource(service), []
+        if segments[0] == 'event':
+            return EventResource(service), []
         return None, []
 
 class UPnPServer:

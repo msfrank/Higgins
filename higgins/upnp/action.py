@@ -6,6 +6,7 @@
 
 from higgins.upnp.statevar import StateVar
 from higgins.upnp.logger import logger
+from higgins.upnp.error import UPNPError
 
 class Argument(object):
     DIRECTION_IN = "in"
@@ -55,13 +56,19 @@ class Action(object):
             try:
                 arg_value = arguments[arg.name]
                 parsed_value = arg.parse(arg_value)
-                logger.log_debug("parsed %s: '%s' => %s" % (arg.name,arg_value,parsed_value))
+                logger.log_debug("parsed %s => '%s'" % (arg.name, arg_value))
                 parsed_args.append(parsed_value)
             except KeyError:
                 raise Exception("missing required InArgument %s" % arg.name)
             except Exception, e:
                 raise e
-        out_args = self.action(service, request, *parsed_args)
+        try:
+            out_args = self.action(service, request, *parsed_args)
+        except UPNPError, e:
+            raise e
+        except Exception, e:
+            logger.log_error("caught exception executing %s: %s" % (arg.name, e))
+            raise UPNPError(500, "Internal server error")
         a = self.out_args[:]
         parsed_args = []
         while not a == []:
@@ -69,7 +76,7 @@ class Action(object):
             try:
                 arg_value = out_args[arg.name]
                 parsed_value = arg.write(arg_value)
-                logger.log_debug("wrote %s: '%s' => %s" % (arg.name,arg_value,parsed_value))
+                #logger.log_debug("wrote %s: '%s' => %s" % (arg.name,arg_value,parsed_value))
                 parsed_args.append((arg.name, arg.type, parsed_value))
             except KeyError:
                 raise Exception("missing required OutArgument %s" % arg.name)

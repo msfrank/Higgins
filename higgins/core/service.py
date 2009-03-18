@@ -15,6 +15,7 @@ from higgins.service import Service
 from higgins.http import server, channel
 from higgins.http import resource, wsgi
 from higgins.http.http import Response
+from higgins.core.content_resource import ContentResource
 from higgins.core.configurator import Configurator, IntegerSetting
 from higgins.core.manager import ManagerResource
 from higgins.core.logger import CoreLogger
@@ -51,6 +52,8 @@ class RootResource(resource.Resource):
     def __init__(self):
         self.browser = BrowserResource()
     def locateChild(self, request, segments):
+        if segments[0] == "content":
+            return ContentResource(), segments[1:]
         if segments[0] == "static":
             return StaticResource(), segments
         if segments[0] == "manage":

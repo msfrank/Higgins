@@ -252,11 +252,10 @@ class StreamSongCommand(Command):
             f = open(song[0].file.path, 'rb')
         except:
             return Response(404) 
-        mimetype = song[0].file.mimetype
+        mimetype = str(song[0].file.mimetype)
         logger.log_debug("%s -> %s (%s)" % (request.path, song[0].file.path, mimetype))
         mimetype = MimeType.fromString(mimetype)
-        #return Response(200, {'content-type': mimetype}, FileStream(f, useMMap=False))
-        return Response(200, {'content-type': x_dmap_tagged}, FileStream(f, useMMap=False))
+        return Response(200, {'content-type': x_dmap_tagged}, FileStream(f))
 
 class ListPlaylistsCommand(Command):
     def __init__(self, dbid):

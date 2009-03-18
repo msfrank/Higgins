@@ -6,10 +6,11 @@
 
 import random, string, urllib
 from twisted.internet.defer import maybeDeferred
-from xml.etree.ElementTree import Element, SubElement, tostring as xmltostring
+from xml.etree.ElementTree import Element, SubElement
 from higgins.service import Service
 from higgins.conf import conf
 from higgins.upnp.device_service import UPNPDeviceService
+from higgins.upnp.prettyprint import prettyprint
 from higgins.upnp.logger import logger
 
 class DeviceDeclarativeParser(type):
@@ -19,7 +20,7 @@ class DeviceDeclarativeParser(type):
         udn_conf_key = "UPNP_" + name + "_UDN"
         udn = conf.get(udn_conf_key)
         if udn == None:
-            udn = ''.join([ 'uuid:'] + map(lambda x: random.choice(string.letters), xrange(20)))
+            udn = ''.join(map(lambda x: random.choice(string.letters), xrange(20)))
             conf[udn_conf_key] = udn
         attrs['upnp_UDN'] = udn
         logger.log_debug("UDN for %s is %s" % (name, udn))
@@ -39,7 +40,12 @@ class UPNPDevice(Service):
     __metaclass__ = DeviceDeclarativeParser
 
     upnp_manufacturer = "Higgins Project"
+    upnp_manufacturer_url = "http://syntaxjockey.com/higgins"
     upnp_model_name = "Higgins UPnP Device"
+    upnp_model_description = "Higgins UPnP Device"
+    upnp_model_url = "http://syntaxjockey.com/higgins"
+    upnp_model_number = ""
+    upnp_serial_number = ""
     upnp_device_name = None
     upnp_device_type = None
     upnp_friendly_name = None
@@ -51,8 +57,9 @@ class UPNPDevice(Service):
     def stopService(self):
         return maybeDeferred(Service.stopService, self)
 
-    def get_description(self, host=''):
-        root = Element("{urn:schemas-upnp-org:device-1-0}root")
+    def get_description(self, host, relativeUrls=False):
+        root = Element("root")
+        root.attrib['xmlns'] = 'urn:schemas-upnp-org:device-1-0'
         version = SubElement(root, "specVersion")
         SubElement(version, "major").text = "1"
         SubElement(version, "minor").text = "0"
@@ -60,23 +67,39 @@ class UPNPDevice(Service):
         SubElement(device, "deviceType").text = self.upnp_device_type
         SubElement(device, "friendlyName").text = self.upnp_friendly_name
         SubElement(device, "manufacturer").text = self.upnp_manufacturer
+        SubElement(device, "manufacturerURL").text = self.upnp_manufacturer_url
         SubElement(device, "modelName").text = self.upnp_model_name
-        SubElement(device, "UDN").text = self.upnp_UDN
+        SubElement(device, "modelDescription").text = self.upnp_model_description
+        SubElement(device, "modelURL").text = self.upnp_model_url
+        SubElement(device, "modelNumber").text = self.upnp_model_number
+        SubElement(device, "serialNumber").text = self.upnp_serial_number
+        SubElement(device, "UDN").text = "uuid:%s" % self.upnp_UDN
+        if relativeUrls:
+            urlbase = ''
+            SubElement(device, "URLBase").text = "http://%s" % host
+        else:
+            urlbase = "http://%s" % host
         svc_list = SubElement(device, "serviceList")
         for svc in self._upnp_services.values():
             service = SubElement(svc_list, "service")
             SubElement(service, "serviceType").text = svc.upnp_service_type
             SubElement(service, "serviceId").text = svc.upnp_service_id
-            SubElement(service, "SCPDURL").text = "http://%s/%s/%s" % (
-                host, self.upnp_UDN.replace(':','_'), svc.upnp_service_id.replace(':', '_')
+            SubElement(service, "SCPDURL").text = "%s/%s/%s" % (
+                urlbase,
+                self.upnp_UDN.replace(':', '_'),
+                svc.upnp_service_id.replace(':', '_')
                 )
-            SubElement(service, "controlURL").text = "http://%s/%s/%s/control" % (
-                host, self.upnp_UDN.replace(':','_'), svc.upnp_service_id.replace(':', '_')
+            SubElement(service, "controlURL").text = "%s/%s/%s/control" % (
+                urlbase,
+                self.upnp_UDN.replace(':', '_'),
+                svc.upnp_service_id.replace(':', '_')
                 )
-            SubElement(service, "eventSubURL").text = "http://%s/%s/%s/event" % (
-                host, self.upnp_UDN.replace(':','_'), svc.upnp_service_id.replace(':', '_')
+            SubElement(service, "eventSubURL").text = "%s/%s/%s/event" % (
+                urlbase,
+                self.upnp_UDN.replace(':', '_'),
+                svc.upnp_service_id.replace(':', '_')
                 )
-        return xmltostring(root)
+        return prettyprint(root)
 
     def __str__(self):
         return self.upnp_UDN
