@@ -3,6 +3,8 @@ include AUTHORS COPYING INSTALL NEWS README
 include higgins/netif/netif-internal.h
 include higgins/data/templates/*.t
 include higgins/data/static/css/*.css
+include higgins/data/static/css/smoothness/*.css
+include higgins/data/static/css/smoothness/images/*.*
 include higgins/data/static/images/*.*
 include higgins/data/static/js/*.js
 include tests/*.py

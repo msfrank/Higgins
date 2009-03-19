@@ -50,6 +50,8 @@ setup(
     package_data={
         'higgins.data': [
             'static/css/*.css',
+            'static/css/smoothness/*.css',
+            'static/css/smoothness/images/*.*',
             'static/images/*.*',
             'static/js/*.js',
             'templates/*.t',
@@ -66,7 +68,7 @@ setup(
         'higgins.plugin': [
             'daap=higgins.plugins.daap:DaapService',
             'mediaserver=higgins.plugins.mediaserver:MediaserverDevice',
-            'mrss=higgins.plugins.mrss:MRSSService',
+            #'mrss=higgins.plugins.mrss:MRSSService',
             ],
         },
     test_suite="tests",
