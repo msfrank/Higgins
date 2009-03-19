@@ -7,13 +7,14 @@
     padding-bottom: 8px;
 }
 .song-header { text-align: left; font-weight: bold; }
-#song-albuminfo-container {
+#album-info-container {
     width: 100%;
     background-color: #F0F0F0;
     border: 1px solid #D0D0D0;
     margin-bottom: 20px;
 }
-#song-albuminfo { padding: 20px; }
+#album-info-viewer { padding: 12px; }
+#album-info-editor { padding: 12px; display: none; }
+#album-editor-form { margin-bottom: 0px; }
 #song-listing { width: 100%; }
-#song-listing_info { display: none; font-size: 8pt; padding-top: 20px; }
-#album-editor { display: none; z-index: 2; opacity: 1.0; border: 1px solid black; background-color: white; }
+#song-listing_info { display: none; }

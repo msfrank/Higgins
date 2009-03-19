@@ -6,6 +6,7 @@
 
 from django.shortcuts import render_to_response, get_object_or_404
 from django.http import Http404
+from django.forms import ModelForm
 from higgins.core.models import Artist, Album, Song, Genre, Tag
 
 def front(request):
@@ -28,11 +29,21 @@ def music_bysong(request, song_id):
     song = get_object_or_404(Song, id=song_id)
     return render_to_response('templates/music-song.t', { 'song': song })
 
+class AlbumEditorForm(ModelForm):
+    class Meta:
+        model = Album
+
 def music_byalbum(request, album_id):
     album = get_object_or_404(Album, id=album_id)
     song_list = album.song_set.all().order_by('track_number')
+    if request.method == 'POST':
+        editor = AlbumEditorForm(request.POST, instance=album)
+        if editor.is_valid():
+            editor.save()
+    else:
+        editor = AlbumEditorForm(instance=album)
     return render_to_response('templates/music-album.t',
-        { 'album': album, 'song_list': song_list }
+        { 'album': album, 'song_list': song_list, 'editor': editor }
         )
 
 def music_bygenre(request, genre_id):
