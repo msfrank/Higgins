@@ -80,17 +80,68 @@ class Tag(models.Model):
     def __str__(self):
         return self.name
 
-class PlaylistItem(models.Model):
-    class Admin:
-        pass
-    song = models.ForeignKey(Song)
-    prev = models.ForeignKey('PlaylistItem', related_name='previtems_set', blank=True)
-    next = models.ForeignKey('PlaylistItem', related_name='nextitems_set', blank=True)
-
 class Playlist(models.Model):
     class Admin:
         pass
     name = models.CharField(max_length=80)
-    first = models.ForeignKey(PlaylistItem)
+    data = models.TextField(blank=True)
+    songs = models.ManyToManyField(Song, blank=True)
     tags = models.ManyToManyField(Tag, blank=True)
     rating = models.IntegerField(blank=True, null=True)
+    
+    def __str__(self):
+        return self.name
+
+    def list_songs(self):
+        """
+        Returns a list containing all of the Song objects in the playlist.
+        Raises Exception on failure.
+        """
+        try:
+            songlist = [ int(i) for i in self.data.split(':') ]
+        except:
+            songlist = []
+        return [ Song.objects.get(pk=id) for id in songlist]
+
+    def insert_song(self, song, position):
+        """
+        Inserts a song at the specified position.  If the position is negative,
+        then the song is inserted from the end of the list.  If the position is
+        greater than the length of the playlist, then the song is appended to
+        the end of the list.  If the position is negative and abs(position) is
+        greater than the length of the playlist, then the song is prepended to
+        the beginning of the list.
+        Raises Exception on failure.
+        """
+        try:
+            songlist = self.data.split(':')
+            songlist.insert(position, str(song.id))
+            self.data = ':'.join(songlist)
+            logger.log_debug("new order for playlist '%s' is %s" % (self.name, self.data))
+            self.save()
+        except:
+            raise Exception("failed to insert song '%s' into playlist '%s'" % (song, self.name))
+
+    def append_song(self, song):
+        """Appends the song to the end of the list."""
+        self.insert_song(song, -1)
+
+    def prepend_song(self, song):
+        """Prepends the song to the beginning of the list."""
+        self.insert_song(song, 0)
+
+    def remove_song(self, position):
+        """
+        Removes the song at the specified position.  Raises IndexError if the
+        position is out of range, otherwise raises Exception on all other errors.
+        """
+        try:
+            songlist = self.data.split(':')
+            del songlist[position]
+            self.data = ':'.join(songlist)
+            logger.log_debug("new order for playlist '%s' is %s" % (self.name, self.data))
+            self.save()
+        except IndexError, e:
+            raise e
+        except Exception, e:
+            raise Exception("failed to remove song #%i from playlist '%s'" % (position, self.name))
