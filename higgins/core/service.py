@@ -82,6 +82,8 @@ class CoreService(MultiService, CoreLogger):
             (r'^library/music/artists/$', 'higgins.core.browser.music_artists'),
             (r'^library/music/genres/$', 'higgins.core.browser.music_genres'),
             (r'^library/music/tags/$', 'higgins.core.browser.music_tags'),
+            (r'^library/playlists/$', 'higgins.core.browser.list_playlists'),
+            (r'^library/playlists/(?P<playlist_id>\d+)/$', 'higgins.core.browser.playlist_show'),
             (r'^settings/plugins/$', 'higgins.core.settings.list_plugins', {'core_service': self}),
             (r'^settings/plugins/(?P<name>\w+)/$', 'higgins.core.settings.configure_plugin', {'core_service': self}),
             (r'^settings/$', 'higgins.core.settings.front', {'core_service': self}),

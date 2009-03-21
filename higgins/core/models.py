@@ -84,8 +84,8 @@ class Playlist(models.Model):
     class Admin:
         pass
     name = models.CharField(max_length=80)
-    data = models.TextField(blank=True)
-    songs = models.ManyToManyField(Song, blank=True)
+    data = models.TextField(blank=True, editable=False)
+    songs = models.ManyToManyField(Song, blank=True, editable=False)
     tags = models.ManyToManyField(Tag, blank=True)
     rating = models.IntegerField(blank=True, null=True)
     

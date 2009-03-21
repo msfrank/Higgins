@@ -16,7 +16,7 @@
             </td>
             <td>
                 <span class="higgins-base-subnav-item">
-                    <a href="/library/playlist/">Playlists</a>
+                    <a href="/library/playlists/">Playlists</a>
                 </span>
             </td>
         </tr>

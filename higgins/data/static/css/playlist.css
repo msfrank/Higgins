@@ -1,13 +1,13 @@
-/* album styles */
-#album-info-container {
+/* playlist styles */
+#playlist-info-container {
     width: 100%;
     background-color: #F0F0F0;
     border: 1px solid #D0D0D0;
     margin-bottom: 20px;
 }
-#album-info-viewer { padding: 12px; }
-#album-info-editor { padding: 12px; display: none; }
-#album-editor-form { margin-bottom: 0px; }
+#playlist-info-viewer { padding: 12px; }
+#playlist-info-editor { padding: 12px; display: none; }
+#playlist-editor-form { margin-bottom: 0px; }
 
 /* song styles */
 .song-header { text-align: left; font-weight: bold; }
