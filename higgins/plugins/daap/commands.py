@@ -11,7 +11,7 @@ from higgins.http.http import Response
 from higgins.http.resource import Resource
 from higgins.http.stream import SimpleStream, FileStream
 from higgins.http.http_headers import MimeType
-from higgins.core.models import File, Song
+from higgins.core.models import File, Song, Playlist
 from higgins.plugins.daap import DaapConfig, DaapPrivate
 from higgins.plugins.daap.codebag import CodeBag, ContentCode
 from higgins.plugins.daap.content_codes import content_codes, content_code_str_to_int
@@ -281,33 +281,20 @@ class ListPlaylistsCommand(Command):
         aply.add(listing)
         # base playlist
         item = CodeBag("mlit")
-        item.add(ContentCode("miid", 1))
+        item.add(ContentCode("miid", 1))    
         item.add(ContentCode("mper", 1))
         item.add(ContentCode("minm", str(DaapConfig.SHARE_NAME)))
         item.add(ContentCode("mimc", int(len(songs))))
-        item.add(ContentCode("abpl", True))
+        item.add(ContentCode("abpl", 1))
         listing.add(item)
-        # my top rated
-        item = CodeBag("mlit")
-        item.add(ContentCode("miid", 2))
-        item.add(ContentCode("mper", 2))
-        item.add(ContentCode("minm", "My Top Rated"))
-        item.add(ContentCode("mimc", 0))
-        listing.add(item)
-        # recently added
-        item = CodeBag("mlit")
-        item.add(ContentCode("miid", 3))
-        item.add(ContentCode("mper", 3))
-        item.add(ContentCode("minm", "Recently Added"))
-        item.add(ContentCode("mimc", 0))
-        listing.add(item)
-        # recently played
-        item = CodeBag("mlit")
-        item.add(ContentCode("miid", 4))
-        item.add(ContentCode("mper", 4))
-        item.add(ContentCode("minm", "Recently Played"))
-        item.add(ContentCode("mimc", 0))
-        listing.add(item)
+        # add each playlist
+        for pls in Playlist.objects.all():
+            item = CodeBag("mlit")
+            item.add(ContentCode("miid", pls.id + 1))
+            item.add(ContentCode("mper", pls.id + 1))
+            item.add(ContentCode("minm", str(pls.name)))
+            item.add(ContentCode("mimc", len(pls)))
+            listing.add(item)
         return aply
 
 class ListPlaylistItemsCommand(Command):
@@ -317,21 +304,33 @@ class ListPlaylistItemsCommand(Command):
         apso = CodeBag("apso")
         apso.add(ContentCode("mstt", 200))      # status code
         apso.add(ContentCode("muty", 1))        # always 0?
-        listing = CodeBag("mlcl")
+        # a playlist id of 1 is special and means list all items in the database.
         if self.plsid == 1:
             songs = Song.objects.all()
             apso.add(ContentCode("mtco", len(songs)))   # total number of matching records
             apso.add(ContentCode("mrco", len(songs)))   # total number of records returned
+            listing = CodeBag("mlcl")
             for song in songs:
                 item = CodeBag("mlit")
                 item.add(ContentCode("mikd", 2))
                 item.add(ContentCode("miid", song.id))
                 item.add(ContentCode("mcti", song.id))
                 listing.add(item)
+            apso.add(listing)
+        # otherwise look up the playlist with the specified id
         else:
-            apso.add(ContentCode("mtco", 0))        # total number of matching records
-            apso.add(ContentCode("mrco", 0))        # total number of records returned
-        apso.add(listing)
+            pls = Playlist.objects.get(id=self.plsid-1)
+            songs = pls.list_songs()
+            apso.add(ContentCode("mtco", len(songs)))   # total number of matching records
+            apso.add(ContentCode("mrco", len(songs)))   # total number of records returned
+            listing = CodeBag("mlcl")
+            for song in songs:
+                item = CodeBag("mlit")
+                item.add(ContentCode("mikd", 2))
+                item.add(ContentCode("miid", song.id))
+                item.add(ContentCode("mcti", song.id))
+                listing.add(item)
+            apso.add(listing)
         return apso
 
 class LogoutCommand(Command):

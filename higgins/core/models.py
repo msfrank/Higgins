@@ -92,6 +92,9 @@ class Playlist(models.Model):
     def __str__(self):
         return self.name
 
+    def __len__(self):
+        return len(self.data.split(':'))
+
     def list_songs(self):
         """
         Returns a list containing all of the Song objects in the playlist.
