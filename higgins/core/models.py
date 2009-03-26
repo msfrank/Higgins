@@ -6,6 +6,10 @@
 
 from django.db import models
 
+# we must increment this every time a change is made which alters
+# the database schema
+DB_VERSION = 1
+
 class File(models.Model):
     class Admin:
         list_display = ('path', 'mimetype')

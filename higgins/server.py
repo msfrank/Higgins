@@ -84,8 +84,10 @@ class Server(object, logger.Loggable):
             raise ServerException("failed to start Higgins")
         # we load conf after parsing options, but before syncing the db tables
         conf.load(os.path.join(env, 'settings.dat'))
-        # create db tables if necessary
-        django_admin_command('syncdb')
+        # create and upgrade db tables if necessary
+        #django_admin_command('syncdb')
+        from higgins.core.upgradedb import check_version
+        check_version(site_settings['DATABASE_NAME'])
         # load the list of plugins
         self._plugins = PluginLoader()
 
