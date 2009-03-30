@@ -1,0 +1,6 @@
+/* playlist styles */
+.playlist-header { text-align: left; font-weight: bold; }
+#playlist-listing { width: 100%; }
+#playlist-listing_info { display: none; }
+
+#add-playlist-dialog { width: 400px; height: 300px; }

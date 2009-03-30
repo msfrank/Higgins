@@ -97,7 +97,12 @@ class Playlist(models.Model):
         return self.name
 
     def __len__(self):
+        if self.data == '':
+            return 0
         return len(self.data.split(':'))
+
+    def length(self):
+        return len(self)
 
     def list_songs(self):
         """

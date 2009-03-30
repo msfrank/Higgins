@@ -4,9 +4,9 @@
 # This program is free software; for license information see
 # the COPYING file.
 
+from django import forms
 from django.shortcuts import render_to_response, get_object_or_404
 from django.http import Http404
-from django.forms import ModelForm
 from higgins.core.models import Artist, Album, Song, Genre, Tag, Playlist
 from higgins.core.logger import logger
 
@@ -19,7 +19,7 @@ def music_front(request):
         { 'latest_list': latest_list }
         )
 
-class ArtistEditorForm(ModelForm):
+class ArtistEditorForm(forms.ModelForm):
     class Meta:
         model = Artist
 
@@ -36,7 +36,7 @@ def music_byartist(request, artist_id):
         { 'artist': artist, 'album_list': album_list, 'editor': editor }
         )
 
-class AlbumEditorForm(ModelForm):
+class AlbumEditorForm(forms.ModelForm):
     class Meta:
         model = Album
 
@@ -82,13 +82,23 @@ def music_tags(request):
         { 'tag_list': tag_list }
         )
 
+class PlaylistCreatorForm(forms.Form):
+    name = forms.CharField(initial="New Playlist", max_length=80)
+
 def list_playlists(request):
+    if request.method == 'POST':
+        creator = PlaylistCreatorForm(request.POST)
+        if creator.is_valid():
+            playlist = Playlist(name=creator.cleaned_data['name'])
+            playlist.save()
+    else:
+        creator = PlaylistCreatorForm()
     pl_list = Playlist.objects.all().order_by('name')
     return render_to_response('templates/playlist-byname.t',
-        { 'pl_list': pl_list }
+        { 'pl_list': pl_list, 'creator': creator }
         )
 
-class PlaylistEditorForm(ModelForm):
+class PlaylistEditorForm(forms.ModelForm):
     class Meta:
         model = Playlist
 
