@@ -126,13 +126,15 @@ class Playlist(models.Model):
         Raises Exception on failure.
         """
         try:
-            songlist = self.data.split(':')
-            songlist.insert(position, str(song.id))
-            self.data = ':'.join(songlist)
-            logger.log_debug("new order for playlist '%s' is %s" % (self.name, self.data))
+            if self.data == '':
+                self.data = '%i' % song.id
+            else:
+                songlist = self.data.split(':')
+                songlist.insert(position, str(song.id))
+                self.data = ':'.join(songlist)
             self.save()
-        except:
-            raise Exception("failed to insert song '%s' into playlist '%s'" % (song, self.name))
+        except Exception, e:
+            raise Exception("failed to insert song '%s' into playlist '%s': %s" % (song, self.name, e))
 
     def append_song(self, song):
         """Appends the song to the end of the list."""
@@ -151,7 +153,6 @@ class Playlist(models.Model):
             songlist = self.data.split(':')
             del songlist[position]
             self.data = ':'.join(songlist)
-            logger.log_debug("new order for playlist '%s' is %s" % (self.name, self.data))
             self.save()
         except IndexError, e:
             raise e

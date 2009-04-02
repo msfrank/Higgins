@@ -50,6 +50,7 @@
             </table>
             <div id="album-info-editor">
                 <form id="album-editor-form" action="/library/music/byalbum/{{album.id}}/" method="post">
+                    <input type="hidden" name="is-playlist" value="false" />
                     <table id="album-info-table">
                         {{ editor.as_table }}
                     </table>
@@ -57,22 +58,36 @@
                 </form>
             </div>
         </div>
-        <table class="display" id="song-listing">
-            <thead>
-                <th class="song-header">#</th>
-                <th class="song-header">Title</th>
-                <th class="song-header">Duration</th>
-            </thead>
-            <tbody>
-        {% for song in song_list %}
-            <tr>
-                <td class="song-tracknumber">{{song.track_number}}</td>
-                <td class="song-title"><a href="/library/music/bysong/{{song.id}}/">{{song.name}}</a></td>
-                <td>{{song.print_duration}}</a></td>
-            </tr>
-        {% endfor %}
-            </tbody>
-        </table>
+        <form action="/library/music/byalbum/{{album.id}}/" method="post">
+            <input type="hidden" name="is-playlist" value="true" />
+            <table class="display" id="song-listing">
+                <thead>
+                    <th class="song-header"></th>
+                    <th class="song-header">Track</th>
+                    <th class="song-header">Title</th>
+                    <th class="song-header">Duration</th>
+                </thead>
+                <tbody>
+                {% for song in song_list %}
+                    <tr>
+                    <td><input type="checkbox" name="{{song.id}}" value="selected"/></td>
+                    <td class="song-tracknumber">{{song.track_number}}</td>
+                    <td class="song-title"><a href="/library/music/bysong/{{song.id}}/">{{song.name}}</a></td>
+                    <td>{{song.print_duration}}</a></td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <div id="add-to-playlist" title="Add Playlist">
+                <span id="add-to-playlist-label">
+                    Add items to playlist:
+                </span>
+                <select id="add-to-playlist-selection" name="selection">
+                    {% for pl in playlists %}<option value="{{ pl.id }}">{{ pl.name }}</option>{% endfor %}
+                </select>
+                <input id="create-playlist" type="submit" value="Add" />
+            </div>
+        </form>
     </p>
 </div>
 {% endblock %}

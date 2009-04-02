@@ -21,3 +21,6 @@
 }
 #song-listing { width: 100%; }
 #song-listing_info { display: none; }
+
+#add-to-playlist { margin-top: 20px; }
+#add-to-playlist-selection { margin-left: 20px; }

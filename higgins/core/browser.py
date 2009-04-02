@@ -43,14 +43,24 @@ class AlbumEditorForm(forms.ModelForm):
 def music_byalbum(request, album_id):
     album = get_object_or_404(Album, id=album_id)
     song_list = album.song_set.all().order_by('track_number')
+    playlists = Playlist.objects.all()
     if request.method == 'POST':
-        editor = AlbumEditorForm(request.POST, instance=album)
-        if editor.is_valid():
-            editor.save()
+        if request.POST['is-playlist'] == 'false':
+            editor = AlbumEditorForm(request.POST, instance=album)
+            if editor.is_valid():
+                editor.save()
+        else:
+            playlist = Playlist.objects.get(id=request.POST['selection'])
+            for id,value in request.POST.items():
+                if value == 'selected':
+                    song = Song.objects.get(id=int(id))
+                    logger.log_debug("adding '%s' to playlist '%s'" % (song, playlist))
+                    playlist.append_song(song)
+            editor = AlbumEditorForm(instance=album)
     else:
         editor = AlbumEditorForm(instance=album)
     return render_to_response('templates/music-album.t',
-        { 'album': album, 'song_list': song_list, 'editor': editor }
+        { 'album': album, 'song_list': song_list, 'editor': editor, 'playlists': playlists }
         )
 
 def music_bysong(request, song_id):
