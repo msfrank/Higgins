@@ -216,6 +216,7 @@ class ListItemsCommand(Command):
         return Response(400, { 'content-type': MimeType('text','plain') }, str(failure))
 
     def render(self, request):
+        logger.log_debug("%s %s" % (request.method, request.path))
         try:
             meta = ''.join(request.args['meta'])
             #log_debug("[daap] ListItemsCommand requesting metadata fields: %s" % meta)
@@ -299,39 +300,50 @@ class ListPlaylistsCommand(Command):
 
 class ListPlaylistItemsCommand(Command):
     def __init__(self, plsid):
-        self.plsid = plsid
-    def renderDAAP(self, request):
+        self.plsid = int(plsid) - 1
+    def _retrieveSongs(self, d, apso, listing, songs):
+        try:
+            # add 10 items to the listing
+            for n in range(10):
+                song = songs.next()
+                item = CodeBag("mlit")
+                item.add(ContentCode("mikd", 2))
+                item.add(ContentCode("miid", song.id))
+                item.add(ContentCode("mcti", song.id))
+                listing.add(item)
+            # pass control back to twisted for a while
+            reactor.callLater(0, self._retrieveSongs, d, apso, listing, songs)
+        except StopIteration:
+            d.callback(apso)
+        except Exception, e:
+            d.errback(e)
+    def _renderDAAP(self, apso):
+        return Response(200, { 'content-type': x_dmap_tagged }, apso.render())
+    def _errDAAP(self, failure):
+        logger.log_error("ListItemsCommand failed: %s" % failure)
+        return Response(400, { 'content-type': MimeType('text','plain') }, str(failure))
+    def render(self, request):
+        logger.log_debug("%s %s" % (request.method, request.path))
+        logger.log_debug(str(request.args))
         apso = CodeBag("apso")
         apso.add(ContentCode("mstt", 200))      # status code
-        apso.add(ContentCode("muty", 1))        # always 0?
-        # a playlist id of 1 is special and means list all items in the database.
-        if self.plsid == 1:
+        apso.add(ContentCode("muty", 1))        # always 1?
+        # a playlist id of 0 is special and means list all items in the database.
+        if self.plsid == 0:
             songs = Song.objects.all()
-            apso.add(ContentCode("mtco", len(songs)))   # total number of matching records
-            apso.add(ContentCode("mrco", len(songs)))   # total number of records returned
-            listing = CodeBag("mlcl")
-            for song in songs:
-                item = CodeBag("mlit")
-                item.add(ContentCode("mikd", 2))
-                item.add(ContentCode("miid", song.id))
-                item.add(ContentCode("mcti", song.id))
-                listing.add(item)
-            apso.add(listing)
         # otherwise look up the playlist with the specified id
         else:
-            pls = Playlist.objects.get(id=self.plsid-1)
+            pls = Playlist.objects.get(id=self.plsid)
             songs = pls.list_songs()
-            apso.add(ContentCode("mtco", len(songs)))   # total number of matching records
-            apso.add(ContentCode("mrco", len(songs)))   # total number of records returned
-            listing = CodeBag("mlcl")
-            for song in songs:
-                item = CodeBag("mlit")
-                item.add(ContentCode("mikd", 2))
-                item.add(ContentCode("miid", song.id))
-                item.add(ContentCode("mcti", song.id))
-                listing.add(item)
-            apso.add(listing)
-        return apso
+        apso.add(ContentCode("mtco", len(songs)))   # total number of matching records
+        apso.add(ContentCode("mrco", len(songs)))   # total number of records returned
+        listing = CodeBag("mlcl")
+        apso.add(listing)
+        d = defer.Deferred()
+        d.addCallback(self._renderDAAP)
+        d.addErrback(self._errDAAP)
+        reactor.callLater(0, self._retrieveSongs, d, apso, listing, iter(songs))
+        return d
 
 class LogoutCommand(Command):
     def render(self, request):
