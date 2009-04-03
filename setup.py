@@ -25,6 +25,7 @@ setup(
     packages=[
         'higgins',
         'higgins.core',
+        'higgins.core.upgradedb',
         'higgins.data',
         'higgins.http',
         'higgins.http.auth',
