@@ -1,0 +1,25 @@
+/* song styles */
+#song-info-container {
+    width: 100%;
+    background-color: #F0F0F0;
+    border: 1px solid #D0D0D0;
+    margin-bottom: 20px;
+}
+#song-info-viewer { padding: 12px; }
+#song-info-editor { padding: 12px; display: none; }
+#song-editor-form { margin-bottom: 0px; }
+
+.song-header { text-align: left; font-weight: bold; }
+.song-tracknumber { font-size: 11pt; padding-right: 16px }
+.song-title { font-size: 12pt; padding-right: 18px }
+.song-album {
+    font-size: 18pt;
+    text-align: left;
+    padding-right: 16px;
+    padding-bottom: 8px;
+}
+#song-listing { width: 100%; }
+#song-listing_info { display: none; }
+
+#add-to-playlist { margin-top: 20px; }
+#add-to-playlist-selection { margin-left: 20px; }

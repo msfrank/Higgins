@@ -63,9 +63,20 @@ def music_byalbum(request, album_id):
         { 'album': album, 'song_list': song_list, 'editor': editor, 'playlists': playlists }
         )
 
+class SongEditorForm(forms.ModelForm):
+    class Meta:
+        model = Song
+        fields = ('name','artist','album','track_number','volume_number','rating')
+
 def music_bysong(request, song_id):
     song = get_object_or_404(Song, id=song_id)
-    return render_to_response('templates/music-song.t', { 'song': song })
+    if request.method == 'POST':
+        editor = SongEditorForm(request.POST, instance=song)
+        if editor.is_valid():
+            editor.save()
+    else:
+        editor = SongEditorForm(instance=song)
+    return render_to_response('templates/music-song.t', { 'song': song, 'editor': editor })
 
 def music_bygenre(request, genre_id):
     genre = get_object_or_404(Genre, id=genre_id)
