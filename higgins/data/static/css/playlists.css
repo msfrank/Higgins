@@ -17,15 +17,17 @@
     border: 1px solid #D0D0D0;
     margin-bottom: 20px;
 }
-#add-playlist { margin: 10px; }
+#create-playlist-action { margin: 6px; }
 
 /* playlist styles */
 .playlist-header { text-align: left; font-weight: bold; }
 #playlist-listing { width: 100%; }
 #playlist-listing_info { display: none; }
+.playlist-rename-column { width: 4% }
+.playlist-remove-column { width: 4% }
 
-/* playlist dialog */
-#add-playlist-dialog {
+/* create playlist dialog */
+#create-playlist-dialog {
     display: none;
     position: absolute;
     width: 400px;
@@ -34,6 +36,34 @@
     z-index: 3;
     padding: 20px;
 }
-#add-playlist-form { margin: 0px; width: 100%; }
-#playlist-title { width: 100%; margin-left: auto; margin-right: auto; }
-#add-playlist-buttons { margin-top: 10px; float: right; }
+#create-playlist-form { margin: 0px; width: 100%; }
+#create-playlist-title { width: 100%; margin-left: auto; margin-right: auto; }
+#create-playlist-buttons { margin-top: 10px; float: right; }
+
+/* reaname playlist dialog */
+#rename-playlist-dialog {
+    display: none;
+    position: absolute;
+    width: 400px;
+    background-color: #FFF;
+    border: 1px solid black;
+    z-index: 3;
+    padding: 20px;
+}
+#rename-playlist-form { margin: 0px; width: 100%; }
+#rename-playlist-title { width: 100%; margin-left: auto; margin-right: auto; }
+#rename-playlist-buttons { margin-top: 10px; float: right; }
+
+/* reaname playlist dialog */
+#remove-playlist-dialog {
+    display: none;
+    position: absolute;
+    width: 400px;
+    background-color: #FFF;
+    border: 1px solid black;
+    z-index: 3;
+    padding: 20px;
+}
+#remove-playlist-form { margin: 0px; width: 100%; }
+#remove-playlist-title { width: 100%; margin-left: auto; margin-right: auto; }
+#remove-playlist-buttons { margin-top: 10px; float: right; }

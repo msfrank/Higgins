@@ -6,7 +6,8 @@
 
 from django import forms
 from django.shortcuts import render_to_response, get_object_or_404
-from django.http import Http404
+from django.http import HttpResponse, Http404
+from django.utils import simplejson
 from higgins.core.models import Artist, Album, Song, Genre, Tag, Playlist
 from higgins.core.logger import logger
 
@@ -103,21 +104,30 @@ def music_tags(request):
         { 'tag_list': tag_list }
         )
 
-class PlaylistCreatorForm(forms.Form):
-    name = forms.CharField(initial="New Playlist", max_length=80)
-
 def list_playlists(request):
-    if request.method == 'POST':
-        creator = PlaylistCreatorForm(request.POST)
-        if creator.is_valid():
-            playlist = Playlist(name=creator.cleaned_data['name'])
-            playlist.save()
-    else:
-        creator = PlaylistCreatorForm()
-    pl_list = Playlist.objects.all().order_by('name')
-    return render_to_response('templates/playlist-byname.t',
-        { 'pl_list': pl_list, 'creator': creator }
-        )
+    if request.method == 'GET':
+        pl_list = Playlist.objects.all().order_by('name')
+        return render_to_response('templates/playlist-byname.t', {'pl_list': pl_list})
+    json=''
+    if request.POST['action'] == 'list':
+        playlists = []
+        for pl in Playlist.objects.all().order_by('name'):
+            playlists.append({'id': pl.id, 'title': pl.name, 'len': len(pl)})
+        json = simplejson.dumps({'status': 200, 'playlists': playlists})
+    elif request.POST['action'] == 'create':
+        playlist = Playlist(name=request.POST['title'])
+        playlist.save()
+        json = simplejson.dumps({'status': 200, 'title': playlist.name, 'id': playlist.id, 'len': len(playlist)})
+    elif request.POST['action'] == 'rename':
+        playlist = Playlist.objects.get(id=request.POST['id'])
+        playlist.name = request.POST['title']
+        playlist.save()
+        json = simplejson.dumps({'status': 200, 'id': request.POST['id']})
+    elif request.POST['action'] == 'delete':
+        playlist = Playlist.objects.get(id=request.POST['id'])
+        playlist.delete()
+        json = simplejson.dumps({'status': 200})
+    return HttpResponse(json, mimetype="application/json")
 
 class PlaylistEditorForm(forms.ModelForm):
     class Meta:
