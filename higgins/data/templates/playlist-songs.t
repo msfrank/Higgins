@@ -47,12 +47,13 @@
                 <tr><td><a id="edit-playlist" href="#">(edit)</a></td></tr>
             </table>
             <div id="playlist-info-editor">
-                <form id="playlist-editor-form" action="/library/playlists/{{playlist.id}}/" method="post">
+                <p>
                     <table id="playlist-info-table">
-                        {{ editor.as_table }}
+                        <tr><td>Playlist Name:</td><td><input id="playlist-title" type="text"/></td></tr>
+                        <tr><td>Rating:</td><td><input id="playlist-rating" type="text"/></td></tr>
                     </table>
-                    <input id="edit-cancel" type="button" value="cancel"/><input id="edit-save" type="submit" value="save" />
-                </form>
+                </p>
+                <input id="edit-cancel" type="button" value="Cancel"/><input id="edit-save" type="button" value="Save"/>
             </div>
         </div>
         <table class="display" id="song-listing">

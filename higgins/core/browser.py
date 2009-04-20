@@ -108,6 +108,7 @@ def list_playlists(request):
     if request.method == 'GET':
         pl_list = Playlist.objects.all().order_by('name')
         return render_to_response('templates/playlist-byname.t', {'pl_list': pl_list})
+    logger.log_debug("list_playlists: POST=%s" % request.POST)
     json=''
     if request.POST['action'] == 'list':
         playlists = []
@@ -129,19 +130,20 @@ def list_playlists(request):
         json = simplejson.dumps({'status': 200})
     return HttpResponse(json, mimetype="application/json")
 
-class PlaylistEditorForm(forms.ModelForm):
-    class Meta:
-        model = Playlist
-
 def playlist_show(request, playlist_id):
     playlist = get_object_or_404(Playlist, id=playlist_id)
-    song_list = playlist.list_songs()
-    if request.method == 'POST':
-        editor = PlaylistEditorForm(request.POST, instance=playlist)
-        if editor.is_valid():
-            editor.save()
-    else:
-        editor = PlaylistEditorForm(instance=playlist)
-    return render_to_response('templates/playlist-songs.t',
-        { 'playlist': playlist, 'song_list': song_list, 'editor': editor }
-        )
+    if request.method == 'GET':
+        song_list = playlist.list_songs()
+        return render_to_response('templates/playlist-songs.t',
+            { 'playlist': playlist, 'song_list': song_list }
+            )
+    logger.log_debug("playlist_show: POST=%s" % request.POST)
+    json=''
+    if request.POST['action'] == 'add':
+        for id in request.POST.getlist('ids'):
+            song = Song.objects.get(id=int(id))
+            playlist.append_song(song)
+            logger.log_debug("playlist_show: added song %s" % song.name)
+        playlist.save()
+        json = simplejson.dumps({'status': 200})
+    return HttpResponse(json, mimetype="application/json")
