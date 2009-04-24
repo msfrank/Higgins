@@ -1,3 +1,15 @@
+#overlay {
+    display: none;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0px;
+    left: 0px;
+    z-index: 2;
+    background-color: #606060;
+    opacity: 0.3;
+}
+
 /* playlist styles */
 #playlist-info-container {
     width: 100%;
@@ -8,16 +20,32 @@
 #playlist-info-viewer { padding: 12px; }
 #playlist-info-editor { padding: 12px; display: none; }
 #playlist-editor-form { margin-bottom: 0px; }
-
-/* song styles */
-.song-header { text-align: left; font-weight: bold; }
-.song-tracknumber { font-size: 11pt; padding-right: 16px }
-.song-title { font-size: 12pt; padding-right: 18px }
-.song-album {
+#playlist-title {
     font-size: 18pt;
     text-align: left;
     padding-right: 16px;
     padding-bottom: 8px;
 }
+
+/* song styles */
+.song-header { text-align: left; font-weight: bold; }
+.song-tracknumber { font-size: 11pt; padding-right: 16px }
+.song-title { font-size: 12pt; padding-right: 18px }
 #song-listing { width: 100%; }
 #song-listing_info { display: none; }
+
+/* edit playlist warning dialog */
+#edit-playlist-warning-dialog {
+    display: none;
+    position: absolute;
+    width: 400px;
+    background-color: #FFF;
+    border: 1px solid black;
+    z-index: 3;
+    padding: 20px;
+}
+#edit-playlist-form { margin: 0px; width: 100%; }
+#edit-playlist-title { width: 100%; margin-left: auto; margin-right: auto; }
+#edit-playlist-buttons { margin-top: 10px; float: right; }
+
+

@@ -8,30 +8,73 @@
     <script type="text/javascript" language="javascript" src="/static/js/datatables-1.4.min.js"></script>
     <script type="text/javascript" charset="utf-8">
         $(document).ready(function() {
-            $('#song-listing').dataTable( {
+            var playlistTable = $('#song-listing').dataTable( {
             "bPaginate": false,
             "bLengthChange": true,
             "bFilter": false,
             "bSort": false,
             "bInfo": true,
-            "bAutoWidth": true } );
+            "bAutoWidth": true,
+            "aoColumns": [
+                null,
+                null,
+                { "sWidth": "15%" },
+                { "sWidth": "3%" }
+            ]
+        });
+
+            var playlistTitle = "{{playlist.name}}"
+
             $('#edit-playlist').click (function () {
+                playlistTitle = $("#edit-playlist-title").val();
                 $("#playlist-info-viewer").fadeOut("def", function () {
                     $("#playlist-info-editor").fadeIn("def");
                 });
             });
+
             $('#edit-cancel').click (function () {
                 $("#playlist-info-editor").fadeOut("def", function () {
+                    $("#edit-playlist-title").val(playlistTitle);
                     $("#playlist-info-viewer").fadeIn("def");
                 });
             });
-            /*
+
             $('#edit-save').click (function () {
-                $("#album-info-editor").fadeOut("def", function () {
-                    $("#album-info-viewer").fadeIn("def");
+                $.post("/library/playlists/{{playlist.id}}/",
+                    {
+                        action: 'edit',
+                        id: {{playlist.id}},
+                        title: $('#edit-playlist-title').val(),
+                    },
+                    function (retval) {
+                        if (retval.status != 200) {
+                            $("#edit-playlist-failure-reason").text (retval.reason);
+                            $("#edit-playlist-warning-dialog").css ({
+                                position: 'absolute',
+                                top: ($(window).height()/2) - ($('#edit-playlist-warning-dialog').height()/2),
+                                left: ($(window).width()/2) - ($('#edit-playlist-warning-dialog').width()/2)
+                            });
+                            $("#overlay").fadeIn ("fast", function () {
+                                $("#edit-playlist-warning-dialog").fadeIn ("fast");
+                            });
+                        }
+                        else {
+                            playlistTitle = $("#edit-playlist-title").val ();
+                            $("#playlist-info-editor").fadeOut("def", function () {
+                                $("#playlist-title").val (playlistTitle);
+                                $("#playlist-info-viewer").fadeIn("def");
+                            });
+                        }
+                    },
+                    "json"
+                );
+            });
+
+            $('#edit-playlist-warning-ok').click (function () {
+                $("#edit-playlist-warning-dialog").fadeOut ("fast", function () {
+                    $("#overlay").fadeOut ("fast");
                 });
             });
-            */
         });
 </script>
 {% endblock %}
@@ -43,14 +86,16 @@
     <p>
         <div id="playlist-info-container">
             <table id="playlist-info-viewer">
-                <tr><td class="playlist-song">{{ playlist.name }}</td></tr>
+                <tr><td id="playlist-title">{{ playlist.name }}</td></tr>
                 <tr><td><a id="edit-playlist" href="#">(edit)</a></td></tr>
             </table>
             <div id="playlist-info-editor">
                 <p>
                     <table id="playlist-info-table">
-                        <tr><td>Playlist Name:</td><td><input id="playlist-title" type="text"/></td></tr>
-                        <tr><td>Rating:</td><td><input id="playlist-rating" type="text"/></td></tr>
+                        <tr>
+                            <td>Playlist Name:</td>
+                            <td><input id="edit-playlist-title" type="text" value="{{playlist.name}}"/></td>
+                        </tr>
                     </table>
                 </p>
                 <input id="edit-cancel" type="button" value="Cancel"/><input id="edit-save" type="button" value="Save"/>
@@ -61,15 +106,33 @@
                 <th class="song-header">#</th>
                 <th class="song-header">Title</th>
                 <th class="song-header">Duration</th>
+                <th class="song-header"></th>
             </thead>
             <tbody>
                 {% for song in song_list %}<tr>
                     <td class="song-tracknumber">{{forloop.counter}}</td>
                     <td class="song-title"><a href="/library/music/bysong/{{song.id}}/">{{song.name}}</a></td>
                     <td>{{song.print_duration}}</a></td>
+                    <td>
+                        <a class="remove-button" href="#" value="{{song.id}}">
+                        <span class="ui-state-default ui-corner-all ui-icon ui-icon-trash" title="Remove '{{song.name}}'"></span>
+                        </a>
+                    </td>
                 </tr>{% endfor %}
             </tbody>
         </table>
     </p>
 </div>
+<div id="edit-playlist-warning-dialog">
+    <p id="edit-playlist-form">
+        <b>Failed to change playlist:</b>
+        <p id="edit-playlist-failure-reason"></p>
+        <table id="edit-playlist-buttons">
+            <tr>
+                <td><input id="edit-playlist-warning-ok" type="button" value="OK" /></td>
+            </tr>
+        </table>
+    </p>
+</div>
+<div id="overlay"></div>
 {% endblock %}

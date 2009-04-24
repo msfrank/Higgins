@@ -6,7 +6,7 @@
 
 from django import forms
 from django.shortcuts import render_to_response, get_object_or_404
-from django.http import HttpResponse, Http404
+from django.http import HttpResponse, HttpResponseServerError, Http404
 from django.utils import simplejson
 from higgins.core.models import Artist, Album, Song, Genre, Tag, Playlist
 from higgins.core.logger import logger
@@ -130,20 +130,46 @@ def list_playlists(request):
         json = simplejson.dumps({'status': 200})
     return HttpResponse(json, mimetype="application/json")
 
+class ApiResponse(Exception, HttpResponse):
+    def __init__(self, status=200, **params):
+        params['status'] = status
+        HttpResponse.__init__(self, simplejson.dumps(params), mimetype="application/json")
+
 def playlist_show(request, playlist_id):
-    playlist = get_object_or_404(Playlist, id=playlist_id)
     if request.method == 'GET':
+        playlist = get_object_or_404(Playlist, id=playlist_id)
         song_list = playlist.list_songs()
         return render_to_response('templates/playlist-songs.t',
             { 'playlist': playlist, 'song_list': song_list }
             )
-    logger.log_debug("playlist_show: POST=%s" % request.POST)
-    json=''
-    if request.POST['action'] == 'add':
-        for id in request.POST.getlist('ids'):
-            song = Song.objects.get(id=int(id))
-            playlist.append_song(song)
-            logger.log_debug("playlist_show: added song %s" % song.name)
-        playlist.save()
-        json = simplejson.dumps({'status': 200})
-    return HttpResponse(json, mimetype="application/json")
+    try:
+        logger.log_debug("playlist_show: POST=%s" % request.POST)
+        if request.POST['action'] == 'edit':
+            try:
+                playlist = Playlist.objects.get(id=int(request.POST['id']))
+            except:
+                raise ApiResponse(404, reason="No such playlist")
+            title = request.POST['title']
+            if title == '':
+                raise ApiResponse(400, reason="Title is empty")
+            if len(title) > 80:
+                raise ApiResponse(400, reason="Title is longer than 80 characters")
+            try:
+                playlist.name = request.POST['title']
+                playlist.save()
+            except Exception, e:
+                logger.log_debug("playlist_show: edit failed: %s" % str(e))
+                raise ApiResponse(400, reason=str(e))
+            raise ApiResponse(200)
+        elif request.POST['action'] == 'add':
+            for id in request.POST.getlist('ids'):
+                song = Song.objects.get(id=int(id))
+                playlist.append_song(song)
+                logger.log_debug("playlist_show: added song %s" % song.name)
+            playlist.save()
+            raise ApiResponse(200)
+    except ApiResponse, resp:
+        return resp
+    except Exception, e:
+        logger.log_error("playlist_show: %s" % e)
+    return HttpResponseServerError()
