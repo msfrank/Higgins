@@ -144,18 +144,18 @@ def playlist_show(request, playlist_id):
             )
     try:
         logger.log_debug("playlist_show: POST=%s" % request.POST)
+        try:
+            playlist = Playlist.objects.get(id=playlist_id)
+        except:
+            raise ApiResponse(404, reason="No such playlist")
         if request.POST['action'] == 'edit':
-            try:
-                playlist = Playlist.objects.get(id=int(request.POST['id']))
-            except:
-                raise ApiResponse(404, reason="No such playlist")
             title = request.POST['title']
             if title == '':
                 raise ApiResponse(400, reason="Title is empty")
             if len(title) > 80:
                 raise ApiResponse(400, reason="Title is longer than 80 characters")
             try:
-                playlist.name = request.POST['title']
+                playlist.name = title
                 playlist.save()
             except Exception, e:
                 logger.log_debug("playlist_show: edit failed: %s" % str(e))
@@ -167,6 +167,14 @@ def playlist_show(request, playlist_id):
                 playlist.append_song(song)
                 logger.log_debug("playlist_show: added song %s" % song.name)
             playlist.save()
+            raise ApiResponse(200)
+        elif request.POST['action'] == 'delete':
+            try:
+                for index in request.POST['indices']:
+                    index = int(index)
+                    playlist.remove_song(index)
+            except Exception, e:
+                raise ApiResponse(400, reason=str(e))
             raise ApiResponse(200)
     except ApiResponse, resp:
         return resp

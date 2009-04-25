@@ -60,6 +60,7 @@
                         }
                         else {
                             playlistTitle = $("#edit-playlist-title").val ();
+                            document.title = playlistTitle;
                             $("#playlist-info-editor").fadeOut("def", function () {
                                 $("#playlist-title").val (playlistTitle);
                                 $("#playlist-info-viewer").fadeIn("def");
@@ -75,6 +76,21 @@
                     $("#overlay").fadeOut ("fast");
                 });
             });
+
+            $('.remove-button').click (function () {
+                selectedRow = playlistTable.fnGetPosition (this.parentNode.parentNode);
+                $.post("/library/playlists/{{playlist.id}}/",
+                    { action: 'delete', indices: [selectedRow] },
+                    function (retval) {
+                        if (retval.status == 200) {
+                            playlistTable.fnDeleteRow (selectedRow);
+                            selectedRow = -1;
+                        }
+                    },
+                    "json"
+                );
+            });
+ 
         });
 </script>
 {% endblock %}
@@ -103,15 +119,19 @@
         </div>
         <table class="display" id="song-listing">
             <thead>
-                <th class="song-header">#</th>
                 <th class="song-header">Title</th>
+                <th class="song-header">Artist</th>
                 <th class="song-header">Duration</th>
                 <th class="song-header"></th>
             </thead>
             <tbody>
                 {% for song in song_list %}<tr>
-                    <td class="song-tracknumber">{{forloop.counter}}</td>
-                    <td class="song-title"><a href="/library/music/bysong/{{song.id}}/">{{song.name}}</a></td>
+                    <td class="song-title">
+                        <a href="/library/music/bysong/{{song.id}}/">{{song.name}}</a>
+                    </td>
+                    <td class="song-artist">
+                        <a href="/library/music/byartist/{{song.artist.id}}/">{{song.artist.name}}</a>
+                    </td>
                     <td>{{song.print_duration}}</a></td>
                     <td>
                         <a class="remove-button" href="#" value="{{song.id}}">
