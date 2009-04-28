@@ -1,3 +1,12 @@
+0.3
+===
+Released 2009-04-27
+
+Implemented playlists
+Added metadata editor interface for artists, albums, songs, and playlists.
+Added database version check and upgrade infrastructure.
+Fixed bug where URLs with no trailing slash return 404.
+
 0.2
 ===
 Released 2009-03-15
