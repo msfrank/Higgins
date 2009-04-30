@@ -46,10 +46,17 @@ class DaapService(Service):
         # tell avahi about our DAAP service
         self.avahi_group.AddService(avahi.IF_UNSPEC,
                                     avahi.PROTO_UNSPEC,
-                                    0,
+                                    dbus.UInt32(0),
                                     DaapConfig.SHARE_NAME,
                                     "_daap._tcp", 
-                                    "", "", 3689, [])
+                                    "",
+                                    "",
+                                    dbus.UInt16(3689),
+                                    avahi.string_array_to_txt_array([
+                                        "txtvers=1",
+                                        "Machine Name=%s" % DaapConfig.SHARE_NAME,
+                                        ])
+                                    )
         self.avahi_group.Commit()
         Service.startService(self)
         logger.log_debug("started DAAP service")

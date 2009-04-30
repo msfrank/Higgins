@@ -7,7 +7,7 @@ from setuptools import setup, Extension
 setup(
     # package description
     name = "Higgins",
-    version = "0.3",
+    version = "0.4",
     description="Multi-protocol A/V Server",
     long_description="",
     url="http://www.syntaxjockey.com/higgins",
