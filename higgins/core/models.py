@@ -4,7 +4,10 @@
 # This program is free software; for license information see
 # the COPYING file.
 
+from twisted.internet import reactor
+from twisted.internet.defer import Deferred
 from django.db import models
+from higgins.signals import Signal
 
 # we must increment this every time a change is made which alters
 # the database schema
@@ -158,3 +161,6 @@ class Playlist(models.Model):
             raise e
         except Exception, e:
             raise Exception("failed to remove song #%i from playlist '%s'" % (position, self.name))
+
+#
+db_changed = Signal()

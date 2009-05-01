@@ -11,7 +11,7 @@ from higgins.http.http import Response
 from higgins.http.resource import Resource
 from higgins.http.stream import SimpleStream, FileStream
 from higgins.http.http_headers import MimeType
-from higgins.core.models import File, Song, Playlist
+from higgins.core.models import File, Song, Playlist, db_changed
 from higgins.plugins.daap import DaapConfig, DaapPrivate
 from higgins.plugins.daap.codebag import CodeBag, ContentCode
 from higgins.plugins.daap.content_codes import content_codes, content_code_str_to_int
@@ -86,13 +86,29 @@ class LoginCommand(Command):
 
 class UpdateStream(SimpleStream):
     def __init__(self):
-        self.deferred = defer.Deferred()
-    def read(self):
-        logger.log_debug("UpdateStream: waiting on read")
-        return self.deferred
-    def close(self):
-        logger.log_debug("UpdateStream: closed stream")
+        self.length = 32
+        self.deferred = db_changed.connect()
+        self.deferred.addCallback(self._render)
+    def _render(self, unused):
+        self.deferred = None
         self.length = 0
+        new_revision = DaapPrivate.REVISION_NUMBER + 1
+        DaapPrivate.REVISION_NUMBER = new_revision
+        mupd = CodeBag("mupd")
+        mupd.add(ContentCode("mstt", 200))
+        mupd.add(ContentCode("musr", int(new_revision)))
+        logger.log_debug("UpdateStream: new revision is %i" % new_revision)
+        return str(mupd.render())
+    def read(self):
+        if self.deferred:
+            logger.log_debug("UpdateStream: waiting for new revision")
+            return self.deferred
+        logger.log_debug("UpdateStream: finished read")
+        return None
+    def close(self):
+        self.deferred = None
+        self.length = 0
+        logger.log_debug("UpdateStream: closed stream")
 
 class UpdateCommand(Command):
     def render(self, request):

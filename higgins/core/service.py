@@ -10,6 +10,7 @@ from twisted.application.service import MultiService
 from twisted.internet import reactor
 from twisted.internet.defer import maybeDeferred
 from django.conf.urls.defaults import *
+from django.db.models.signals import post_save, post_delete
 from higgins.conf import conf
 from higgins.service import Service
 from higgins.http import server, channel
@@ -90,9 +91,26 @@ class CoreService(MultiService, CoreLogger):
             (r'^settings/(?P<name>\w+)/?$', 'higgins.core.settings.configure_toplevel', {'core_service': self}),
             (r'^view/(?P<name>\w+)/?$', 'higgins.core.frontend.show', {'core_service': self}),
             )
+        # connect to the django db signals, so we can fire our own
+        # signal when the database changes
+        from higgins.core.models import db_changed
+        self._db_changed = db_changed
+        self._db_changed_marker = False
+        post_save.connect(self._db_changed_callback)
+        post_delete.connect(self._db_changed_callback)
+        reactor.callLater(2, self._signal_db_changed)
         # start the webserver
         self._site = server.Site(RootResource())
         MultiService.__init__(self)
+
+    def _db_changed_callback(self, sender, **kwdargs):
+        self._db_changed_marker = True
+
+    def _signal_db_changed(self):
+        if self._db_changed_marker:
+            self._db_changed_marker = False
+            self._db_changed.signal(None)
+        reactor.callLater(2, self._signal_db_changed)
 
     def startService(self):
         MultiService.startService(self)
