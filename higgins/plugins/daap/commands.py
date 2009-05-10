@@ -4,6 +4,7 @@
 # This program is free software; for license information see
 # the COPYING file.
 
+import random
 from twisted.internet import defer, reactor
 from higgins.http.channel import HTTPFactory
 from higgins.http.server import Site
@@ -21,6 +22,8 @@ x_dmap_tagged = MimeType('application', 'x-dmap-tagged')
 
 class Command(Resource):
     """The base class for a DAAP command."""
+    def __init__(self, service):
+        self.service = service
 
     def renderDAAP(self, request):
         """
@@ -31,11 +34,11 @@ class Command(Resource):
         raise Exception('Not Implemented')
 
     def allowedMethods(self):
-        # The only allowed method is a GET request.
+        """The only allowed method is a GET request."""
         return ('GET',)
 
     def render(self, request):
-        # calls the renderDAAP method and returns its result.
+        """calls the renderDAAP method and returns its result."""
         logger.log_debug("%s %s" % (request.method, request.path))
         logger.log_debug(str(request.args))
         try:
@@ -52,7 +55,7 @@ class ServerInfoCommand(Command):
         msrv.add(ContentCode("apro", (3,0,0)))  # version 0.3.0.0
         msrv.add(ContentCode("minm", str(DaapConfig.SHARE_NAME)))
         msrv.add(ContentCode("msau", 0))        # authentication method
-        msrv.add(ContentCode("mslr", 1))        # login required?
+        msrv.add(ContentCode("mslr", 0))        # login required?
         msrv.add(ContentCode("mstm", 300))      # timeout interval
         msrv.add(ContentCode("msal", 1))        # support auto-logout?
         msrv.add(ContentCode("msup", 1))        # support update?
@@ -79,25 +82,54 @@ class ContentCodesCommand(Command):
 
 class LoginCommand(Command):
     def renderDAAP(self, request):
+        # generate an unused session id
+        sid = 0
+        while sid == 0:
+            sid = random.randint(1,2**31 - 1)
+            if sid in self.service.sessions:
+                sid = 0
+            else:
+                self.service.sessions[sid] = sid
+        # return the login response
         mlog = CodeBag("mlog")
         mlog.add(ContentCode("mstt", 200))
-        mlog.add(ContentCode("mlid", 1000000))
+        mlog.add(ContentCode("mlid", sid))
         return mlog
 
 class UpdateStream(SimpleStream):
-    def __init__(self):
+    def __init__(self, service):
         self.length = 32
-        self.deferred = db_changed.connect()
+        self._signal = db_changed.connect()
+        self._signal.addCallback(self._caughtUpdate)
+        self.deferred = defer.Deferred()
         self.deferred.addCallback(self._render)
-    def _render(self, unused):
-        self.deferred = None
-        self.length = 0
+        self._service = service
+        self._service.streams[self] = self
+    def _caughtUpdate(self, unused):
+        self._signal = None
+        if not self.deferred:
+            return
         new_revision = DaapPrivate.REVISION_NUMBER + 1
         DaapPrivate.REVISION_NUMBER = new_revision
+        self.deferred.callback(new_revision)
+    def _render(self, revision):
+        if revision > 0:
+            logger.log_debug("UpdateStream: new revision is %i" % revision)
+        else:
+            logger.log_debug("UpdateStream: signaling disconnect (revision %i)" % revision)
+        # if _caughtUpdate was not called, then disconnect from the signal
+        if self._signal:
+            db_changed.disconnect(self._signal)
+            self._signal = None
+        # delete the reference to self.deferred
+        self.deferred = None
+        self.length = 0
+        # remove stream from service.streams
+        del self._service.streams[self]
+        # write response
         mupd = CodeBag("mupd")
         mupd.add(ContentCode("mstt", 200))
-        mupd.add(ContentCode("musr", int(new_revision)))
-        logger.log_debug("UpdateStream: new revision is %i" % new_revision)
+        mupd.add(ContentCode("musr", int(revision)))
         return str(mupd.render())
     def read(self):
         if self.deferred:
@@ -115,10 +147,14 @@ class UpdateCommand(Command):
         logger.log_debug("%s %s" % (request.method, request.path))
         logger.log_debug(str(request.args))
         try:
+            # get session id
+            sid = request.args.get('session-id', ['0'])
+            sid = int(sid[0])
+            if sid == 0 or not sid in self.service.sessions:
+                raise Exception("session-id %i is invalid" % sid)
             # get revision number
             rid = request.args.get('revision-number', ['0'])
-            rid = rid[0]
-            rid = int(rid)
+            rid = int(rid[0])
             logger.log_debug("UpdateCommand: revision-number is %i" % rid)
             # if revision-number is not current revision number
             if not rid == DaapPrivate.REVISION_NUMBER:
@@ -129,9 +165,9 @@ class UpdateCommand(Command):
                 mupd.add(ContentCode("mstt", 200))
                 mupd.add(ContentCode("musr", int(DaapPrivate.REVISION_NUMBER)))
                 return Response(200, { 'content-type': x_dmap_tagged }, mupd.render())
-            # wait forever
-            # FIXME: don't just wait forever ;)  actually respond to updates
-            return Response(200, { 'content-type': x_dmap_tagged }, UpdateStream())
+            # create a new update stream to listen for db-changed signal
+            stream = UpdateStream(self.service)
+            return Response(200, { 'content-type': x_dmap_tagged }, stream)
         except Exception, e:
             logger.log_error("UpdateCommand failed: %s" % e)
             return Response(400, { 'content-type': MimeType('text','plain') }, str(e))
@@ -366,21 +402,25 @@ class LogoutCommand(Command):
         return Response(200, {'content-type': x_dmap_tagged}, "")
 
 class RootCommand(Resource):
+    def __init__(self, service):
+        self.service = service
+        Resource.__init__(self)
     def locateChild(self, request, segments):
         if segments[0] == "server-info":
-            return ServerInfoCommand(), []
+            return ServerInfoCommand(self.service), []
         if segments[0] == "content-codes":
-            return ContentCodesCommand(), []
+            return ContentCodesCommand(self.service), []
         if segments[0] == "login":
-            return LoginCommand(), []
+            return LoginCommand(self.service), []
         if segments[0] == "update":
-            return UpdateCommand(), []
+            return UpdateCommand(self.service), []
         if segments[0] == "databases":
-            return DatabaseCommand(), segments[1:]
+            return DatabaseCommand(self.service), segments[1:]
         if segments[0] == "logout":
-            return LogoutCommand(), []
+            return LogoutCommand(self.service), []
         return None, []
 
 class DAAPFactory(HTTPFactory):
-    def __init__(self):
-        HTTPFactory.__init__(self, Site(RootCommand()))
+    def __init__(self, service):
+        self.service = service
+        HTTPFactory.__init__(self, Site(RootCommand(service)))

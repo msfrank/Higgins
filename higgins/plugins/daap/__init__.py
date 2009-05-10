@@ -5,6 +5,7 @@
 # the COPYING file.
 
 from twisted.internet import reactor
+from twisted.internet.defer import Deferred, DeferredList, maybeDeferred
 from higgins.service import Service
 from higgins.core import configurator
 from higgins.plugins.daap.logger import logger
@@ -15,7 +16,7 @@ class DaapConfig(configurator.Configurator):
     SHARE_NAME = configurator.StringSetting("Share Name", "Higgins DAAP Share")
 
 class DaapPrivate(configurator.Configurator):
-    REVISION_NUMBER = configurator.IntegerSetting("Revision Number", 5)
+    REVISION_NUMBER = configurator.IntegerSetting("Revision Number", 1)
 
 from higgins.plugins.daap.commands import DAAPFactory
 
@@ -30,6 +31,8 @@ class DaapService(Service):
         except ImportError, e:
             raise e
         self.dbus = None
+        self.sessions = {}
+        self.streams = {}
         Service.__init__(self)
 
     def startService(self):
@@ -42,7 +45,8 @@ class DaapService(Service):
         proxy = self.dbus.get_object(avahi.DBUS_NAME, self.avahi_server.EntryGroupNew())
         self.avahi_group = dbus.Interface(proxy, avahi.DBUS_INTERFACE_ENTRY_GROUP)
         # create the DAAP listener
-        self.listener = reactor.listenTCP(3689, DAAPFactory())
+        self.factory = DAAPFactory(self)
+        self.listener = reactor.listenTCP(3689, self.factory)
         # tell avahi about our DAAP service
         self.avahi_group.AddService(avahi.IF_UNSPEC,
                                     avahi.PROTO_UNSPEC,
@@ -61,10 +65,35 @@ class DaapService(Service):
         Service.startService(self)
         logger.log_debug("started DAAP service")
 
-    def stopService(self):
-        self.avahi_group.Reset()
-        self.avahi_group = None
-        self.listener.stopListening()
-        Service.stopService(self)
+    def _doWait(self, result):
+        for (didSucceed,value) in result:
+            if didSucceed:
+                logger.log_debug("deferred succeeded with result %s" % str(value))
+            else:
+                logger.log_debug("deferred failed with result %s" % str(value.getErrorMessage()))
+        logger.log_debug("waiting for DAAP clients to disconnect")
+        reactor.callLater(1, self._serviceDone.callback, None)
+
+    def _doStopService(self, result):
         logger.log_debug("stopped DAAP service")
-        return None
+
+    def stopService(self):
+        # advertise that the mDNS service has gone away
+        self.avahi_group.Free()
+        self.avahi_group = None
+        # stop listening on the DAAP port
+        self.listener.stopListening()
+        # create a list of waiting streams
+        deferreds = [s.deferred for s in self.streams.values()]
+        dl = DeferredList(deferreds + [maybeDeferred(Service.stopService, self)])
+        # schedule a second deferred to fire after the streams are (hopefully) closed
+        self._serviceDone = Deferred()
+        self._serviceDone.addCallback(self._doStopService)
+        dl.addCallback(self._doWait)
+        # signal each stream to return revision number 0
+        for d in deferreds:
+            d.callback(0)
+        # reset server private data
+        self.sessions = {}
+        self.streams = {}
+        return self._serviceDone
