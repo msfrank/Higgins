@@ -22,9 +22,9 @@ class ConnectionManager(UPNPDeviceService):
     A_ARG_TYPE_ConnectionID = I4StateVar()
     A_ARG_TYPE_ConnectionManager = StringStateVar()
     A_ARG_TYPE_Direction = StringStateVar(allowedValueList=("Input", "Output"))
-    SourceProtocolInfo = StringStateVar(sendEvents="yes")
-    SinkProtocolInfo = StringStateVar(sendEvents="yes")
-    CurrentConnectionIDs = StringStateVar(sendEvents="yes")
+    SourceProtocolInfo = StringStateVar(sendEvents=True, defaultValue="")
+    SinkProtocolInfo = StringStateVar(sendEvents=True, defaultValue="")
+    CurrentConnectionIDs = StringStateVar(sendEvents=True, defaultValue="")
     A_ARG_TYPE_ProtocolInfo = StringStateVar()
     A_ARG_TYPE_ConnectionStatus = StringStateVar(
         allowedValueList=("OK", "ContentFormatMismatch", "InsufficientBandwidth", "UnreliableChannel", "Unknown")

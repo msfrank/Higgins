@@ -30,45 +30,59 @@ class StateVar(object):
     TYPE_URI = "uri"
     TYPE_UUID = "uuid"
 
-    def __init__(self, type, sendEvents="no", defaultValue=None, allowedValueList=None, allowedMin=None, allowedMax=None, allowedStep=None):
+    def __init__(self, type, sendEvents=False, defaultValue=None, allowedValueList=None, allowedMin=None, allowedMax=None, allowedStep=None):
         self.type = type
         self.sendEvents = sendEvents
-        self.defaultValue = defaultValue
         self.allowedValueList = allowedValueList
         self.allowedMin = allowedMin
         self.allowedMax = allowedMax
         self.allowedStep = allowedStep
+        if sendEvents or defaultValue != None:
+            self.value = self.validate(defaultValue)
+        else:
+            self.value = None
+    def validate(self, value):
+        raise Exception("no validator available")
     def parse(self, text_value):
         raise Exception("no parser available")
     def write(self, value):
         raise Exception("no writer available")
+    @property
+    def text_value(self):
+        return self.write(self.value)
 
 class I4StateVar(StateVar):
     def __init__(self, **kwds):
         StateVar.__init__(self, StateVar.TYPE_I4, **kwds)
-    def parse(self, text_value):
-        i4 = int(text_value)
+    def validate(self, i4):
         if i4 < -2147483648 or i4 > 2147483647:
-            raise Exception("text_value is out-of-bounds")
+            raise Exception("input value is out-of-bounds")
         return i4
+    def parse(self, text_value):
+        return self.validate(int(text_value))
     def write(self, value):
-        return str(value)
+        return str(self.validate(value))
 
 class UI4StateVar(StateVar):
     def __init__(self, **kwds):
         StateVar.__init__(self, StateVar.TYPE_UI4, **kwds)
+    def validate(self, ui4):
+        if ui4 < 0 or ui4 > 4294967295:
+            raise Exception("input value is out-of-bounds")
+        return ui4
     def parse(self, text_value):
-        i4 = int(text_value)
-        if i4 < 0 or i4 > 4294967295:
-            raise Exception("text_value is out-of-bounds")
-        return i4
+        return self.validate(int(text_value))
     def write(self, value):
-        return str(value)
+        return str(self.validate(value))
 
 class StringStateVar(StateVar):
     def __init__(self, **kwds):
         StateVar.__init__(self, StateVar.TYPE_STRING, **kwds)
+    def validate(self, text):
+        if not isinstance(text, str):
+            raise Exception("input value must be a string")
+        return str(text)
     def parse(self, text_value):
-        return str(text_value)
+        return self.validate(str(text_value))
     def write(self, value):
-        return str(value)
+        return str(self.validate(value))

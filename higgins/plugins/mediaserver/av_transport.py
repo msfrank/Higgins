@@ -43,7 +43,7 @@ class AVTransport(UPNPDeviceService):
     RelativeCounterPosition = I4StateVar()
     AbsoluteCounterPosition = I4StateVar()
     CurrentTransportActions = StringStateVar()
-    LastChange = StringStateVar(sendEvents="yes")
+    LastChange = StringStateVar(sendEvents=True, defaultValue="")
     A_ARG_TYPE_SeekMode = StringStateVar()
     A_ARG_TYPE_SeekTarget = StringStateVar()
     A_ARG_TYPE_InstanceID = UI4StateVar()

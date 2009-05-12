@@ -4,25 +4,38 @@
 # This program is free software; for license information see
 # the COPYING file.
 
-from xml.etree.ElementTree import Element, SubElement, tostring as xmltostring
+from urlparse import urlparse
+from uuid import uuid4
+from xml.etree.ElementTree import XML, Element, SubElement, tostring as xmltostring
+from twisted.internet import reactor
+from twisted.web.client import HTTPClientFactory
+from higgins.signals import Signal
 from higgins.upnp.statevar import StateVar
 from higgins.upnp.action import Action, InArgument, OutArgument
 from higgins.upnp.prettyprint import prettyprint
+from higgins.upnp.logger import logger
+
+class Subscription(object):
+    def __init__(self, callbacks, timeout=1800):
+        self.callbacks = [(url,urlparse(url)) for url in callbacks]
+        self.timeout = timeout
+        self.id = 'uuid:' + str(uuid4())
+        self.seqid = 1
 
 class DeviceServiceDeclarativeParser(type):
     def __new__(cls, name, bases, attrs):
-        # load state variables
+        # load state variables and actions
         stateVars = {}
+        actions = {}
         for key,object in attrs.items():
             if isinstance(object, StateVar):
                 stateVars[key] = object
                 object.name = key
-        # load actions
-        actions = {}
-        for key,object in attrs.items():
-            if isinstance(object, Action):
+                object.service = cls
+            elif isinstance(object, Action):
                 actions[key] = object
                 object.name = key
+                object.service = cls
         # load stateVars and actions from any base classes
         for base in bases:
             if hasattr(base, '_upnp_stateVars'):
@@ -33,6 +46,7 @@ class DeviceServiceDeclarativeParser(type):
                 actions = base._upnp_actions
         attrs['_upnp_stateVars'] = stateVars
         attrs['_upnp_actions'] = actions
+        attrs['_upnp_subscribers'] = {}
         return super(DeviceServiceDeclarativeParser,cls).__new__(cls, name, bases, attrs)
 
 class UPNPDeviceService(object):
@@ -40,6 +54,7 @@ class UPNPDeviceService(object):
 
     upnp_service_type = None
     upnp_service_id = None
+    upnp_statevar_changed = Signal()
 
     def get_description(self):
         scpd = Element("{urn:schemas-upnp-org:service-1-0}scpd")
@@ -62,6 +77,10 @@ class UPNPDeviceService(object):
         var_list = SubElement(scpd, "serviceStateTable")
         for var_name,upnp_stateVar in self._upnp_stateVars.items():
             stateVar = SubElement(var_list, "stateVariable")
+            if upnp_stateVar.sendEvents:
+                stateVar.attrib['sendEvents'] = "yes"
+            else:
+                stateVar.attrib['sendEvents'] = "no"
             SubElement(stateVar, "name").text = var_name
             SubElement(stateVar, "dataType").text = upnp_stateVar.type
             if not upnp_stateVar.defaultValue == None:
@@ -78,8 +97,60 @@ class UPNPDeviceService(object):
                     SubElement(allowed_range, "step").text = str(upnp_stateVar.allowedStep)
         return prettyprint(scpd)
 
+    def subscribe(self, callbacks, timeout=1800):
+        s = Subscription(callbacks, timeout)
+        self._upnp_subscribers[s.id] = s
+        logger.log_debug("service %s created new subscription %s" % (self.upnp_service_id,s.id))
+        self._upnp_notify_subscriber(s)
+        return s
+
+    def renew(self, sid, timeout):
+        if sid not in self._upnp_subscribers:
+            raise KeyError
+        logger.log_debug("service %s renewed subscription %s" % (self.upnp_service_id,s.id))
+
+    def unsubscribe(self, sid):
+        if sid not in self._upnp_subscribers:
+            raise KeyError
+        del self._upnp_subscribers[sid]
+        logger.log_debug("service %s unsubscribed %s" % (self.upnp_service_id,s.id))
+
+    def _upnp_notify_subscriber(self, subscriber):
+        # create the request body
+        propset = Element("{urn:schemas-upnp-org:event-1-0}propertyset")
+        # add each evented statevar to the property set
+        for var_name,upnp_stateVar in self._upnp_stateVars.items():
+            if upnp_stateVar.sendEvents:
+                prop = SubElement(propset, "{urn:schemas-upnp-org:event-1-0}property")
+                SubElement(prop, var_name).text = upnp_stateVar.text_value
+        postData = prettyprint(propset)
+        logger.log_debug("NOTIFY property set:\n" + postData)
+        # send the NOTIFY request to each callback
+        for url,urlparts in subscriber.callbacks:
+            # set the NOTIFY headers
+            headers = {
+                'Host': urlparts.netloc,
+                'Content-Type': 'text/xml',
+                'NT': 'upnp:event',
+                'NTS': 'upnp:propchange',
+                'SID': subscriber.id,
+                'SEQ': subscriber.seqid
+                }
+            # create the HTTP client object
+            client = HTTPClientFactory(url, 'NOTIFY', postData, headers, "Higgins")
+            # call _notifySuccess if the request succeeds, otherwise call _notifyFailed
+            client.deferred.addCallbacks(self._upnp_notifySuccess, self._upnp_notifyFailed)
+            reactor.connectTCP(urlparts.hostname, urlparts.port, client)
+            logger.log_debug("sending NOTIFY to %s" % url)
+
+    def _upnp_notifySuccess(self, result):
+        logger.log_debug("NOTIFY succeeded")
+
+    def _upnp_notifyFailed(self, failure):
+        logger.log_warning("NOTIFY failed: %s" % str(failure))
+
     def __str__(self):
         return self.upnp_service_id
 
 # Define the public API
-__all__ = ['UPNPDeviceService',]
+__all__ = ['UPNPDeviceService', 'Subscription']
