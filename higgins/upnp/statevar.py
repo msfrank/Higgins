@@ -49,6 +49,8 @@ class StateVar(object):
         raise Exception("no writer available")
     @property
     def text_value(self):
+        if self.value == None:
+            return None
         return self.write(self.value)
 
 class I4StateVar(StateVar):

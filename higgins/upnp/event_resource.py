@@ -63,25 +63,27 @@ class EventResource(Resource):
         except KeyError:
             return Response(412)
         except Exception, e:
-            logger.log_debug("UNSUBSCRIBE failed: %s" % e)
+            logger.log_fatal("UNSUBSCRIBE failed: %s" % e)
             return Response(500)
 
 def _parseCallback(header):
     """Returns a list of one or more callback URLs"""
     return [cb[1:] for cb in header.split('>') if not cb == '']
-DefaultHTTPHandler.addParser("callback", (last, _parseCallback))
+DefaultHTTPHandler.addParser("Callback", (last, _parseCallback))
 
 def _parseNT(header):
     """Returns the notification type header"""
     return header
-DefaultHTTPHandler.addParser("nt", (last, _parseNT))
+DefaultHTTPHandler.addParser("NT", (last, _parseNT))
+
+DefaultHTTPHandler.addGenerators("NT", (str, singleHeader))
 
 def _parseSID(header):
     """Returns the subscription id header"""
     return header
-DefaultHTTPHandler.addParser("sid", (last, _parseNT))
+DefaultHTTPHandler.addParser("SID", (last, _parseNT))
 
-DefaultHTTPHandler.addGenerators("sid", (str, singleHeader))
+DefaultHTTPHandler.addGenerators("SID", (str, singleHeader))
 
 def _parseTimeout(header):
     """Returns the event timeout"""
@@ -96,13 +98,13 @@ def _parseTimeout(header):
     except Exception, e:
         logger.log_debug("failed to parse SUBSCRIBE timeout: %s" % str(e))
         return 1800
-DefaultHTTPHandler.addParser("timeout", (last, _parseTimeout))
+DefaultHTTPHandler.addParser("Timeout", (last, _parseTimeout))
 
 def _generateTimeout(timeout):
     timeout = int(timeout)
     if timeout < 0:
         return 'Second-infinite'
     return 'Second-%i' % timeout
-DefaultHTTPHandler.addGenerators("timeout", (_generateTimeout, singleHeader))
+DefaultHTTPHandler.addGenerators("Timeout", (_generateTimeout, singleHeader))
 
 __all__ = ['EventResource',]

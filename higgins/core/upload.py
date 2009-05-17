@@ -9,6 +9,11 @@ from mutagen import File
 from twisted.python import usage, log
 from higgins.logger import Loggable, LEVELS
 
+# some clients seem to not like certain mimetypes that mutagen returns.
+mimetype_conversions = {
+    'audio/mp3': 'audio/mpeg'
+    }
+
 class UploaderException(Exception):
     def __init__(self, reason):
         self.reason = reason
@@ -34,7 +39,11 @@ class Uploader(object, Loggable):
         metadata = {}
         try:
             f = File(path)
-            metadata['mimetype'] = f.mime[0]
+            mimetype = f.mime[0]
+            if mimetype in mimetype_conversions:
+                metadata['mimetype'] = mimetype_conversions[mimetype]
+            else:
+                metadata['mimetype'] = mimetype
             metadata['artist'] = u''.join(f['TPE1'].text)
             metadata['album'] = u''.join(f['TALB'].text)
             metadata['title'] = u''.join(f['TIT2'].text)
