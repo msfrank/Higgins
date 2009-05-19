@@ -64,7 +64,8 @@ class UPNPDeviceService(object):
     upnp_statevar_changed = Signal()
 
     def get_description(self):
-        scpd = Element("{urn:schemas-upnp-org:service-1-0}scpd")
+        scpd = Element("scpd")
+        scpd.attrib['xmlns'] = 'urn:schemas-upnp-org:service-1-0'
         version = SubElement(scpd, "specVersion")
         SubElement(version, "major").text = "1"
         SubElement(version, "minor").text = "0"

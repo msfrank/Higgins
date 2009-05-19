@@ -44,8 +44,8 @@ class UPNPDevice(Service):
     upnp_model_name = "Higgins UPnP Device"
     upnp_model_description = "Higgins UPnP Device"
     upnp_model_url = "http://syntaxjockey.com/higgins"
-    upnp_model_number = ""
-    upnp_serial_number = ""
+    upnp_model_number = None
+    upnp_serial_number = None
     upnp_device_name = None
     upnp_device_type = None
     upnp_friendly_name = None
@@ -67,13 +67,18 @@ class UPNPDevice(Service):
         SubElement(device, "deviceType").text = self.upnp_device_type
         SubElement(device, "friendlyName").text = self.upnp_friendly_name
         SubElement(device, "manufacturer").text = self.upnp_manufacturer
-        SubElement(device, "manufacturerURL").text = self.upnp_manufacturer_url
-        SubElement(device, "modelName").text = self.upnp_model_name
-        SubElement(device, "modelDescription").text = self.upnp_model_description
-        SubElement(device, "modelURL").text = self.upnp_model_url
-        SubElement(device, "modelNumber").text = self.upnp_model_number
-        SubElement(device, "serialNumber").text = self.upnp_serial_number
         SubElement(device, "UDN").text = "uuid:%s" % self.upnp_UDN
+        if self.upnp_manufacturer_url:
+            SubElement(device, "manufacturerURL").text = self.upnp_manufacturer_url
+        SubElement(device, "modelName").text = self.upnp_model_name
+        if self.upnp_model_name:
+            SubElement(device, "modelDescription").text = self.upnp_model_description
+        if self.upnp_model_url:
+            SubElement(device, "modelURL").text = self.upnp_model_url
+        if self.upnp_model_number:
+            SubElement(device, "modelNumber").text = self.upnp_model_number
+        if self.upnp_serial_number:
+            SubElement(device, "serialNumber").text = self.upnp_serial_number
         if relativeUrls:
             urlbase = ''
             SubElement(device, "URLBase").text = "http://%s" % host

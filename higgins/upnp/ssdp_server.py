@@ -77,14 +77,16 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
 
     def sendAlive(self, nt, usn, location, cacheControl=1800, server='Twisted, UPnP/1.0, Higgins'):
         for iface in self.interfaces:
-            resp = [ 'NOTIFY * HTTP/1.1',
-                'Host: %s:%d' % (iface, 1900),
+            resp = [
+                'NOTIFY * HTTP/1.1',
+                'Host: %s:%d/' % (iface, 1900),
                 'NTS: ssdp:alive',
                 'NT: %s' % nt,
                 'USN: %s' % usn,
                 'LOCATION: %s' % location,
                 'CACHE-CONTROL: max-age=%d' % cacheControl,
-                'SERVER: %s' % server
+                'SERVER: %s' % server,
+                'Content-Length: 0'
                 ]
             self.transport.write('\r\n'.join(resp) + '\r\n\r\n', (iface, 1900))
 
