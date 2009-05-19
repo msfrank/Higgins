@@ -22,7 +22,7 @@ class ConnectionManager(UPNPDeviceService):
     A_ARG_TYPE_ConnectionID = I4StateVar()
     A_ARG_TYPE_ConnectionManager = StringStateVar()
     A_ARG_TYPE_Direction = StringStateVar(allowedValueList=("Input", "Output"))
-    SourceProtocolInfo = StringStateVar(sendEvents=True, defaultValue="http-get")
+    SourceProtocolInfo = StringStateVar(sendEvents=True, defaultValue="http-get:*:audio/mpeg:*")
     SinkProtocolInfo = StringStateVar(sendEvents=True, defaultValue="")
     CurrentConnectionIDs = StringStateVar(sendEvents=True, defaultValue="0")
     A_ARG_TYPE_ProtocolInfo = StringStateVar()

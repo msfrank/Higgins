@@ -91,8 +91,8 @@ class UPNPDeviceService(object):
                 stateVar.attrib['sendEvents'] = "no"
             SubElement(stateVar, "name").text = var_name
             SubElement(stateVar, "dataType").text = upnp_stateVar.type
-            if not upnp_stateVar.text_value == None:
-                SubElement(stateVar, "defaultValue").text = upnp_stateVar.text_value
+            #if not upnp_stateVar.text_value == None:
+            #    SubElement(stateVar, "defaultValue").text = upnp_stateVar.text_value
             if not upnp_stateVar.allowedValueList == None:
                 allowed_list = SubElement(stateVar, "allowedValueList")
                 for allowed in upnp_stateVar.allowedValueList:

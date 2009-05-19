@@ -4,7 +4,7 @@
 # This program is free software; for license information see
 # the COPYING file.
 
-import urllib
+from urlparse import urlparse
 from twisted.internet import reactor
 from higgins import netif
 from higgins.http.resource import Resource
@@ -21,10 +21,15 @@ class RootResource(Resource):
         segments = [part for part in segments if part != '']
         logger.log_debug("%s" % '/' + '/'.join(segments))
         # we need the Host header
-        host = request.headers.getHeader('host')
-        if host == None:
-            logger.log_warning("request has no Host header, ignoring")
+        logger.log_debug("RootResource: request.host=%s" % request.host)
+        if request.host == None:
+            logger.log_warning("can't determine host from request, ignoring")
             return None, []
+        # this is a fix for coherence (seen on v0.6.2), which doesn't send the
+        # port number as part of the Host header.
+        urlparts = urlparse('http://' + request.host)
+        host = '%s:1901' % urlparts.netloc
+        logger.log_debug("RootResource: parsed host=%s" % host)
         # / returns 404
         if segments == []:
             return None, []

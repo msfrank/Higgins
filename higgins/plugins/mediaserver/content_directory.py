@@ -24,6 +24,7 @@ class ContentDirectory(UPNPDeviceService):
     A_ARG_TYPE_BrowseFlag = StringStateVar(allowedValueList=("BrowseMetadata", "BrowseDirectChildren"))
     A_ARG_TYPE_SearchCriteria = StringStateVar()
     SystemUpdateID = UI4StateVar(sendEvents=True, defaultValue=1)
+    ContainerUpdateIDs = StringStateVar(sendEvents=True, defaultValue="0,1")
     A_ARG_TYPE_Count = UI4StateVar()
     A_ARG_TYPE_SortCriteria = StringStateVar()
     SortCapabilities = StringStateVar()
