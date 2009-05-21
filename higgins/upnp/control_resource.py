@@ -13,7 +13,7 @@ from higgins.http.http_headers import DefaultHTTPHandler, last, parseKeyValue, s
 from higgins.http.stream import BufferedStream
 from higgins.upnp.error import UPNPError
 from higgins.upnp.logger import logger
-from higgins.upnp.prettyprint import prettyprint
+from higgins.upnp.prettyprint import xmlprint
 
 class ControlResource(resource.Resource):
     def __init__(self, service):
@@ -47,15 +47,16 @@ class ControlResource(resource.Resource):
                 # return the action response
                 env = Element("s:Envelope")
                 env.attrib['xmlns:s'] = "http://schemas.xmlsoap.org/soap/envelope/"
+                env.attrib['s:encodingStyle'] = "http://schemas.xmlsoap.org/soap/encoding/"
                 env.attrib['xmlns:i'] = "http://www.w3.org/1999/XMLSchema-instance"
                 body = SubElement(env, "s:Body")
-                resp = SubElement(body, "r:%sResponse" % request.soap_action)
-                resp.attrib['xmlns:r'] = request.soap_ns
+                resp = SubElement(body, "u:%sResponse" % request.soap_action)
+                resp.attrib['xmlns:u'] = request.soap_ns
                 for (name,type,value) in out_args:
                     arg = SubElement(resp, name)
                     arg.attrib["i:type"] = type
                     arg.text = value
-                output = prettyprint(env)
+                output = xmlprint(env)
                 return HttpResponse(200, headers={'EXT': ''}, stream=output)
             except UPNPError, e:
                 raise e

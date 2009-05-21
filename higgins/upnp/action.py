@@ -76,7 +76,7 @@ class Action(object):
             try:
                 arg_value = out_args[arg.name]
                 parsed_value = arg.write(arg_value)
-                logger.log_debug("wrote %s: '%s' => %s" % (arg.name,arg_value,parsed_value))
+                logger.log_debug("wrote %s => %s" % (arg.name,parsed_value))
                 parsed_args.append((arg.name, arg.type, parsed_value))
             except KeyError:
                 raise Exception("missing required OutArgument %s" % arg.name)

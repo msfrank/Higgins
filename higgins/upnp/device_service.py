@@ -15,7 +15,7 @@ from higgins.http.http_headers import DefaultHTTPHandler, MimeType, singleHeader
 from higgins.http.stream import readAndDiscard
 from higgins.upnp.statevar import StateVar
 from higgins.upnp.action import Action, InArgument, OutArgument
-from higgins.upnp.prettyprint import prettyprint
+from higgins.upnp.prettyprint import xmlprint
 from higgins.upnp.logger import logger
 
 class Subscription(object):
@@ -103,7 +103,7 @@ class UPNPDeviceService(object):
                 SubElement(allowed_range, "maximum").text = str(upnp_stateVar.allowedMax)
                 if not upnp_stateVar.allowedStep == None:
                     SubElement(allowed_range, "step").text = str(upnp_stateVar.allowedStep)
-        return prettyprint(scpd)
+        return xmlprint(scpd)
 
     def subscribe(self, callbacks, timeout=1800):
         s = Subscription(callbacks, timeout)
@@ -132,7 +132,7 @@ class UPNPDeviceService(object):
         for var_name,upnp_stateVar in self._upnp_stateVars.items():
             if upnp_stateVar.sendEvents:
                 SubElement(prop, var_name).text = upnp_stateVar.text_value
-        postData = prettyprint(propset)
+        postData = xmlprint(propset)
         logger.log_debug("NOTIFY property set:\n" + postData)
         # send the NOTIFY request to each callback
         for url,urlparts in subscriber.callbacks:

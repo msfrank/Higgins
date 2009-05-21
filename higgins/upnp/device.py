@@ -10,7 +10,7 @@ from xml.etree.ElementTree import Element, SubElement
 from higgins.service import Service
 from higgins.conf import conf
 from higgins.upnp.device_service import UPNPDeviceService
-from higgins.upnp.prettyprint import prettyprint
+from higgins.upnp.prettyprint import xmlprint
 from higgins.upnp.logger import logger
 
 class DeviceDeclarativeParser(type):
@@ -104,7 +104,7 @@ class UPNPDevice(Service):
                 self.upnp_UDN.replace(':', '_'),
                 svc.upnp_service_id.replace(':', '_')
                 )
-        return prettyprint(root)
+        return xmlprint(root)
 
     def __str__(self):
         return self.upnp_UDN

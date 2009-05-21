@@ -11,7 +11,7 @@ from higgins.upnp.device_service import UPNPDeviceService
 from higgins.upnp.statevar import StringStateVar, UI4StateVar
 from higgins.upnp.action import Action, InArgument, OutArgument
 from higgins.upnp.error import UPNPError
-from higgins.upnp.prettyprint import prettyprint
+from higgins.upnp.prettyprint import xmlprint
 from higgins.plugins.mediaserver.logger import logger
 
 class ContentDirectory(UPNPDeviceService):
@@ -60,7 +60,7 @@ class ContentDirectory(UPNPDeviceService):
                 container = SubElement(didl, 'container')
                 container.attrib['id'] = objectID
                 container.attrib['parentID'] = '-1'
-                container.attrib['restricted'] = 'true'
+                container.attrib['restricted'] = '1'
                 container.attrib['childCount'] = str(len(Artist.objects.all()))
                 SubElement(container, 'dc:title').text = 'Music on Higgins'
                 SubElement(container, 'upnp:class').text = 'object.container.storageFolder'
@@ -69,7 +69,7 @@ class ContentDirectory(UPNPDeviceService):
                 container = SubElement(didl, 'container')
                 container.attrib['id'] = objectID
                 container.attrib['parentID'] = '0'
-                container.attrib['restricted'] = 'true'
+                container.attrib['restricted'] = '1'
                 container.attrib['childCount'] = str(len(Album.objects.filter(artist=artist)))
                 SubElement(container, 'dc:title').text = str(artist.name)
                 SubElement(container, 'upnp:class').text = 'object.container.person.musicArtist'
@@ -78,7 +78,7 @@ class ContentDirectory(UPNPDeviceService):
                 container = SubElement(didl, 'container')
                 container.attrib['id'] = objectID
                 container.attrib['parentID'] = '/'.join(segments[:1])
-                container.attrib['restricted'] = 'true'
+                container.attrib['restricted'] = '1'
                 container.attrib['childCount'] = str(len(Song.objects.filter(album=album)))
                 SubElement(container, 'dc:title').text = str(album.name)
                 SubElement(container, 'upnp:class').text = 'object.container.album.musicAlbum'
@@ -107,7 +107,7 @@ class ContentDirectory(UPNPDeviceService):
                     container = SubElement(didl, "container")
                     container.attrib["id"] = objectID + '/' + str(artist.id)
                     container.attrib["parentID"] = '0'
-                    container.attrib["restricted"] = "true"
+                    container.attrib["restricted"] = "1"
                     container.attrib['childCount'] = str(len(Album.objects.filter(artist=artist)))
                     SubElement(container, "upnp:class").text = "object.container.person.musicArtist"
                     SubElement(container, "dc:title").text = artist.name
@@ -118,7 +118,7 @@ class ContentDirectory(UPNPDeviceService):
                     container = SubElement(didl, "container")
                     container.attrib["id"] = objectID + '/' + str(album.id)
                     container.attrib["parentID"] = '/'.join(segments[:-1])
-                    container.attrib["restricted"] = "true"
+                    container.attrib["restricted"] = "1"
                     container.attrib['childCount'] = str(len(Song.objects.filter(album=album)))
                     SubElement(container, "upnp:class").text = "object.container.album.musicAlbum"
                     SubElement(container, "dc:title").text = album.name
@@ -129,7 +129,7 @@ class ContentDirectory(UPNPDeviceService):
                     item = SubElement(didl, "item")
                     item.attrib["id"] = objectID + '/' + str(song.id)
                     item.attrib["parentID"] = '/'.join(segments[:-1])
-                    item.attrib["restricted"] = "true"
+                    item.attrib["restricted"] = "1"
                     SubElement(item, "upnp:class").text = "object.item.audioItem.musicTrack"
                     SubElement(item, "dc:title").text = song.name
                     SubElement(item, "upnp:artist").text = str(song.artist.name)
@@ -141,7 +141,7 @@ class ContentDirectory(UPNPDeviceService):
                     resource.text = "http://%s:%i/content/%i" % (host, port, song.id)
         else:
             raise UPNPError(402, "unknown browse flag %s" % browseFlag)
-        result = prettyprint(didl)
+        result = xmlprint(didl, pretty=False, withXMLDecl=False)
         update_id = 0
         return {
             'NumberReturned': number_returned,
