@@ -21,7 +21,6 @@ class RootResource(Resource):
         segments = [part for part in segments if part != '']
         logger.log_debug("%s" % '/' + '/'.join(segments))
         # we need the Host header
-        logger.log_debug("RootResource: request.host=%s" % request.host)
         if request.host == None:
             logger.log_warning("can't determine host from request, ignoring")
             return None, []
@@ -29,7 +28,6 @@ class RootResource(Resource):
         # port number as part of the Host header.
         urlparts = urlparse('http://' + request.host)
         host = '%s:1901' % urlparts.netloc
-        logger.log_debug("RootResource: parsed host=%s" % host)
         # / returns 404
         if segments == []:
             return None, []

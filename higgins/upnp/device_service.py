@@ -6,7 +6,7 @@
 
 from urlparse import urlparse
 from uuid import uuid4
-from xml.etree.ElementTree import XML, Element, SubElement, tostring as xmltostring
+from xml.etree.ElementTree import XML, Element, SubElement
 from twisted.internet import reactor, protocol
 from twisted.web.client import HTTPClientFactory
 from higgins.signals import Signal
@@ -125,8 +125,9 @@ class UPNPDeviceService(object):
 
     def _upnp_notify_subscriber(self, subscriber):
         # create the request body
-        propset = Element("{urn:schemas-upnp-org:event-1-0}propertyset")
-        prop = SubElement(propset, "{urn:schemas-upnp-org:event-1-0}property")
+        propset = Element("e:propertyset")
+        propset.attrib['xmlns:e'] = "urn:schemas-upnp-org:event-1-0"
+        prop = SubElement(propset, "e:property")
         # add each evented statevar to the property set
         for var_name,upnp_stateVar in self._upnp_stateVars.items():
             if upnp_stateVar.sendEvents:

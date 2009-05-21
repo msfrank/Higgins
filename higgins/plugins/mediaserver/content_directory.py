@@ -4,13 +4,14 @@
 # This program is free software; for license information see
 # the COPYING file.
 
-from xml.etree.ElementTree import Element, SubElement, tostring as xmltostring
+from xml.etree.ElementTree import Element, SubElement
 from higgins.core.models import Artist, Album, Song, File, Playlist
 from higgins.core.service import CoreHttpConfig
 from higgins.upnp.device_service import UPNPDeviceService
 from higgins.upnp.statevar import StringStateVar, UI4StateVar
 from higgins.upnp.action import Action, InArgument, OutArgument
 from higgins.upnp.error import UPNPError
+from higgins.upnp.prettyprint import prettyprint
 from higgins.plugins.mediaserver.logger import logger
 
 class ContentDirectory(UPNPDeviceService):
@@ -24,7 +25,7 @@ class ContentDirectory(UPNPDeviceService):
     A_ARG_TYPE_BrowseFlag = StringStateVar(allowedValueList=("BrowseMetadata", "BrowseDirectChildren"))
     A_ARG_TYPE_SearchCriteria = StringStateVar()
     SystemUpdateID = UI4StateVar(sendEvents=True, defaultValue=0)
-    ContainerUpdateIDs = StringStateVar(sendEvents=True, defaultValue="0,1")
+    #ContainerUpdateIDs = StringStateVar(sendEvents=True, defaultValue="0,1")
     A_ARG_TYPE_Count = UI4StateVar()
     A_ARG_TYPE_SortCriteria = StringStateVar()
     SortCapabilities = StringStateVar()
@@ -49,7 +50,7 @@ class ContentDirectory(UPNPDeviceService):
         if len(segments) < 1 or segments[0] != '0':
             raise UPNPError(701, "ObjectID %i is invalid" % objectID)
         # generate the DIDL envelope
-        didl = Element("{urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/}DIDL-Lite")
+        didl = Element("DIDL-Lite")
         didl.attrib["xmlns"] = "urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"
         didl.attrib["xmlns:upnp"] = "urn:schemas-upnp-org:metadata-1-0/upnp/"
         didl.attrib["xmlns:dc"] = "http://purl.org/dc/elements/1.1/"
@@ -105,7 +106,7 @@ class ContentDirectory(UPNPDeviceService):
                 for artist in matches:
                     container = SubElement(didl, "container")
                     container.attrib["id"] = objectID + '/' + str(artist.id)
-                    container.attrib["parentID"] = '/'.join(segments[:-1])
+                    container.attrib["parentID"] = '0'
                     container.attrib["restricted"] = "true"
                     container.attrib['childCount'] = str(len(Album.objects.filter(artist=artist)))
                     SubElement(container, "upnp:class").text = "object.container.person.musicArtist"
@@ -140,8 +141,8 @@ class ContentDirectory(UPNPDeviceService):
                     resource.text = "http://%s:%i/content/%i" % (host, port, song.id)
         else:
             raise UPNPError(402, "unknown browse flag %s" % browseFlag)
-        result = xmltostring(didl)
-        update_id = 1
+        result = prettyprint(didl)
+        update_id = 0
         return {
             'NumberReturned': number_returned,
             'TotalMatches': total_matches,
