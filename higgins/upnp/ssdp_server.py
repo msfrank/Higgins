@@ -11,51 +11,116 @@
 #   Copyright 2006 John-Mark Gurney <gurney_j@resnet.uroegon.edu>
 
 import random
-from higgins import netif
+from time import gmtime, strftime
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
-from higgins.upnp.logger import UPnPLogger
+from higgins import netif
+from higgins.upnp.logger import logger
 
-class SSDPFactory(DatagramProtocol, UPnPLogger):
+class Advertisement(object):
+    def __init__(self, usn, nt, udn):
+        self.usn = usn
+        self.nt = nt
+        self.udn = udn
+        self.delayed = None
+
+class SSDPFactory(DatagramProtocol):
 
     def __init__(self, interfaces):
         self.interfaces = interfaces
         self.devices = {}
+        self.advertisements = {}
+        self.expires = 180
+
+    def startProtocol(self):
+        self.responder = MSearchResponder()
+        self.responder_listener = reactor.listenUDP(0, self.responder)
+
+    def stopProtocol(self):
+        self.responder_listener.stopListening()
+        self.responder_listener = None
+        self.responder = None
+
+    def _sendAlive(self, usn, nt, udn):
+        if not usn in self.advertisements:
+            logger.log_warning("no registered advertisement for %s" % usn)
+            return
+        adv = self.advertisements[usn]
+        for iface in self.interfaces:
+            resp = [
+                'NOTIFY * HTTP/1.1',
+                'HOST: 239.255.255.250:1900',
+                'NTS: ssdp:alive',
+                'NT: %s' % nt,
+                'USN: %s' % usn,
+                'LOCATION: http://%s:%d/%s' % (iface, 1900, udn.replace(':','_')),
+                'CACHE-CONTROL: max-age=%d' % self.expires,
+                'SERVER: Twisted, UPnP/1.0, Higgins'
+                ]
+            self.transport.write('\r\n'.join(resp) + '\r\n\r\n', (iface, 1900))
+            logger.log_debug("sent ssdp:alive for %s on %s" % (usn, iface))
+        adv.delayed = reactor.callLater(self.expires, self._sendAlive, usn, nt, udn)
+
+    def _startAdvertising(self, usn, nt, udn):
+        adv = Advertisement(usn, nt, udn)
+        self.advertisements[usn] = adv
+        reactor.callLater(1, self._sendByebye, usn, nt)
+        adv.delayed = reactor.callLater(2, self._sendAlive, usn, nt, udn)
+        logger.log_debug("registered advertisement for %s" % usn)
 
     def registerDevice(self, device):
         if device.upnp_UDN in self.devices:
             raise Exception("%s is already a registered device" % device)
-        for iface in self.interfaces:
-            # advertise the device
-            self.sendAlive("upnp:rootdevice",
-                           "uuid:%s::upnp:rootdevice" % device.upnp_UDN,
-                           "http://%s:1901/%s" % (iface,device.upnp_UDN.replace(':','_')))
-            self.sendAlive("uuid:%s" % device.upnp_UDN,
-                           "uuid:%s" % device.upnp_UDN,
-                           "http://%s:1901/%s" % (iface,device.upnp_UDN.replace(':','_')))
-            self.sendAlive(device.upnp_device_type,
-                           "uuid:%s::%s" % (device.upnp_UDN, device.upnp_device_type),
-                           "http://%s:1901/%s" % (iface,device.upnp_UDN.replace(':','_')))
-            # advertise each service on the device
-            for svc in device._upnp_services.values():
-                self.sendAlive(svc.upnp_service_type,
-                               "uuid:%s::%s" % (device.upnp_UDN, svc.upnp_service_type),
-                               "http://%s:1901/%s" % (iface,device.upnp_UDN.replace(':','_')))
-            self.log_debug("registered device %s on %s" % (device.upnp_UDN, iface))
+        # advertise the device
+        self._startAdvertising("uuid:%s::upnp:rootdevice" % device.upnp_UDN,
+                               "upnp:rootdevice",
+                               device.upnp_UDN)
+        self._startAdvertising("uuid:%s" % device.upnp_UDN,
+                               "uuid:%s" % device.upnp_UDN,
+                               device.upnp_UDN)
+        self._startAdvertising("uuid:%s::%s" % (device.upnp_UDN, device.upnp_device_type),
+                               device.upnp_device_type,
+                               device.upnp_UDN)
+        # advertise each service on the device
+        for svc in device._upnp_services.values():
+            self._startAdvertising("uuid:%s::%s" % (device.upnp_UDN, svc.upnp_service_type),
+                                   svc.upnp_service_type,
+                                   device.upnp_UDN)
         self.devices[device.upnp_UDN] = device
+        logger.log_debug("registered device %s" % device.upnp_UDN)
+
+    def _sendByebye(self, usn, nt):
+        for iface in self.interfaces:
+            resp = [
+                'NOTIFY * HTTP/1.1',
+                'HOST: 239.255.255.250:1900',
+                'NTS: ssdp:byebye',
+                'NT: %s' % nt,
+                'USN: %s' % usn
+                ]
+            self.transport.write('\r\n'.join(resp) + '\r\n\r\n', (iface, 1900))
+            logger.log_debug("sent ssdp:byebye for %s on %s" % (usn, iface))
+
+    def _stopAdvertising(self, usn):
+        try:
+            adv = self.advertisements[usn]
+        except:
+            raise Exception("USN %s is not being advertised" % usn)
+        del self.advertisements[usn]
+        adv.delayed.cancel()
+        self._sendByebye(adv.usn, adv.nt)
 
     def unregisterDevice(self, device):
         if not device.upnp_UDN in self.devices:
             raise Exception("%s is not a registered device" % device)
-        for iface in self.interfaces:
-            # advertise the device
-            self.sendByebye("upnp:rootdevice", "uuid:%s::upnp:rootdevice" % device.upnp_UDN)
-            self.sendByebye("uuid:%s" % device.upnp_UDN, "uuid:%s" % device.upnp_UDN)
-            self.sendByebye(device.upnp_device_type, "uuid:%s::%s" % (device.upnp_UDN, device.upnp_device_type))
-            # advertise each service on the device
-            for svc in device._upnp_services.values():
-                self.sendByebye(svc.upnp_service_type, "uuid:%s::%s" % (device.upnp_UDN, svc.upnp_service_type))
-            self.log_debug("unregistered device %s on %s" % (device.upnp_UDN, iface))
+        # advertise the device
+        self._stopAdvertising("uuid:%s::upnp:rootdevice" % device.upnp_UDN)
+        self._stopAdvertising("uuid:%s" % device.upnp_UDN)
+        self._stopAdvertising("uuid:%s::%s" % (device.upnp_UDN, device.upnp_device_type))
+        # advertise each service on the device
+        for svc in device._upnp_services.values():
+            self._stopAdvertising("uuid:%s::%s" % (device.upnp_UDN, svc.upnp_service_type))
+        logger.log_debug("unregistered device %s" % device.upnp_UDN)
         del self.devices[device.upnp_UDN]
 
     def datagramReceived(self, data, (host, port)):
@@ -70,52 +135,29 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
             lines = filter(lambda x: len(x) > 0, lines)
             headers = [x.split(':', 1) for x in lines]
             headers = dict(map(lambda x: (x[0].upper(), x[1]), headers))
-            if cmd == 'M-SEARCH' and uri == '*':
-                self.discoveryRequest(headers, (host, port))
-        except:
-            self.log_debug("discarding malformed datagram from %s" % host)
-
-    def sendAlive(self, nt, usn, location, cacheControl=1800, server='Twisted, UPnP/1.0, Higgins'):
-        for iface in self.interfaces:
-            resp = [
-                'NOTIFY * HTTP/1.1',
-                'Host: %s:%d/' % (iface, 1900),
-                'NTS: ssdp:alive',
-                'NT: %s' % nt,
-                'USN: %s' % usn,
-                'LOCATION: %s' % location,
-                'CACHE-CONTROL: max-age=%d' % cacheControl,
-                'SERVER: %s' % server,
-                'Content-Length: 0'
-                ]
-            self.transport.write('\r\n'.join(resp) + '\r\n\r\n', (iface, 1900))
-
-    def sendByebye(self, nt, usn):
-        for iface in self.interfaces:
-            resp = [ 'NOTIFY * HTTP/1.1',
-                'Host: %s:%d' % (iface, 1900),
-                'NTS: ssdp:byebye',
-                'NT: %s' % nt,
-                'USN: %s' % usn
-                ]
-            self.transport.write('\r\n'.join(resp) + '\r\n\r\n', (iface, 1900))
+        except Exception, e:
+            logger.log_debug("discarding malformed datagram from %s: %s" % (host,e))
+        if cmd == 'M-SEARCH' and uri == '*':
+            self.discoveryRequest(headers, (host, port))
 
     def discoveryRequest(self, headers, (host, port)):
-        def makeResponse(st, usn, location, cacheControl=1800, server='Twisted, UPnP/1.0, Higgins'):
-            resp = ['HTTP/1.1 200 OK',
+        def makeResponse(st, usn, location):
+            resp = [
+                'HTTP/1.1 200 OK',
+                'DATE: %s' % strftime('%a, %d %B 20%y %H:%M:%S GMT', gmtime()),
                 'EXT: ',
                 'LOCATION: %s' % location,
-                'SERVER: %s' % server,
+                'SERVER: Twisted, UPnP/1.0, Higgins',
                 'ST: %s' % st,
                 'USN: %s' % usn,
-                'CACHE-CONTROL: max-age=%d' % cacheControl,
+                'CACHE-CONTROL: max-age=%d' % self.expires
                 ]
             return '\r\n'.join(resp) + '\r\n'
         # if the MAN header is present, make sure its ssdp:discover
         if not headers.get('MAN', '') == '"ssdp:discover"':
-            self.log_warning("MAN header for discovery request is not 'ssdp:discover', ignoring")
+            logger.log_warning("MAN header for discovery request is not 'ssdp:discover', ignoring")
             return
-        self.log_debug('received discovery request from %s for %s' % (host, headers['ST']))
+        logger.log_debug('received discovery request from %s:%d for %s' % (host, port, headers['ST']))
         # Generate a response
         responses = []
         # return all devices and services
@@ -147,37 +189,21 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
                                      "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
         # return the specific device
         elif headers['ST'].startswith('uuid:'): 
-            pass
+            logger.log_warning("ignoring M-SEARCH for %s" % headers['ST'])
         # return device type
-        elif headers['ST'].startswith('urn:schemas-upnp-or:device:'):
-            pass
+        elif headers['ST'].startswith('urn:schemas-upnp-org:device:'):
+            logger.log_warning("ignoring M-SEARCH for %s" % headers['ST'])
         # return service type
-        elif headers['ST'].startswith('urn:schemas-upnp-or:service:'):
-            pass
+        elif headers['ST'].startswith('urn:schemas-upnp-org:service:'):
+            logger.log_warning("ignoring M-SEARCH for %s" % headers['ST'])
         # introduce a random delay between 0 and MX
         delayMax = int(headers['MX'])
         # send the responses
         if len(responses) > 0:
-            self.log_debug("sending %i responses" % len(responses))
-            reactor.callLater(random.randint(0, delayMax),
-                              self._doWriteResponse,
-                              host,
-                              port,
-                              responses,
-                              delayMax)
+            logger.log_debug("sending %i responses" % len(responses))
+            self.responder.sendResponses(host,port, responses, delayMax)
         else:
-            self.log_warning("no responses generated for ssdp request")
-
-    def _doWriteResponse(self, host, port, responses, delayMax):
-        self.transport.write(responses.pop(0) + '\r\n', (host,port))
-        self.log_debug("wrote ssdp response to %s:%i" % (host, port))
-        if len(responses) > 0:
-            reactor.callLater(random.randint(0, delayMax),
-                              self._doWriteResponse,
-                              host,
-                              port,
-                              responses,
-                              delayMax)
+            logger.log_warning("no responses generated for ssdp request")
 
     def sendAllByebyes(self):
         """
@@ -187,7 +213,21 @@ class SSDPFactory(DatagramProtocol, UPnPLogger):
         for udn,device in self.devices.items():
             self.unregisterDevice(device)
 
-class SSDPServer(UPnPLogger):
+class MSearchResponder(DatagramProtocol):
+    def sendResponses(self, host, port, responses, delayMax):
+        self.transport.write(responses.pop(0) + '\r\n', (host,port))
+        logger.log_debug("wrote ssdp response to %s:%i" % (host,port))
+        if len(responses) > 0:
+            reactor.callLater(random.randint(0, delayMax),
+                              self.sendResponses,
+                              host,
+                              port,
+                              responses,
+                              delayMax)
+    def connectionRefused(self):
+        logger.log_warning("failed to write ssdp response: connection refused")
+
+class SSDPServer(object):
     def __init__(self, interfaces=None):
         if interfaces == None:
             self.interfaces = [addr for name,(addr,up) in netif.list_interfaces().items()]
@@ -195,7 +235,7 @@ class SSDPServer(UPnPLogger):
             self.interfaces = interfaces
 
     def start(self):
-        self.log_debug("SSDP Server listening on port 1900")
+        logger.log_debug("SSDP Server listening on port 1900")
         self.server = SSDPFactory(self.interfaces)
         self.listener = reactor.listenMulticast(1900, self.server, listenMultiple=True)
         self.listener.joinGroup('239.255.255.250')
@@ -206,7 +246,7 @@ class SSDPServer(UPnPLogger):
         self.listener.stopListening()
         self.listener = None
         self.server = None
-        self.log_debug("SSDP server stopped listening")
+        logger.log_debug("SSDP server stopped listening")
 
     def registerDevice(self, device):
         self.server.registerDevice(device)
