@@ -12,10 +12,15 @@
 typedef struct {
     char *name;
     char *address;
+    char *netmask;
     int is_up;
+    int is_loopback;
+    int can_broadcast;
+    int can_multicast;
 } netif;
 
-netif *__list_interfaces(int *nifs);
-void __free_interface_list(netif *ifs, int nifs);
+netif *__netif_list_interfaces(int *nifs);
+void __netif_free_interface_list(netif *ifs, int nifs);
+int __netif_shares_subnet (char *address, char *netmask, char *dest);
 
 #endif

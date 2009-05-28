@@ -35,17 +35,21 @@ setup(
         'higgins.http.dav',
         'higgins.http.dav.method',
         'higgins.http.dav.element',
-        'higgins.netif',
+        'higgins.platform',
         'higgins.plugins',
         'higgins.plugins.daap',
         'higgins.plugins.mediaserver',
-        'higgins.plugins.mrss',
+        #'higgins.plugins.mrss',
         'higgins.upnp',
         ],
     namespace_packages=['higgins', 'higgins.plugins'],
     ext_modules=[
-        Extension('higgins.netif.commands',
-            ['higgins/netif/commands.pyx', 'higgins/netif/netif-internal.c'])
+        Extension('higgins.platform.netif',
+                 ['higgins/platform/netif.pyx', 'higgins/platform/netif-internal.c']
+                 ),
+        #Extension('higgins.platform.inotify',
+        #         ['higgins/platform/inotify.pyx', 'higgins/platform/inotify-internal.c']
+        #         )
         ],
     # declare static data
     package_data={

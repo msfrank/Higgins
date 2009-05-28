@@ -6,7 +6,6 @@
 
 from urlparse import urlparse
 from twisted.internet import reactor
-from higgins import netif
 from higgins.http.resource import Resource
 from higgins.http.static import Data as StaticResource
 from higgins.upnp.control_resource import ControlResource

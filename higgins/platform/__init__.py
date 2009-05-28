@@ -3,5 +3,3 @@
 #
 # This program is free software; for license information see
 # the COPYING file.
-
-from commands import *

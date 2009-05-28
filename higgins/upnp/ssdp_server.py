@@ -14,8 +14,10 @@ import random
 from time import gmtime, strftime
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
-from higgins import netif
+from higgins.platform import netif
 from higgins.upnp.logger import logger
+
+SSDP_MULTICAST_GROUP = '239.255.255.250'
 
 class Advertisement(object):
     def __init__(self, usn, nt, udn):
@@ -26,39 +28,29 @@ class Advertisement(object):
 
 class SSDPFactory(DatagramProtocol):
 
-    def __init__(self, interfaces):
-        self.interfaces = interfaces
+    def __init__(self, iface):
+        self.interface = iface
         self.devices = {}
         self.advertisements = {}
         self.expires = 180
-
-    def startProtocol(self):
-        self.responder = MSearchResponder()
-        self.responder_listener = reactor.listenUDP(0, self.responder)
-
-    def stopProtocol(self):
-        self.responder_listener.stopListening()
-        self.responder_listener = None
-        self.responder = None
 
     def _sendAlive(self, usn, nt, udn):
         if not usn in self.advertisements:
             logger.log_warning("no registered advertisement for %s" % usn)
             return
         adv = self.advertisements[usn]
-        for iface in self.interfaces:
-            resp = [
-                'NOTIFY * HTTP/1.1',
-                'HOST: 239.255.255.250:1900',
-                'NTS: ssdp:alive',
-                'NT: %s' % nt,
-                'USN: %s' % usn,
-                'LOCATION: http://%s:%d/%s' % (iface, 1900, udn.replace(':','_')),
-                'CACHE-CONTROL: max-age=%d' % self.expires,
-                'SERVER: Twisted, UPnP/1.0, Higgins'
-                ]
-            self.transport.write('\r\n'.join(resp) + '\r\n\r\n', (iface, 1900))
-            logger.log_debug("sent ssdp:alive for %s on %s" % (usn, iface))
+        resp = [
+            'NOTIFY * HTTP/1.1',
+            'HOST: 239.255.255.250:1900',
+            'NTS: ssdp:alive',
+            'NT: %s' % nt,
+            'USN: %s' % usn,
+            'LOCATION: http://%s:%d/%s' % (self.interface.address, 1900, udn.replace(':','_')),
+            'CACHE-CONTROL: max-age=%d' % self.expires,
+            'SERVER: Twisted, UPnP/1.0, Higgins'
+            ]
+        self.transport.write('\r\n'.join(resp) + '\r\n\r\n', (SSDP_MULTICAST_GROUP, 1900))
+        logger.log_debug("sent ssdp:alive for %s on %s" % (usn, self.interface.address))
         adv.delayed = reactor.callLater(self.expires, self._sendAlive, usn, nt, udn)
 
     def _startAdvertising(self, usn, nt, udn):
@@ -90,16 +82,15 @@ class SSDPFactory(DatagramProtocol):
         logger.log_debug("registered device %s" % device.upnp_UDN)
 
     def _sendByebye(self, usn, nt):
-        for iface in self.interfaces:
-            resp = [
-                'NOTIFY * HTTP/1.1',
-                'HOST: 239.255.255.250:1900',
-                'NTS: ssdp:byebye',
-                'NT: %s' % nt,
-                'USN: %s' % usn
-                ]
-            self.transport.write('\r\n'.join(resp) + '\r\n\r\n', (iface, 1900))
-            logger.log_debug("sent ssdp:byebye for %s on %s" % (usn, iface))
+        resp = [
+            'NOTIFY * HTTP/1.1',
+            'HOST: 239.255.255.250:1900',
+            'NTS: ssdp:byebye',
+            'NT: %s' % nt,
+            'USN: %s' % usn
+            ]
+        self.transport.write('\r\n'.join(resp) + '\r\n\r\n', (SSDP_MULTICAST_GROUP, 1900))
+        logger.log_debug("sent ssdp:byebye for %s on %s" % (usn, self.interface.address))
 
     def _stopAdvertising(self, usn):
         try:
@@ -124,6 +115,7 @@ class SSDPFactory(DatagramProtocol):
         del self.devices[device.upnp_UDN]
 
     def datagramReceived(self, data, (host, port)):
+        logger.log_debug("received datagram")
         try:
             try:
                 header, payload = data.split('\r\n\r\n')
@@ -159,34 +151,33 @@ class SSDPFactory(DatagramProtocol):
             return
         logger.log_debug('received discovery request from %s:%d for %s' % (host, port, headers['ST']))
         # Generate a response
+        iface = self.interface.address
         responses = []
         # return all devices and services
         if headers['ST'] == 'ssdp:all':
             for udn,device in self.devices.items():
-                for iface in self.interfaces:
-                    # advertise the device
-                    responses.append(makeResponse("upnp:rootdevice",
-                                     "uuid:%s::upnp:rootdevice" % udn,
+                # advertise the device
+                responses.append(makeResponse("upnp:rootdevice",
+                                 "uuid:%s::upnp:rootdevice" % udn,
+                                 "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
+                responses.append(makeResponse("uuid:%s" % udn,
+                                 "uuid:%s" % udn,
+                                 "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
+                responses.append(makeResponse(device.upnp_device_type,
+                                 "uuid:%s::%s" % (udn, device.upnp_device_type),
+                                 "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
+                # advertise each service on the device
+                for svc in device._upnp_services.values():
+                    responses.append(makeResponse(svc.upnp_service_type,
+                                     "uuid:%s::%s" % (udn, svc.upnp_service_type),
                                      "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
-                    responses.append(makeResponse("uuid:%s" % udn,
-                                     "uuid:%s" % udn,
-                                     "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
-                    responses.append(makeResponse(device.upnp_device_type,
-                                     "uuid:%s::%s" % (udn, device.upnp_device_type),
-                                     "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
-                    # advertise each service on the device
-                    for svc in device._upnp_services.values():
-                        responses.append(makeResponse(svc.upnp_service_type,
-                                         "uuid:%s::%s" % (udn, svc.upnp_service_type),
-                                         "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
         # return each root device
         elif headers['ST'] == 'upnp:rootdevice':
             for udn,device in self.devices.items():
-                for iface in self.interfaces:
-                    # advertise the root device
-                    responses.append(makeResponse("upnp:rootdevice",
-                                     "uuid:%s::upnp:rootdevice" % udn,
-                                     "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
+                # advertise the root device
+                responses.append(makeResponse("upnp:rootdevice",
+                                 "uuid:%s::upnp:rootdevice" % udn,
+                                 "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
         # return the specific device
         elif headers['ST'].startswith('uuid:'): 
             logger.log_warning("ignoring M-SEARCH for %s" % headers['ST'])
@@ -201,7 +192,7 @@ class SSDPFactory(DatagramProtocol):
         # send the responses
         if len(responses) > 0:
             logger.log_debug("sending %i responses" % len(responses))
-            self.responder.sendResponses(host,port, responses, delayMax)
+            self._sendResponses(host, port, responses, delayMax)
         else:
             logger.log_warning("no responses generated for ssdp request")
 
@@ -213,45 +204,55 @@ class SSDPFactory(DatagramProtocol):
         for udn,device in self.devices.items():
             self.unregisterDevice(device)
 
-class MSearchResponder(DatagramProtocol):
-    def sendResponses(self, host, port, responses, delayMax):
+    def _sendResponses(self, host, port, responses, delayMax):
         self.transport.write(responses.pop(0) + '\r\n', (host,port))
         logger.log_debug("wrote ssdp response to %s:%i" % (host,port))
         if len(responses) > 0:
             reactor.callLater(random.randint(0, delayMax),
-                              self.sendResponses,
+                              self._sendResponses,
                               host,
                               port,
                               responses,
                               delayMax)
-    def connectionRefused(self):
-        logger.log_warning("failed to write ssdp response: connection refused")
 
 class SSDPServer(object):
     def __init__(self, interfaces=None):
+        self.interfaces = {}
+        detected = {}
+        for i in [i for i in netif.list_interfaces().values() if i.can_multicast]:
+            detected[i.address] = i
         if interfaces == None:
-            self.interfaces = [addr for name,(addr,up) in netif.list_interfaces().items()]
+            self.interfaces = detected
         else:
-            self.interfaces = interfaces
+            for addr in interfaces:
+                if addr in detected:
+                    self.interfaces[addr] = detected[addr]
 
     def start(self):
-        logger.log_debug("SSDP Server listening on port 1900")
-        self.server = SSDPFactory(self.interfaces)
-        self.listener = reactor.listenMulticast(1900, self.server, listenMultiple=True)
-        self.listener.joinGroup('239.255.255.250')
-        self.listener.setLoopbackMode(0)
+        self.servers = []
+        for addr,iface in self.interfaces.items():
+            protocol = SSDPFactory(iface)
+            #listener = reactor.listenMulticast(1900, protocol, addr, listenMultiple=True)
+            listener = reactor.listenMulticast(1900, protocol, listenMultiple=True)
+            listener.joinGroup('239.255.255.250', addr)
+            listener.setOutgoingInterface(addr)
+            listener.setTTL(1)
+            listener.setLoopbackMode(0)
+            self.servers.append((addr,protocol,listener))
+            logger.log_debug("SSDP Server listening on %s:1900" % addr)
 
     def stop(self):
-        self.server.sendAllByebyes()
-        self.listener.stopListening()
-        self.listener = None
-        self.server = None
-        logger.log_debug("SSDP server stopped listening")
+        for addr,protocol,listener in self.servers:
+            protocol.sendAllByebyes()
+            listener.stopListening()
+            logger.log_debug("SSDP server stopped listening on %s:1900" % addr)
 
     def registerDevice(self, device):
-        self.server.registerDevice(device)
+        for addr,protocol,listener in self.servers:
+            protocol.registerDevice(device)
 
     def unregisterDevice(self, device):
-        self.server.unregisterDevice(device)
+        for addr,protocol,listener in self.servers:
+            protocol.unregisterDevice(device)
 
 __all__ = ['SSDPServer',]
