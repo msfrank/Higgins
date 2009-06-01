@@ -37,7 +37,7 @@ class EventResource(Resource):
                     return Response(412)
                 callbacks = request.headers.getHeader('callback')
                 # create new subscription
-                s = self.service.subscribe(callbacks, timeout)
+                s = self.service._subscribe(callbacks, timeout)
                 # send the SID and timeout back in the response
                 return Response(200, {'sid': s.id, 'timeout': s.timeout})
             # otherwise this is a renewal
@@ -47,7 +47,7 @@ class EventResource(Resource):
                 if request.headers.hasHeader('callback'):
                     return Response(400)
                 sid = request.headers.getHeader('sid')
-                self.service.renew(sid)
+                self.service._renew(sid)
                 return Response(200)
         except Exception, e:
             logger.log_error("SUBSCRIBE failed: %s" % e)
@@ -58,7 +58,7 @@ class EventResource(Resource):
             if not request.headers.hasHeader('sid'):
                 return Response(412)
             sid = request.headers.getHeader('sid')
-            self.service.unsubscribe(sid)
+            self.service._unsubscribe(sid)
             return Response(200)
         except KeyError:
             return Response(412)

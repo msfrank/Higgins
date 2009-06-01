@@ -10,8 +10,8 @@ from higgins.upnp.statevar import StringStateVar, I4StateVar
 from higgins.plugins.mediaserver.logger import logger
 
 class AVTransport(UPNPDeviceService):
-    upnp_service_type = "urn:schemas-upnp-org:service:AVTransport:1"
-    upnp_service_id = "urn:upnp-org:serviceId:urn:schemas-upnp-org:service:AVTransport"
+    serviceType = "urn:schemas-upnp-org:service:AVTransport:1"
+    serviceID = "urn:upnp-org:serviceId:urn:schemas-upnp-org:service:AVTransport"
 
     #######################################################
     # State Variable declarations                         #

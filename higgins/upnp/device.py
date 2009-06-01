@@ -22,34 +22,35 @@ class DeviceDeclarativeParser(type):
         if udn == None:
             udn = ''.join(map(lambda x: random.choice(string.letters), xrange(20)))
             conf[udn_conf_key] = udn
-        attrs['upnp_UDN'] = udn
+        attrs['UDN'] = udn
         logger.log_debug("UDN for %s is %s" % (name, udn))
         # load services
         services = {}
         for key,svc in attrs.items():
             if isinstance(svc, UPNPDeviceService):
-                services[svc.upnp_service_id] = svc
-        for base in bases:
-            if hasattr(base, '_upnp_services'):
-                base._upnp_services.update(services)
-                services = base._upnp_services
-        attrs['_upnp_services'] = services
+                # add the service back-reference for each StateVar and Action
+                for statevar in svc._stateVars.values():
+                    statevar.service = svc
+                for action in svc._actions.values():
+                    action.service = svc
+                services[svc.serviceID] = svc
+        attrs['_services'] = services
         return super(DeviceDeclarativeParser,cls).__new__(cls, name, bases, attrs)
 
 class UPNPDevice(Service):
     __metaclass__ = DeviceDeclarativeParser
 
-    upnp_manufacturer = "Higgins Project"
-    upnp_manufacturer_url = "http://syntaxjockey.com/higgins"
-    upnp_model_name = "Higgins UPnP Device"
-    upnp_model_description = "Higgins UPnP Device"
-    upnp_model_url = "http://syntaxjockey.com/higgins"
-    upnp_model_number = None
-    upnp_serial_number = None
-    upnp_device_name = None
-    upnp_device_type = None
-    upnp_friendly_name = None
-    upnp_UDN = None
+    manufacturer = "Higgins Project"
+    manufacturerURL = "http://syntaxjockey.com/higgins"
+    modelName = "Higgins UPnP Device"
+    modelDescription = "Higgins UPnP Device"
+    modelURL = "http://syntaxjockey.com/higgins"
+    modelNumber = None
+    serialNumber = None
+    deviceName = None
+    deviceType = None
+    friendlyName = None
+    UDN = None
 
     def startService(self):
         Service.startService(self)
@@ -57,57 +58,57 @@ class UPNPDevice(Service):
     def stopService(self):
         return maybeDeferred(Service.stopService, self)
 
-    def get_description(self, host, relativeUrls=False):
+    def getDescription(self, host, relativeUrls=False):
         root = Element("root")
         root.attrib['xmlns'] = 'urn:schemas-upnp-org:device-1-0'
         version = SubElement(root, "specVersion")
         SubElement(version, "major").text = "1"
         SubElement(version, "minor").text = "0"
         device = SubElement(root, "device")
-        SubElement(device, "deviceType").text = self.upnp_device_type
-        SubElement(device, "friendlyName").text = self.upnp_friendly_name
-        SubElement(device, "manufacturer").text = self.upnp_manufacturer
-        SubElement(device, "UDN").text = "uuid:%s" % self.upnp_UDN
-        if self.upnp_manufacturer_url:
-            SubElement(device, "manufacturerURL").text = self.upnp_manufacturer_url
-        SubElement(device, "modelName").text = self.upnp_model_name
-        if self.upnp_model_name:
-            SubElement(device, "modelDescription").text = self.upnp_model_description
-        if self.upnp_model_url:
-            SubElement(device, "modelURL").text = self.upnp_model_url
-        if self.upnp_model_number:
-            SubElement(device, "modelNumber").text = self.upnp_model_number
-        if self.upnp_serial_number:
-            SubElement(device, "serialNumber").text = self.upnp_serial_number
+        SubElement(device, "deviceType").text = self.deviceType
+        SubElement(device, "friendlyName").text = self.friendlyName
+        SubElement(device, "manufacturer").text = self.manufacturer
+        SubElement(device, "UDN").text = "uuid:%s" % self.UDN
+        SubElement(device, "modelName").text = self.modelName
+        if self.manufacturerURL:
+            SubElement(device, "manufacturerURL").text = self.manufacturerURL
+        if self.modelDescription:
+            SubElement(device, "modelDescription").text = self.modelDescription
+        if self.modelURL:
+            SubElement(device, "modelURL").text = self.modelURL
+        if self.modelNumber:
+            SubElement(device, "modelNumber").text = self.modelNumber
+        if self.serialNumber:
+            SubElement(device, "serialNumber").text = self.serialNumber
         if relativeUrls:
             urlbase = ''
             SubElement(device, "URLBase").text = "http://%s" % host
         else:
             urlbase = "http://%s" % host
         svc_list = SubElement(device, "serviceList")
-        for svc in self._upnp_services.values():
+        for svc in self._services.values():
             service = SubElement(svc_list, "service")
-            SubElement(service, "serviceType").text = svc.upnp_service_type
-            SubElement(service, "serviceId").text = svc.upnp_service_id
+            SubElement(service, "serviceType").text = svc.serviceType
+            SubElement(service, "serviceId").text = svc.serviceID
             SubElement(service, "SCPDURL").text = "%s/%s/%s" % (
                 urlbase,
-                self.upnp_UDN.replace(':', '_'),
-                svc.upnp_service_id.replace(':', '_')
+                self.UDN.replace(':', '_'),
+                svc.serviceID.replace(':', '_')
                 )
             SubElement(service, "controlURL").text = "%s/%s/%s/control" % (
                 urlbase,
-                self.upnp_UDN.replace(':', '_'),
-                svc.upnp_service_id.replace(':', '_')
+                self.UDN.replace(':', '_'),
+                svc.serviceID.replace(':', '_')
                 )
             SubElement(service, "eventSubURL").text = "%s/%s/%s/event" % (
                 urlbase,
-                self.upnp_UDN.replace(':', '_'),
-                svc.upnp_service_id.replace(':', '_')
+                self.UDN.replace(':', '_'),
+                svc.serviceID.replace(':', '_')
                 )
         return xmlprint(root)
 
     def __str__(self):
-        return self.upnp_UDN
+        return self.UDN
 
 # Define the public API
 __all__ = ['UPNPDevice',]

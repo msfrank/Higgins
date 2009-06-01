@@ -33,25 +33,57 @@ class StateVar(object):
     def __init__(self, type, sendEvents=False, defaultValue=None, allowedValueList=None, allowedMin=None, allowedMax=None, allowedStep=None):
         self.type = type
         self.sendEvents = sendEvents
-        self.allowedValueList = allowedValueList
-        self.allowedMin = allowedMin
-        self.allowedMax = allowedMax
-        self.allowedStep = allowedStep
+        self._value = None
+        self.allowedValueList = None
+        self.allowedMin = None
+        self.allowedMax = None
+        self.allowedStep = None
+        if allowedValueList:
+            self.allowedValueList = [self.validate(v) for v in allowedValueList]
+        if allowedMin:
+            self.allowedMin = self.validate(allowedMin)
+        if allowedMax:
+            self.allowedMax = self.validate(allowedMax)
+        if allowedStep:
+            self.allowedStep = allowedStep
         if sendEvents or defaultValue != None:
-            self.value = self.validate(defaultValue)
-        else:
-            self.value = None
+            self._value = self.validate(defaultValue)
+        # these variables are set when the related Service is parsed
+        self.name = None
+        self.service = None
+
     def validate(self, value):
         raise Exception("no validator available")
+
+    def checkBounds(self, value):
+        raise Exception("no bounds-checker available")
+
     def parse(self, text_value):
         raise Exception("no parser available")
+
     def write(self, value):
         raise Exception("no writer available")
-    @property
-    def text_value(self):
+
+    def _get_value(self):
+        return self._value
+
+    def _set_value(self, value):
+        value = self.validate(value)
+        if self.allowedValueList and not value in self.allowedValueList:
+            raise Exception("value is not within the allowedValueList")
+        if self.allowedMin or self.allowedMax:
+            self.checkBounds(value)
+        self._value = value
+        if self.sendEvents:
+            self.service._notify([self])
+
+    def _get_text_value(self):
         if self.value == None:
             return None
         return self.write(self.value)
+
+    value = property(_get_value, _set_value)
+    text_value = property(_get_text_value)
 
 class I4StateVar(StateVar):
     def __init__(self, **kwds):
@@ -60,6 +92,11 @@ class I4StateVar(StateVar):
         if i4 < -2147483648 or i4 > 2147483647:
             raise Exception("input value is out-of-bounds")
         return i4
+    def checkBounds(self, value):
+        if self.allowedMin and value < self.allowedMin:
+            raise Exception("input value is out-of-bounds")
+        if self.allowedMax and value > self.allowedMax:
+            raise Exception("input value is out-of-bounds")
     def parse(self, text_value):
         return self.validate(int(text_value))
     def write(self, value):
@@ -72,6 +109,11 @@ class UI4StateVar(StateVar):
         if ui4 < 0 or ui4 > 4294967295:
             raise Exception("input value is out-of-bounds")
         return ui4
+    def checkBounds(self, value):
+        if self.allowedMin and value < self.allowedMin:
+            raise Exception("input value is out-of-bounds")
+        if self.allowedMax and value > self.allowedMax:
+            raise Exception("input value is out-of-bounds")
     def parse(self, text_value):
         return self.validate(int(text_value))
     def write(self, value):

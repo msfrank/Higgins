@@ -30,7 +30,7 @@ class UPNPService(MultiService, UPnPLogger):
         #    raise Exception("UPnP service is not running")
         self.ssdp.registerDevice(device)
         self.upnp.registerDevice(device)
-        self.upnp_devices[device.upnp_UDN] = device
+        self.upnp_devices[device.UDN] = device
 
     def unregisterUPNPDevice(self, device):
         # FIXME: needed?
@@ -39,7 +39,7 @@ class UPNPService(MultiService, UPnPLogger):
         try:
             self.ssdp.unregisterDevice(device)
             self.upnp.unregisterDevice(device)
-            del self.upnp_devices[device.upnp_UDN]
+            del self.upnp_devices[device.UDN]
         except Exception, e:
             self.log_debug("failed to unregister device: %s" % e)
 

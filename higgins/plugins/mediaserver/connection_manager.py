@@ -10,8 +10,8 @@ from higgins.upnp.statevar import StringStateVar, I4StateVar
 from higgins.plugins.mediaserver.logger import logger
 
 class ConnectionManager(UPNPDeviceService):
-    upnp_service_type = "urn:schemas-upnp-org:service:ConnectionManager:1"
-    upnp_service_id = "urn:upnp-org:serviceId:urn:schemas-upnp-org:service:ConnectionManager"
+    serviceType = "urn:schemas-upnp-org:service:ConnectionManager:1"
+    serviceID = "urn:upnp-org:serviceId:urn:schemas-upnp-org:service:ConnectionManager"
 
     #######################################################
     # State Variable declarations                         #

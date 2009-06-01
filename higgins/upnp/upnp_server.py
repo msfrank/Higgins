@@ -40,17 +40,17 @@ class RootResource(Resource):
         # if the next segment is 'root-device.xml', return the device description
         segments = segments[1:]
         if segments == []:
-            return StaticResource(device.get_description(host, True), 'text/xml'), []
+            return StaticResource(device.getDescription(host, True), 'text/xml'), []
         # otherwise the next segment is the service ID
         service_id = segments[0].replace('_',':')
         try:
-            service = device._upnp_services[service_id]
+            service = device._services[service_id]
         except:
             logger.log_warning("service '%s' doesn't exist" % service_id)
             return None, []
         segments = segments[1:]
         if segments == []:
-            return StaticResource(service.get_description(), 'text/xml'), []
+            return StaticResource(service.getDescription(), 'text/xml'), []
         if segments[0] == 'control':
             return ControlResource(service), []
         if segments[0] == 'event':
@@ -73,9 +73,9 @@ class UPnPServer:
         self.server = None
 
     def registerDevice(self, device):
-        self.devices[device.upnp_UDN] = device
-        logger.log_debug("registered device %s with UPnP server" % device.upnp_UDN)
+        self.devices[device.UDN] = device
+        logger.log_debug("registered device %s with UPnP server" % device.UDN)
 
     def unregisterDevice(self, device):
-        del self.devices[device.upnp_UDN]
-        logger.log_debug("unregistered device %s with UPnP server" % device.upnp_UDN)
+        del self.devices[device.UDN]
+        logger.log_debug("unregistered device %s with UPnP server" % device.UDN)

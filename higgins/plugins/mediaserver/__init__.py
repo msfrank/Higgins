@@ -10,18 +10,21 @@ from higgins.plugins.mediaserver.content_directory import ContentDirectory
 from higgins.plugins.mediaserver.logger import logger
 
 class MediaserverDevice(UPNPDevice):
+
+    # Higgins description variables
     pretty_name = "UPnP Media Server"
     description = "Share media using UPnP"
-    upnp_manufacturer = "Higgins Project"
-    upnp_model_name = "Higgins"
-    upnp_device_type = "urn:schemas-upnp-org:device:MediaServer:1"
-    upnp_friendly_name = "Media on Higgins"
-    upnp_description = "Higgins UPnP A/V Media Server"
+
+    # UPnP description variables
+    manufacturer = "Higgins Project"
+    modelName = "Higgins"
+    deviceType = "urn:schemas-upnp-org:device:MediaServer:1"
+    friendlyName = "Media on Higgins"
+    description = "Higgins UPnP A/V Media Server"
+
+    # UPnP services
     connection_manager = ConnectionManager()
     content_directory = ContentDirectory()
-
-    def __init__(self):
-        pass
 
     def startService(self):
         UPNPDevice.startService(self)

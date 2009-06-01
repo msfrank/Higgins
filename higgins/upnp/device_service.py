@@ -25,6 +25,49 @@ class Subscription(object):
         self.id = 'uuid:' + str(uuid4())
         self.seqid = 0
 
+    def _notify(self, statevars):
+        # create the request body
+        propset = Element("e:propertyset")
+        propset.attrib['xmlns:e'] = "urn:schemas-upnp-org:event-1-0"
+        prop = SubElement(propset, "e:property")
+        # add each evented statevar to the property set
+        for statevar in statevars:
+            if statevar.sendEvents:
+                SubElement(prop, statevar.name).text = statevar.text_value
+            else:
+                raise Exception("StateVar '%s' is not evented" % statevar.name)
+        postData = xmlprint(propset)
+        logger.log_debug("NOTIFY property set:\n" + postData)
+        # send the NOTIFY request to each callback
+        for url,urlparts in self.callbacks:
+            # set the NOTIFY headers
+            headers = {
+                'Host': urlparts.netloc,
+                'Content-Type': MimeType('text', 'xml'),
+                'NT': 'upnp:event',
+                'NTS': 'upnp:propchange',
+                'SID': self.id,
+                'SEQ': self.seqid
+                }
+            #
+            creator = protocol.ClientCreator(reactor, HTTPClientProtocol)
+            request = ClientRequest("NOTIFY", urlparts.path, headers, postData)
+            d = creator.connectTCP(urlparts.hostname, urlparts.port)
+            d.addCallback(self._sendNotifyRequest, request)
+            logger.log_debug("sending NOTIFY to %s" % url)
+        self.seqid = self.seqid + 1
+
+    def _sendNotifyRequest(self, proto, request):
+        d = proto.submitRequest(request)
+        d.addCallbacks(self._notifySuccess, self._notifyFailed)
+
+    def _notifySuccess(self, response):
+        readAndDiscard(response.stream)
+        logger.log_debug("NOTIFY succeeded")
+
+    def _notifyFailed(self, failure):
+        logger.log_warning("NOTIFY failed: %s" % str(failure))
+
 class DeviceServiceDeclarativeParser(type):
     def __new__(cls, name, bases, attrs):
         # load state variables and actions
@@ -34,43 +77,28 @@ class DeviceServiceDeclarativeParser(type):
             if isinstance(object, StateVar):
                 stateVars[key] = object
                 object.name = key
-                object.service = cls
             elif isinstance(object, Action):
                 actions[key] = object
                 object.name = key
-                object.service = cls
-        # load stateVars and actions from any base classes
-        #for base in bases:
-        #    if hasattr(base, '_upnp_stateVars'):
-        #        base._upnp_stateVars.update(stateVars)
-        #        stateVars = base._upnp_stateVars
-        #    if hasattr(base, '_upnp_actions'):
-        #        base._upnp_actions.update(actions)
-        #        actions = base._upnp_actions
-        attrs['_upnp_stateVars'] = stateVars
-        attrs['_upnp_actions'] = actions
-        attrs['_upnp_subscribers'] = {}
-        new_class = super(DeviceServiceDeclarativeParser,cls).__new__(cls, name, bases, attrs)
-        logger.log_debug("%s: stateVars=%s" % (name, attrs['_upnp_stateVars']))
-        logger.log_debug("%s: actions=%s" % (name, attrs['_upnp_actions']))
-        logger.log_debug("%s: subscribers=%s" % (name, attrs['_upnp_subscribers']))
-        return new_class
+        attrs['_stateVars'] = stateVars
+        attrs['_actions'] = actions
+        attrs['_subscribers'] = {}
+        return super(DeviceServiceDeclarativeParser,cls).__new__(cls, name, bases, attrs)
 
 class UPNPDeviceService(object):
     __metaclass__ = DeviceServiceDeclarativeParser
 
-    upnp_service_type = None
-    upnp_service_id = None
-    upnp_statevar_changed = Signal()
+    serviceType = None
+    serviceID = None
 
-    def get_description(self):
+    def getDescription(self):
         scpd = Element("scpd")
         scpd.attrib['xmlns'] = 'urn:schemas-upnp-org:service-1-0'
         version = SubElement(scpd, "specVersion")
         SubElement(version, "major").text = "1"
         SubElement(version, "minor").text = "0"
         action_list = SubElement(scpd, "actionList")
-        for action_name,upnp_action in self._upnp_actions.items():
+        for action_name,upnp_action in self._actions.items():
             action = SubElement(action_list, "action")
             SubElement(action, "name").text = action_name
             arg_list = SubElement(action, "argumentList")
@@ -83,7 +111,7 @@ class UPNPDeviceService(object):
                 if upnp_arg.retval:
                     SubElement(arg, "retval")
         var_list = SubElement(scpd, "serviceStateTable")
-        for var_name,upnp_stateVar in self._upnp_stateVars.items():
+        for var_name,upnp_stateVar in self._stateVars.items():
             stateVar = SubElement(var_list, "stateVariable")
             if upnp_stateVar.sendEvents:
                 stateVar.attrib['sendEvents'] = "yes"
@@ -105,63 +133,36 @@ class UPNPDeviceService(object):
                     SubElement(allowed_range, "step").text = str(upnp_stateVar.allowedStep)
         return xmlprint(scpd)
 
-    def subscribe(self, callbacks, timeout=1800):
+    def _subscribe(self, callbacks, timeout=1800):
         s = Subscription(callbacks, timeout)
-        self._upnp_subscribers[s.id] = s
-        logger.log_debug("service %s created new subscription %s" % (self.upnp_service_id,s.id))
-        self._upnp_notify_subscriber(s)
+        self._subscribers[s.id] = s
+        logger.log_debug("service %s created new subscription %s" % (self.serviceID,s.id))
+        s.handle = reactor.callLater(timeout, self._unsubscribe, s.id)
+        s._notify([sv for sv in self._stateVars.values() if sv.sendEvents])
         return s
 
-    def renew(self, sid, timeout):
-        if sid not in self._upnp_subscribers:
-            raise KeyError
-        logger.log_debug("service %s renewed subscription %s" % (self.upnp_service_id, sid))
+    def _renew(self, sid, timeout):
+        try:
+            s = self._subscribers[sid]
+            s.handle.reset(timeout)
+            logger.log_debug("service %s renewed subscription %s for %i seconds" % (self.serviceID, sid, timeout))
+        except Exception, e:
+            logger.log_debug("service %s failed to renew %s: %s" % (self.serviceID, sid, str(e)))
 
-    def unsubscribe(self, sid):
-        if sid not in self._upnp_subscribers:
-            raise KeyError
-        del self._upnp_subscribers[sid]
-        logger.log_debug("service %s unsubscribed %s" % (self.upnp_service_id, sid))
+    def _unsubscribe(self, sid):
+        try:
+            s = self._subscribers[sid]
+            s.handle.cancel()
+            del self._subscribers[sid]
+            logger.log_debug("service %s unsubscribed %s" % (self.serviceID, sid))
+        except Exception, e:
+            logger.log_debug("service %s failed to unsubscribe %s: %s" % (self.serviceID, sid, str(e)))
 
-    def _upnp_notify_subscriber(self, subscriber):
-        # create the request body
-        propset = Element("e:propertyset")
-        propset.attrib['xmlns:e'] = "urn:schemas-upnp-org:event-1-0"
-        prop = SubElement(propset, "e:property")
-        # add each evented statevar to the property set
-        for var_name,upnp_stateVar in self._upnp_stateVars.items():
-            if upnp_stateVar.sendEvents:
-                SubElement(prop, var_name).text = upnp_stateVar.text_value
-        postData = xmlprint(propset)
-        logger.log_debug("NOTIFY property set:\n" + postData)
-        # send the NOTIFY request to each callback
-        for url,urlparts in subscriber.callbacks:
-            # set the NOTIFY headers
-            headers = {
-                'Host': urlparts.netloc,
-                'Content-Type': MimeType('text', 'xml'),
-                'NT': 'upnp:event',
-                'NTS': 'upnp:propchange',
-                'SID': subscriber.id,
-                'SEQ': subscriber.seqid
-                }
-            #
-            creator = protocol.ClientCreator(reactor, HTTPClientProtocol)
-            request = ClientRequest("NOTIFY", urlparts.path, headers, postData)
-            d = creator.connectTCP(urlparts.hostname, urlparts.port)
-            def _notifySuccess(response):
-                readAndDiscard(response.stream)
-                logger.log_debug("NOTIFY succeeded")
-            def _notifyFailed(failure):
-                logger.log_warning("NOTIFY failed: %s" % str(failure))
-            def _sendNotifyRequest(proto, request):
-                d = proto.submitRequest(request)
-                d.addCallbacks(_notifySuccess, _notifyFailed)
-            d.addCallback(_sendNotifyRequest, request)
-            logger.log_debug("sending NOTIFY to %s" % url)
+    def _notify(self, statevars):
+        for s in self._subscribers.values(): s._notify(statevars)
 
     def __str__(self):
-        return self.upnp_service_id
+        return self.serviceID
 
 def _generateNTS(nts):
     return str(nts)

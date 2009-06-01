@@ -61,25 +61,25 @@ class SSDPFactory(DatagramProtocol):
         logger.log_debug("registered advertisement for %s" % usn)
 
     def registerDevice(self, device):
-        if device.upnp_UDN in self.devices:
+        if device.UDN in self.devices:
             raise Exception("%s is already a registered device" % device)
         # advertise the device
-        self._startAdvertising("uuid:%s::upnp:rootdevice" % device.upnp_UDN,
+        self._startAdvertising("uuid:%s::upnp:rootdevice" % device.UDN,
                                "upnp:rootdevice",
-                               device.upnp_UDN)
-        self._startAdvertising("uuid:%s" % device.upnp_UDN,
-                               "uuid:%s" % device.upnp_UDN,
-                               device.upnp_UDN)
-        self._startAdvertising("uuid:%s::%s" % (device.upnp_UDN, device.upnp_device_type),
-                               device.upnp_device_type,
-                               device.upnp_UDN)
+                               device.UDN)
+        self._startAdvertising("uuid:%s" % device.UDN,
+                               "uuid:%s" % device.UDN,
+                               device.UDN)
+        self._startAdvertising("uuid:%s::%s" % (device.UDN, device.deviceType),
+                               device.deviceType,
+                               device.UDN)
         # advertise each service on the device
-        for svc in device._upnp_services.values():
-            self._startAdvertising("uuid:%s::%s" % (device.upnp_UDN, svc.upnp_service_type),
-                                   svc.upnp_service_type,
-                                   device.upnp_UDN)
-        self.devices[device.upnp_UDN] = device
-        logger.log_debug("registered device %s" % device.upnp_UDN)
+        for svc in device._services.values():
+            self._startAdvertising("uuid:%s::%s" % (device.UDN, svc.serviceType),
+                                   svc.serviceType,
+                                   device.UDN)
+        self.devices[device.UDN] = device
+        logger.log_debug("registered device %s" % device.UDN)
 
     def _sendByebye(self, usn, nt):
         resp = [
@@ -102,20 +102,19 @@ class SSDPFactory(DatagramProtocol):
         self._sendByebye(adv.usn, adv.nt)
 
     def unregisterDevice(self, device):
-        if not device.upnp_UDN in self.devices:
+        if not device.UDN in self.devices:
             raise Exception("%s is not a registered device" % device)
         # advertise the device
-        self._stopAdvertising("uuid:%s::upnp:rootdevice" % device.upnp_UDN)
-        self._stopAdvertising("uuid:%s" % device.upnp_UDN)
-        self._stopAdvertising("uuid:%s::%s" % (device.upnp_UDN, device.upnp_device_type))
+        self._stopAdvertising("uuid:%s::upnp:rootdevice" % device.UDN)
+        self._stopAdvertising("uuid:%s" % device.UDN)
+        self._stopAdvertising("uuid:%s::%s" % (device.UDN, device.deviceType))
         # advertise each service on the device
-        for svc in device._upnp_services.values():
-            self._stopAdvertising("uuid:%s::%s" % (device.upnp_UDN, svc.upnp_service_type))
-        logger.log_debug("unregistered device %s" % device.upnp_UDN)
-        del self.devices[device.upnp_UDN]
+        for svc in device._services.values():
+            self._stopAdvertising("uuid:%s::%s" % (device.UDN, svc.serviceType))
+        logger.log_debug("unregistered device %s" % device.UDN)
+        del self.devices[device.UDN]
 
     def datagramReceived(self, data, (host, port)):
-        logger.log_debug("received datagram")
         try:
             try:
                 header, payload = data.split('\r\n\r\n')
@@ -163,13 +162,13 @@ class SSDPFactory(DatagramProtocol):
                 responses.append(makeResponse("uuid:%s" % udn,
                                  "uuid:%s" % udn,
                                  "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
-                responses.append(makeResponse(device.upnp_device_type,
-                                 "uuid:%s::%s" % (udn, device.upnp_device_type),
+                responses.append(makeResponse(device.deviceType,
+                                 "uuid:%s::%s" % (udn, device.deviceType),
                                  "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
                 # advertise each service on the device
-                for svc in device._upnp_services.values():
-                    responses.append(makeResponse(svc.upnp_service_type,
-                                     "uuid:%s::%s" % (udn, svc.upnp_service_type),
+                for svc in device._services.values():
+                    responses.append(makeResponse(svc.serviceType,
+                                     "uuid:%s::%s" % (udn, svc.serviceType),
                                      "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
         # return each root device
         elif headers['ST'] == 'upnp:rootdevice':

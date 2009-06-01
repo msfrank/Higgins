@@ -36,13 +36,13 @@ class ControlResource(resource.Resource):
                 # determine UPnP action
                 action = body.find("{%s}%s" % (request.soap_ns, request.soap_action))
                 # look up the action in the service
-                upnp_action = self.service._upnp_actions[request.soap_action]
+                upnp_action = self.service._actions[request.soap_action]
                 # build a list of the action arguments
                 in_args = {}
                 for arg in action:
                     in_args[arg.tag] = arg.text
                 # execute the UPnP action
-                logger.log_debug("executing %s#%s" % (self.service.upnp_service_id, request.soap_action))
+                logger.log_debug("executing %s#%s" % (self.service.serviceID, request.soap_action))
                 out_args = upnp_action(request, self.service, in_args)
                 # return the action response
                 env = Element("s:Envelope")
@@ -64,7 +64,7 @@ class ControlResource(resource.Resource):
                 logger.log_error("caught unhandled exception: %s" % e)
                 raise UPNPError(500, "Internal server error")
         except UPNPError, e:
-            logger.log_debug("failed to execute %s#%s: %s" % (self.service.upnp_service_id,request.soap_action, e))
+            logger.log_debug("failed to execute %s#%s: %s" % (self.service.serviceID, request.soap_action, e))
             return HttpResponse(500,
                 headers={'EXT': ''},
                 stream="""<?xml version="1.0"?>

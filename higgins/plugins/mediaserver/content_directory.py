@@ -5,8 +5,9 @@
 # the COPYING file.
 
 from xml.etree.ElementTree import Element, SubElement
-from higgins.core.models import Artist, Album, Song, File, Playlist
+from higgins.core.models import Artist, Album, Song, File, Playlist, db_changed
 from higgins.core.service import CoreHttpConfig
+from higgins.core.configurator import Configurator, IntegerSetting
 from higgins.upnp.device_service import UPNPDeviceService
 from higgins.upnp.statevar import StringStateVar, UI4StateVar
 from higgins.upnp.action import Action, InArgument, OutArgument
@@ -14,9 +15,12 @@ from higgins.upnp.error import UPNPError
 from higgins.upnp.prettyprint import xmlprint
 from higgins.plugins.mediaserver.logger import logger
 
+class CDSPrivate(Configurator):
+    SYSTEM_UPDATE_ID = IntegerSetting("System Update ID", 0)
+
 class ContentDirectory(UPNPDeviceService):
-    upnp_service_type = "urn:schemas-upnp-org:service:ContentDirectory:1"
-    upnp_service_id = "urn:upnp-org:serviceId:urn:schemas-upnp-org:service:ContentDirectory"
+    serviceType = "urn:schemas-upnp-org:service:ContentDirectory:1"
+    serviceID = "urn:upnp-org:serviceId:urn:schemas-upnp-org:service:ContentDirectory"
 
     #######################################################
     # State Variable declarations                         #
@@ -24,7 +28,7 @@ class ContentDirectory(UPNPDeviceService):
 
     A_ARG_TYPE_BrowseFlag = StringStateVar(allowedValueList=("BrowseMetadata", "BrowseDirectChildren"))
     A_ARG_TYPE_SearchCriteria = StringStateVar()
-    SystemUpdateID = UI4StateVar(sendEvents=True, defaultValue=0)
+    SystemUpdateID = UI4StateVar(sendEvents=True, defaultValue=CDSPrivate.SYSTEM_UPDATE_ID)
     #ContainerUpdateIDs = StringStateVar(sendEvents=True, defaultValue="0,1")
     A_ARG_TYPE_Count = UI4StateVar()
     A_ARG_TYPE_SortCriteria = StringStateVar()
@@ -35,6 +39,16 @@ class ContentDirectory(UPNPDeviceService):
     A_ARG_TYPE_Result = StringStateVar()
     SearchCapabilities = StringStateVar()
     A_ARG_TYPE_Filter = StringStateVar()
+
+    def __init__(self):
+        signal = db_changed.connect()
+        signal.addCallback(self._caughtUpdate)
+
+    def _caughtUpdate(self, unused):
+        self.SystemUpdateID.value = self.SystemUpdateID.value + 1
+        CDSPrivate.SYSTEM_UPDATE_ID = self.SystemUpdateID.value
+        signal = db_changed.connect()
+        signal.addCallback(self._caughtUpdate)
 
     #######################################################
     # Action definitions                                  #
