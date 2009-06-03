@@ -61,7 +61,7 @@ setup(
             'static/js/*.js',
             'templates/*.t',
             ],
-        'higgins.plugins.mrss': ['templates/*.t',],
+        #'higgins.plugins.mrss': ['templates/*.t',],
         },
     entry_points={
         # auto-generate scripts

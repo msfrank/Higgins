@@ -1,6 +1,7 @@
 include ez_setup.py
 include AUTHORS COPYING INSTALL NEWS README
-include higgins/netif/netif-internal.h
+include higgins/platform/netif-internal.h
+include higgins/platform/inotify-internal.h
 include higgins/data/templates/*.t
 include higgins/data/static/css/*.css
 include higgins/data/static/css/smoothness/*.css

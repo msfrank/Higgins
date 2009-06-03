@@ -1,3 +1,11 @@
+0.4
+===
+Released 2009-06-02
+
+Got UPnP MediaServer working with XBox Media Center, Boxee, and Elisa
+Added server updates for DAAP
+Fixed the DAAP plugin to correctly advertise itself to iTunes >= 8.1.1
+
 0.3
 ===
 Released 2009-04-27

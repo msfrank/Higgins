@@ -59,6 +59,8 @@ class DaapService(Service):
                                     avahi.string_array_to_txt_array([
                                         "txtvers=1",
                                         "Machine Name=%s" % DaapConfig.SHARE_NAME,
+                                        "Password=false",
+                                        "Media Kinds Shared=1"
                                         ])
                                     )
         self.avahi_group.Commit()
@@ -75,12 +77,13 @@ class DaapService(Service):
         reactor.callLater(1, self._serviceDone.callback, None)
 
     def _doStopService(self, result):
+        # advertise that the mDNS service has gone away
+        self.avahi_group.Reset()
+        self.avahi_group.Free()
+        self.avahi_group = None
         logger.log_debug("stopped DAAP service")
 
     def stopService(self):
-        # advertise that the mDNS service has gone away
-        self.avahi_group.Free()
-        self.avahi_group = None
         # stop listening on the DAAP port
         self.listener.stopListening()
         # create a list of waiting streams
