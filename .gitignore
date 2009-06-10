@@ -7,7 +7,7 @@ dumps
 *.pyc
 Higgins.egg-info
 MANIFEST
-higgins/netif/commands.c
-higgins/netif/commands.so
+higgins/platform/netif.c
+higgins/platform/netif.so
 plugins/daap/DAAP_Share_Server.egg-info
 plugins/upnp/UPnP_MediaServer.egg-info

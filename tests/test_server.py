@@ -1,19 +1,19 @@
 import os, sys, signal, time
 from twisted.internet import reactor
-import unittest
-from higgins import server
+from higgins import server, logger
+from testtool import HigginsTestCase
 
-class ServerCreateTest(unittest.TestCase):
+class ServerCreateTest(TestCase):
     """
     Test creating a new server environment.
     """
     def setUp(self):
         os.system('rm -rf /tmp/createtest-env')
-    def runTest(self):
+    def test_createEnvironment(self):
         pid = os.fork()
         if pid == 0:
             try:
-                self.s = server.Server('/tmp/createtest-env', create=True, debug=True, verbosity=4)
+                self.s = server.Server('/tmp/createtest-env', create=True, debug=True)
                 os._exit(0)
             except Exception, e:
                 print "caught exception: %s" % e
@@ -24,17 +24,17 @@ class ServerCreateTest(unittest.TestCase):
     def tearDown(self):
         os.system('rm -rf /tmp/createtest-env')
 
-class ServerStopTest(unittest.TestCase):
+class ServerStopTest(TestCase):
     """
     Test stopping the server using the Server.stop() method.
     """
     def setUp(self):
         os.system('rm -rf /tmp/stoptest-env')
-    def runTest(self):
+    def test_stopServer(self):
         pid = os.fork()
         if pid == 0:
             try:
-                self.s = server.Server('/tmp/stoptest-env', create=True, debug=True, verbosity=4)
+                self.s = server.Server('/tmp/stoptest-env', create=True, debug=True)
                 reactor.callLater(5, self.s.stop)
                 self.s.run()
                 os._exit(0)
@@ -47,14 +47,14 @@ class ServerStopTest(unittest.TestCase):
     def tearDown(self):
         os.system('rm -rf /tmp/stoptest-env')
 
-class ServerRunnerTest(unittest.TestCase):
+class ServerRunnerTest(TestCase):
     """
     Test running the server from the command line, and stopping it by
     sending the SIGINT signal.
     """
     def setUp(self):
         os.system('rm -rf /tmp/runnertest-env')
-    def runTest(self):
+    def test_runServer(self):
         pid = os.fork()
         if pid == 0:
             os.execlp('higgins-media-server', 'higgins-media-server', '--create', '--debug', '/tmp/runnertest-env')
@@ -66,6 +66,3 @@ class ServerRunnerTest(unittest.TestCase):
         assert(status == 0)
     def tearDown(self):
         os.system('rm -rf /tmp/runnertest-env')
-
-if __name__ == '__main__':
-    unittest.main()
