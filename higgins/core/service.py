@@ -115,19 +115,19 @@ class CoreService(MultiService, CoreLogger):
     def startService(self):
         MultiService.startService(self)
         self._listener = reactor.listenTCP(CoreHttpConfig.HTTP_PORT, channel.HTTPFactory(self._site))
-        self.log_debug("started core service")
+        self.log_info("started core service")
         self.upnp_service = UPNPService()
         # load enabled services
         try:
             for name in conf.get("CORE_ENABLED_PLUGINS", []):
                 self.enablePlugin(name)
-            self.log_debug ("finished starting enabled services")
+            self.log_debug("started all enabled services")
         except Exception, e:
             raise e
 
     def _doStopService(self, result):
         self._listener.stopListening()
-        self.log_debug("stopped core service")
+        self.log_info("stopped core service")
 
     def stopService(self):
         d = maybeDeferred(MultiService.stopService, self)
@@ -158,7 +158,7 @@ class CoreService(MultiService, CoreLogger):
                             init_configs_recursive(config)
             init_configs_recursive(plugin.configs)                
             self._plugins[name] = plugin
-            self.log_debug("registered plugin '%s'" % name)
+            self.log_info("registered plugin '%s'" % name)
         except Exception, e:
             self.log_error("failed to register plugin '%s': %s" % (name, e))
 
@@ -173,7 +173,7 @@ class CoreService(MultiService, CoreLogger):
             if self.pluginIsEnabled(name):
                 self.disablePlugin(name)
             del self._plugins[name]
-            self.log_debug("unregistered plugin '%s'" % name)
+            self.log_info("unregistered plugin '%s'" % name)
         except Exception, e:
             self.log_error("failed to unregister plugin '%s': %s" % (name, e))
 
@@ -205,7 +205,7 @@ class CoreService(MultiService, CoreLogger):
                     plugin.startService()
             # update the list of enabled plugins
             conf.set(CORE_ENABLED_PLUGINS=[pname for pname,plugin in self._plugins.items() if plugin.running])
-            self.log_debug("enabled plugin '%s'" % name)
+            self.log_info("enabled plugin '%s'" % name)
         except Exception, e:
             self.log_error("failed to enable plugin '%s': %s" % (name, e))
 
@@ -215,7 +215,7 @@ class CoreService(MultiService, CoreLogger):
         if isinstance(plugin, UPNPDevice):
             self.upnp_service.unregisterUPNPDevice(plugin)
         conf.set(CORE_ENABLED_PLUGINS=[pname for pname,plugin in self._plugins.items() if plugin.running])
-        self.log_debug("disabled plugin '%s'" % name)
+        self.log_info("disabled plugin '%s'" % name)
 
     def disablePlugin(self, name):
         """Disables the named service."""

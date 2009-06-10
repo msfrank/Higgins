@@ -16,14 +16,14 @@ class PluginLoader(object, Loggable):
     def __init__(self):
         self._plugins = {}
         plugins_dir = os.path.join(site_settings["HIGGINS_DIR"], "plugins")
-        self.log_debug("added '%s' to plugin search path" % plugins_dir)
+        self.log_info("added '%s' to plugin search path" % plugins_dir)
         working_set.add_entry(plugins_dir)
         env = Environment([plugins_dir,])
         self._eggs,errors = working_set.find_plugins(env)
         # load plugin eggs
         for p in self._eggs:
             working_set.add(p)
-            self.log_debug("loaded plugin egg '%s'" % p)
+            self.log_info("loaded plugin egg '%s'" % p)
         for e in errors:
             self.log_error("failed to load plugin egg '%s'" % e)
         # load all discovered plugins
@@ -31,7 +31,7 @@ class PluginLoader(object, Loggable):
             try:
                 factory = ep.load()
                 if issubclass(factory, Service):
-                    self.log_debug("found service plugin '%s'" % ep.name)
+                    self.log_info("found service plugin '%s'" % ep.name)
                     self._plugins[ep.name] = factory
                 else:
                     self.log_warning("ignoring plugin '%s': unknown plugin type" % ep.name)

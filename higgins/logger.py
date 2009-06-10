@@ -34,7 +34,7 @@ class Loggable:
 
 class CommonObserver(log.DefaultObserver):
     def _formatMessage(self, params):
-        level = params.get('level', 4)
+        level = params.get('level', LOG_DEBUG)
         time_t = params.get('time', None)
         domain = params.get('domain', 'twisted')
         if params.get('printed') == True:
@@ -49,17 +49,22 @@ class CommonObserver(log.DefaultObserver):
         return "%s [%s] %s: %s" % (time, domain, LEVELS[level], ''.join(params['message']))
 
 class LogfileObserver(CommonObserver):
-    def __init__(self, f):
+    def __init__(self, f, verbosity=LOG_WARNING):
+        self.verbosity = verbosity
         self.write = f.write
         self.flush = f.flush
 
     def _emit(self, params):
+        level = params.get('level', LOG_DEBUG)
+        if level > self.verbosity:
+            return
         msg = self._formatMessage(params) + '\r\n'
         util.untilConcludes(self.write, msg)
         util.untilConcludes(self.flush)
 
 class StdoutObserver(CommonObserver):
-    def __init__(self, colorized=False):
+    def __init__(self, colorized=False, verbosity=LOG_WARNING):
+        self.verbosity = verbosity
         if colorized:
             self.START_RED = '\033[1;31m'
             self.START_YELLOW = '\033[1;33m'
@@ -70,12 +75,14 @@ class StdoutObserver(CommonObserver):
             self.END = ''
 
     def _emit(self, params):
-        level = params.get('level', 'debug')
+        level = params.get('level', LOG_DEBUG)
+        if level > self.verbosity:
+            return
         msg = self._formatMessage(params)
-        if level < 2:
+        if level < LOG_WARNING:
             print self.START_RED + msg + self.END
             print traceback.print_exc()
-        elif level == 2:
+        elif level == LOG_WARNING:
             print self.START_YELLOW + msg + self.END
         else:
             print msg

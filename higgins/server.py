@@ -61,15 +61,15 @@ class Server(object, logger.Loggable):
         # if debug flag is specified, then don't request to daemonize and log to stdout
         if debug:
             self.daemonize = False
-            self.observer = logger.StdoutObserver(colorized=True)
+            self.observer = logger.StdoutObserver(colorized=True, verbosity=verbosity)
         # otherwise daemonize and log to logs/higgins.log
         else:
             self.daemonize = True
-            self.observer = logger.LogfileObserver(LogFile('higgins.log', os.path.join(env, 'logs')))
+            self.observer = logger.LogfileObserver(LogFile('higgins.log', os.path.join(env, 'logs')), verbosity=verbosity)
         self.observer.start()
-        self.log_debug("Higgins version is %s" % VERSION)
+        self.log_info("Higgins version is %s" % VERSION)
         if create:
-            self.log_debug("created new environment in " + env)
+            self.log_info("created new environment in " + env)
         # set pid file
         self._pidfile = os.path.join(env, "higgins.pid")
         if os.path.exists(self._pidfile):
@@ -113,11 +113,11 @@ class Server(object, logger.Loggable):
             # start the core service
             self._core_service.startService()
             # pass control to reactor
-            self.log_debug("Server.run(): starting reactor")
+            self.log_info("starting twisted reactor")
             self._oldsignal = signal.signal(signal.SIGINT, self._caughtSignal)
             reactor.run()
             signal.signal(signal.SIGINT, self._oldsignal)
-            self.log_debug("Server.run(): returned from reactor")
+            self.log_debug("returned from twisted reactor")
             # save configuration settings
             conf.flush()
         finally:
@@ -128,9 +128,9 @@ class Server(object, logger.Loggable):
             self.observer.stop()
 
     def _doStop(self, result):
-        self.log_debug("Server._doStop(): stopped core service")
+        self.log_debug("stopped core service")
         reactor.stop()
-        self.log_debug("Server._doStop(): stopped reactor")
+        self.log_info("stopped twisted reactor")
 
     def stop(self):
         """
@@ -202,11 +202,7 @@ def run_application():
         print "%s, exiting" % e
         sys.exit(1)
     # initialize the server
-    if o['debug']:
-        verbosity = logger.LOG_DEBUG2
-    else:
-        verbosity = o['verbosity']
-    server = Server(o['env'], create=o['create'], debug=o['debug'], verbosity=verbosity)
+    server = Server(o['env'], create=o['create'], debug=o['debug'], verbosity=o['verbosity'])
     # fork into the background
     if server.daemonize:
         if os.fork():
