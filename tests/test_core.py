@@ -3,7 +3,7 @@ from twisted.web import client
 from higgins import server
 from testtool import HigginsTestCase
 
-class CoreServiceTest(TestCase):
+class CoreServiceTest(HigginsTestCase):
     """
     Test core service functionality.
     """

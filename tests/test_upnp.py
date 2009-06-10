@@ -3,7 +3,7 @@ from twisted.web import client
 from higgins import server
 from testtool import HigginsTestCase
 
-class UPNPServiceTest(TestCase):
+class UPNPServiceTest(HigginsTestCase):
     """
     Test upnp service functionality.
     """

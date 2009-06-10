@@ -3,7 +3,7 @@ from twisted.internet import reactor
 from higgins import server, logger
 from testtool import HigginsTestCase
 
-class ServerCreateTest(TestCase):
+class ServerCreateTest(HigginsTestCase):
     """
     Test creating a new server environment.
     """
@@ -24,7 +24,7 @@ class ServerCreateTest(TestCase):
     def tearDown(self):
         os.system('rm -rf /tmp/createtest-env')
 
-class ServerStopTest(TestCase):
+class ServerStopTest(HigginsTestCase):
     """
     Test stopping the server using the Server.stop() method.
     """
@@ -47,7 +47,7 @@ class ServerStopTest(TestCase):
     def tearDown(self):
         os.system('rm -rf /tmp/stoptest-env')
 
-class ServerRunnerTest(TestCase):
+class ServerRunnerTest(HigginsTestCase):
     """
     Test running the server from the command line, and stopping it by
     sending the SIGINT signal.
