@@ -75,27 +75,55 @@ class ContentDirectory(UPNPDeviceService):
                 container.attrib['id'] = objectID
                 container.attrib['parentID'] = '-1'
                 container.attrib['restricted'] = '1'
-                container.attrib['childCount'] = str(len(Artist.objects.all()))
-                SubElement(container, 'dc:title').text = 'Music on Higgins'
+                container.attrib['childCount'] = '2'
+                SubElement(container, 'dc:title').text = 'Media on Higgins'
                 SubElement(container, 'upnp:class').text = 'object.container.storageFolder'
-            elif len(segments) == 2:
-                artist = Artist.objects.get(id=int(segments[1]))
-                container = SubElement(didl, 'container')
-                container.attrib['id'] = objectID
-                container.attrib['parentID'] = '0'
-                container.attrib['restricted'] = '1'
-                container.attrib['childCount'] = str(len(Album.objects.filter(artist=artist)))
-                SubElement(container, 'dc:title').text = str(artist.name)
-                SubElement(container, 'upnp:class').text = 'object.container.person.musicArtist'
-            elif len(segments) == 3:
-                album = Album.objects.get(id=int(segments[2]), artist=int(segments[1]))
-                container = SubElement(didl, 'container')
-                container.attrib['id'] = objectID
-                container.attrib['parentID'] = '/'.join(segments[:1])
-                container.attrib['restricted'] = '1'
-                container.attrib['childCount'] = str(len(Song.objects.filter(album=album)))
-                SubElement(container, 'dc:title').text = str(album.name)
-                SubElement(container, 'upnp:class').text = 'object.container.album.musicAlbum'
+            elif len(segments) > 1:
+                if segments[1] == 'music':
+                    if len(segments) == 2:
+                        container = SubElement(didl, 'container')
+                        container.attrib['id'] = objectID
+                        container.attrib['parentID'] = '0'
+                        container.attrib['restricted'] = '1'
+                        container.attrib['childCount'] = str(len(Artist.objects.all()))
+                        SubElement(container, 'dc:title').text = 'Music'
+                        SubElement(container, 'upnp:class').text = 'object.container.storageFolder'
+                    elif len(segments) == 3:
+                        artist = Artist.objects.get(id=int(segments[2]))
+                        container = SubElement(didl, 'container')
+                        container.attrib['id'] = objectID
+                        container.attrib['parentID'] = '/'.join(segments[:1])
+                        container.attrib['restricted'] = '1'
+                        container.attrib['childCount'] = str(len(Album.objects.filter(artist=artist)))
+                        SubElement(container, 'dc:title').text = str(artist.name)
+                        SubElement(container, 'upnp:class').text = 'object.container.person.musicArtist'
+                    elif len(segments) == 4:
+                        album = Album.objects.get(id=int(segments[3]), artist=int(segments[2]))
+                        container = SubElement(didl, 'container')
+                        container.attrib['id'] = objectID
+                        container.attrib['parentID'] = '/'.join(segments[:1])
+                        container.attrib['restricted'] = '1'
+                        container.attrib['childCount'] = str(len(Song.objects.filter(album=album)))
+                        SubElement(container, 'dc:title').text = str(album.name)
+                        SubElement(container, 'upnp:class').text = 'object.container.album.musicAlbum'
+                if segments[1] == 'playlists':
+                    if len(segments) == 2:
+                        container = SubElement(didl, 'container')
+                        container.attrib['id'] = objectID
+                        container.attrib['parentID'] = '0'
+                        container.attrib['restricted'] = '1'
+                        container.attrib['childCount'] = str(len(Playlist.objects.all()))
+                        SubElement(container, 'dc:title').text = 'Playlists'
+                        SubElement(container, 'upnp:class').text = 'object.container.storageFolder'
+                    elif len(segments) == 3:
+                        playlist = Playlist.objects.get(id=int(segments[2]))
+                        container = SubElement(didl, 'container')
+                        container.attrib['id'] = objectID
+                        container.attrib['parentID'] = '/'.join(segments[:1])
+                        container.attrib['restricted'] = '1'
+                        container.attrib['childCount'] = str(len(playlist))
+                        SubElement(container, 'dc:title').text = str(playlist.name)
+                        SubElement(container, 'upnp:class').text = 'object.container.playlistContainer'
             total_matches = 1
             number_returned = 1
         elif browseFlag == 'BrowseDirectChildren':
@@ -115,45 +143,95 @@ class ContentDirectory(UPNPDeviceService):
                 return retval
             # determine the number of matches
             if len(segments) == 1:
-                qset = Artist.objects.all()
-                matches,total_matches,number_returned = getMatches(startingIndex, requestedCount, qset)
-                for artist in matches:
-                    container = SubElement(didl, "container")
-                    container.attrib["id"] = objectID + '/' + str(artist.id)
-                    container.attrib["parentID"] = '0'
-                    container.attrib["restricted"] = "1"
-                    container.attrib['childCount'] = str(len(Album.objects.filter(artist=artist)))
-                    SubElement(container, "upnp:class").text = "object.container.person.musicArtist"
-                    SubElement(container, "dc:title").text = artist.name
-            elif len(segments) == 2:
-                qset = Album.objects.filter(artist=int(segments[1]))
-                matches,total_matches,number_returned = getMatches(startingIndex, requestedCount, qset)
-                for album in matches:
-                    container = SubElement(didl, "container")
-                    container.attrib["id"] = objectID + '/' + str(album.id)
-                    container.attrib["parentID"] = '/'.join(segments[:-1])
-                    container.attrib["restricted"] = "1"
-                    container.attrib['childCount'] = str(len(Song.objects.filter(album=album)))
-                    SubElement(container, "upnp:class").text = "object.container.album.musicAlbum"
-                    SubElement(container, "dc:title").text = album.name
-            elif len(segments) == 3:
-                qset = Song.objects.filter(album=int(segments[2]))
-                matches,total_matches,number_returned = getMatches(startingIndex, requestedCount, qset)
-                for song in matches:
-                    item = SubElement(didl, "item")
-                    item.attrib["id"] = objectID + '/' + str(song.id)
-                    item.attrib["parentID"] = '/'.join(segments[:-1])
-                    item.attrib["restricted"] = "1"
-                    SubElement(item, "upnp:class").text = "object.item.audioItem.musicTrack"
-                    SubElement(item, "dc:title").text = song.name
-                    SubElement(item, "upnp:artist").text = str(song.artist.name)
-                    SubElement(item, "upnp:album").text = str(song.album.name)
-                    SubElement(item, "upnp:genre").text = str(song.album.genre.name)
-                    SubElement(item, "upnp:originalTrackNumber").text = str(song.track_number)
-                    resource = SubElement(item, "res")
-                    resource.attrib["protocolInfo"] = "http-get:*:%s:*" % str(song.file.mimetype)
-                    resource.attrib["size"] = str(song.file.size)
-                    resource.text = "http://%s:%i/content/%i" % (host, port, song.id)
+                container = SubElement(didl, "container")
+                container.attrib["id"] = '0/music'
+                container.attrib["parentID"] = '0'
+                container.attrib["restricted"] = "1"
+                container.attrib['childCount'] = str(len(Album.objects.all()))
+                SubElement(container, "upnp:class").text = "object.container.storageFolder"
+                SubElement(container, "dc:title").text = 'Music'
+                container = SubElement(didl, "container")
+                container.attrib["id"] = '0/playlists'
+                container.attrib["parentID"] = '0'
+                container.attrib["restricted"] = "1"
+                container.attrib['childCount'] = str(len(Playlist.objects.all()))
+                SubElement(container, "upnp:class").text = "object.container.storageFolder"
+                SubElement(container, "dc:title").text = 'Playlists'
+                total_matches = 2
+                number_returned = 2
+            if len(segments) > 1:
+                if segments[1] == 'music':
+                    if len(segments) == 2:
+                        qset = Artist.objects.all()
+                        matches,total_matches,number_returned = getMatches(startingIndex, requestedCount, qset)
+                        for artist in matches:
+                            container = SubElement(didl, "container")
+                            container.attrib["id"] = objectID + '/' + str(artist.id)
+                            container.attrib["parentID"] = '/'.join(segments[:-1])
+                            container.attrib["restricted"] = "1"
+                            container.attrib['childCount'] = str(len(Album.objects.filter(artist=artist)))
+                            SubElement(container, "upnp:class").text = "object.container.person.musicArtist"
+                            SubElement(container, "dc:title").text = artist.name
+                    elif len(segments) == 3:
+                        qset = Album.objects.filter(artist=int(segments[2]))
+                        matches,total_matches,number_returned = getMatches(startingIndex, requestedCount, qset)
+                        for album in matches:
+                            container = SubElement(didl, "container")
+                            container.attrib["id"] = objectID + '/' + str(album.id)
+                            container.attrib["parentID"] = '/'.join(segments[:-1])
+                            container.attrib["restricted"] = "1"
+                            container.attrib['childCount'] = str(len(Song.objects.filter(album=album)))
+                            SubElement(container, "upnp:class").text = "object.container.album.musicAlbum"
+                            SubElement(container, "dc:title").text = album.name
+                    elif len(segments) == 4:
+                        qset = Song.objects.filter(album=int(segments[3]))
+                        matches,total_matches,number_returned = getMatches(startingIndex, requestedCount, qset)
+                        for song in matches:
+                            item = SubElement(didl, "item")
+                            item.attrib["id"] = objectID + '/' + str(song.id)
+                            item.attrib["parentID"] = '/'.join(segments[:-1])
+                            item.attrib["restricted"] = "1"
+                            SubElement(item, "upnp:class").text = "object.item.audioItem.musicTrack"
+                            SubElement(item, "dc:title").text = song.name
+                            SubElement(item, "upnp:artist").text = str(song.artist.name)
+                            SubElement(item, "upnp:album").text = str(song.album.name)
+                            SubElement(item, "upnp:genre").text = str(song.album.genre.name)
+                            SubElement(item, "upnp:originalTrackNumber").text = str(song.track_number)
+                            resource = SubElement(item, "res")
+                            resource.attrib["protocolInfo"] = "http-get:*:%s:*" % str(song.file.mimetype)
+                            resource.attrib["size"] = str(song.file.size)
+                            resource.text = "http://%s:%i/content/%i" % (host, port, song.id)
+                if segments[1] == 'playlists':
+                    if len(segments) == 2:
+                        qset = Playlist.objects.all()
+                        matches,total_matches,number_returned = getMatches(startingIndex, requestedCount, qset)
+                        for playlist in matches:
+                            container = SubElement(didl, "container")
+                            container.attrib["id"] = objectID + '/' + str(playlist.id)
+                            container.attrib["parentID"] = '/'.join(segments[:-1])
+                            container.attrib["restricted"] = "1"
+                            container.attrib['childCount'] = str(len(playlist))
+                            SubElement(container, "upnp:class").text = "object.container.playlistContainer"
+                            SubElement(container, "dc:title").text = playlist.name
+                    elif len(segments) == 3:
+                        playlist = Playlist.objects.get(id=segments[2])
+                        qset = playlist.list_songs()
+                        matches,total_matches,number_returned = getMatches(startingIndex, requestedCount, qset)
+                        for song in matches:
+                            item = SubElement(didl, "item")
+                            item.attrib["id"] = objectID + '/' + str(song.id)
+                            item.attrib["parentID"] = '/'.join(segments[:-1])
+                            item.attrib["restricted"] = "1"
+                            SubElement(item, "upnp:class").text = "object.item.audioItem.musicTrack"
+                            SubElement(item, "dc:title").text = song.name
+                            SubElement(item, "upnp:artist").text = str(song.artist.name)
+                            SubElement(item, "upnp:album").text = str(song.album.name)
+                            SubElement(item, "upnp:genre").text = str(song.album.genre.name)
+                            #SubElement(item, "upnp:originalTrackNumber").text = str(song.track_number)
+                            resource = SubElement(item, "res")
+                            resource.attrib["protocolInfo"] = "http-get:*:%s:*" % str(song.file.mimetype)
+                            resource.attrib["size"] = str(song.file.size)
+                            resource.text = "http://%s:%i/content/%i" % (host, port, song.id)
         else:
             raise UPNPError(402, "unknown browse flag %s" % browseFlag)
         result = xmlprint(didl, pretty=False, withXMLDecl=False)

@@ -126,10 +126,10 @@ class SSDPFactory(DatagramProtocol):
             lines = filter(lambda x: len(x) > 0, lines)
             headers = [x.split(':', 1) for x in lines]
             headers = dict(map(lambda x: (x[0].upper(), x[1]), headers))
+            if cmd == 'M-SEARCH' and uri == '*':
+                self.discoveryRequest(headers, (host, port))
         except Exception, e:
             logger.log_debug("discarding malformed datagram from %s: %s" % (host,e))
-        if cmd == 'M-SEARCH' and uri == '*':
-            self.discoveryRequest(headers, (host, port))
 
     def discoveryRequest(self, headers, (host, port)):
         def makeResponse(st, usn, location):
