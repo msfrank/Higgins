@@ -8,14 +8,8 @@ class UPNPServiceTest(HigginsTestCase):
     Test upnp service functionality.
     """
     def setUp(self):
-        os.system('rm -rf /tmp/upnptest-env')
-        os.system('pwd')
-        os.system('cp -r ~/projects/higgins.git/tests/test-envs/upnptest-env /tmp/upnptest-env')
-        pid = os.fork()
-        if pid == 0:
-            os.execlp('higgins-media-server', 'higgins-media-server', '--debug', '/tmp/upnptest-env')
-        self.pid = pid
-        time.sleep(3)
+        self.createEnv('upnptest.tar.gz')
+        self.startHiggins()
 
     def _parseDeviceDescription(self, result):
         print result
@@ -24,8 +18,5 @@ class UPNPServiceTest(HigginsTestCase):
         return client.getPage('http://127.0.0.1:1901/bHyKOGDQWxLUZkZsqtyk').addCallback(self._parseDeviceDescription)
 
     def tearDown(self):
-        os.kill(self.pid, signal.SIGINT)
-        time.sleep(2)
-        pid,status = os.waitpid(self.pid, os.WNOHANG)
-        assert(status == 0)
-        os.system('rm -rf /tmp/upnptest-env')
+        self.stopHiggins()
+        self.destroyEnv()

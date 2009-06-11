@@ -8,12 +8,8 @@ class CoreServiceTest(HigginsTestCase):
     Test core service functionality.
     """
     def setUp(self):
-        os.system('rm -rf /tmp/runnertest-env')
-        pid = os.fork()
-        if pid == 0:
-            os.execlp('higgins-media-server', 'higgins-media-server', '--create', '--debug', '/tmp/runnertest-env')
-        self.pid = pid
-        time.sleep(3)
+        self.createEnv(None)
+        self.startHiggins()
 
     def test_getIndex(self):
         return client.getPage('http://127.0.0.1:8000/')
@@ -34,8 +30,5 @@ class CoreServiceTest(HigginsTestCase):
         return client.getPage('http://127.0.0.1:8000/settings/plugins')
 
     def tearDown(self):
-        os.kill(self.pid, signal.SIGINT)
-        time.sleep(2)
-        pid,status = os.waitpid(self.pid, os.WNOHANG)
-        assert(status == 0)
-        os.system('rm -rf /tmp/runnertest-env')
+        self.stopHiggins()
+        self.destroyEnv()
