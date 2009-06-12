@@ -121,7 +121,7 @@ class SSDPFactory(DatagramProtocol):
             except:
                 header = data
             lines = header.split('\r\n')
-            cmd,uri,unused = lines[0].split(' ', 3)
+            cmd,uri,unused = lines[0].split(' ', 2)
             lines = map(lambda x: x.replace(': ', ':', 1), lines[1:])
             lines = filter(lambda x: len(x) > 0, lines)
             headers = [x.split(':', 1) for x in lines]
@@ -129,7 +129,8 @@ class SSDPFactory(DatagramProtocol):
             if cmd == 'M-SEARCH' and uri == '*':
                 self.discoveryRequest(headers, (host, port))
         except Exception, e:
-            logger.log_debug("discarding malformed datagram from %s: %s" % (host,e))
+            logger.log_debug("discarding malformed datagram from %s" % host)
+            logger.log_debug2("SSDP data:\n%s" % data)
 
     def discoveryRequest(self, headers, (host, port)):
         def makeResponse(st, usn, location):
@@ -146,7 +147,8 @@ class SSDPFactory(DatagramProtocol):
             return '\r\n'.join(resp) + '\r\n'
         # if the MAN header is present, make sure its ssdp:discover
         if not headers.get('MAN', '') == '"ssdp:discover"':
-            logger.log_warning("MAN header for discovery request is not 'ssdp:discover', ignoring")
+            logger.log_debug("MAN header for discovery request is not 'ssdp:discover', ignoring")
+            logger.log_debug2("SSDP data:\n%s" % '\n'.join(headers))
             return
         logger.log_debug('received discovery request from %s:%d for %s' % (host, port, headers['ST']))
         # Generate a response
@@ -179,13 +181,13 @@ class SSDPFactory(DatagramProtocol):
                                  "http://%s:1901/%s" % (iface,udn.replace(':','_'))))
         # return the specific device
         elif headers['ST'].startswith('uuid:'): 
-            logger.log_warning("ignoring M-SEARCH for %s" % headers['ST'])
+            logger.log_debug("ignoring M-SEARCH for %s" % headers['ST'])
         # return device type
         elif headers['ST'].startswith('urn:schemas-upnp-org:device:'):
-            logger.log_warning("ignoring M-SEARCH for %s" % headers['ST'])
+            logger.log_debug("ignoring M-SEARCH for %s" % headers['ST'])
         # return service type
         elif headers['ST'].startswith('urn:schemas-upnp-org:service:'):
-            logger.log_warning("ignoring M-SEARCH for %s" % headers['ST'])
+            logger.log_debug("ignoring M-SEARCH for %s" % headers['ST'])
         # introduce a random delay between 0 and MX
         delayMax = int(headers['MX'])
         # send the responses
@@ -193,7 +195,7 @@ class SSDPFactory(DatagramProtocol):
             logger.log_debug("sending %i responses" % len(responses))
             self._sendResponses(host, port, responses, delayMax)
         else:
-            logger.log_warning("no responses generated for ssdp request")
+            logger.log_debug("no responses generated for ssdp request")
 
     def sendAllByebyes(self):
         """

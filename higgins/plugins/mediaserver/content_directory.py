@@ -227,7 +227,8 @@ class ContentDirectory(UPNPDeviceService):
                             SubElement(item, "upnp:artist").text = str(song.artist.name)
                             SubElement(item, "upnp:album").text = str(song.album.name)
                             SubElement(item, "upnp:genre").text = str(song.album.genre.name)
-                            #SubElement(item, "upnp:originalTrackNumber").text = str(song.track_number)
+                            startingIndex += 1
+                            SubElement(item, "upnp:originalTrackNumber").text = str(startingIndex)
                             resource = SubElement(item, "res")
                             resource.attrib["protocolInfo"] = "http-get:*:%s:*" % str(song.file.mimetype)
                             resource.attrib["size"] = str(song.file.size)
