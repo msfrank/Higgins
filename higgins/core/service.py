@@ -23,102 +23,47 @@ from higgins.core.logger import CoreLogger
 from higgins.upnp.service import UPNPService
 from higgins.upnp.device import UPNPDevice
 
-# our Django URLConf.  we set this dynamically in CoreService.__init__()
-urlpatterns = None
-
 class CoreHttpConfig(Configurator):
     pretty_name = "HTTP Server"
     description = "Configure the built-in HTTP Server"
     HTTP_PORT = IntegerSetting("Listening Port", 8000, min_value=0, max_value=65535)
 
-class BrowserResource(wsgi.WSGIResource):
-    def __init__(self):
-        from django.core.handlers.wsgi import WSGIHandler
-        wsgi.WSGIResource.__init__(self, WSGIHandler())
-
-class StaticResource(resource.Resource):
-    def allowedMethods(self):
-        return ("GET",)
-    def locateChild(self, request, segments):
-        path = pathjoin(*segments)
-        try:
-            self.data = resource_string('higgins.data', path)
-            return self, []
-        except:
-            return None, []
-    def render(self, request):
-        return Response(200, headers=None, stream=self.data)
-
 class RootResource(resource.Resource):
-    def __init__(self):
-        self.browser = BrowserResource()
+    def __init__(self, service):
+        self.service = service
     def locateChild(self, request, segments):
+        if segments == []:
+            return self, []
         if segments[0] == "content":
             return ContentResource(), segments[1:]
         if segments[0] == "static":
             return StaticResource(), segments
         if segments[0] == "manage":
             return ManagerResource(), segments[1:]
-        return self.browser, segments
+        if segments[0] == "library":
+            return LibraryResource(), segments[1:]
+        if segments[0] == "settings":
+            return SettingsResource(self.service), segments[1:]
+        #if segments[0] == "app":
+        #    return ManagerResource(), segments[1:]
+        None, []
+    def http_GET(self, request):
+        return render_to_response('templates/library-front.t', {})
 
 class CoreService(MultiService, CoreLogger):
     def __init__(self):
         self._plugins = {}
-        # register the standard configs
-        self._config_items = {
-            'http': { 'name': 'http', 'config': CoreHttpConfig() }
-            }
-        # 
-        self._toplevel_pages = []
-        # register URL patterns
-        global urlpatterns
-        urlpatterns = patterns('',
-            (r'^/?$', 'higgins.core.front.index'),
-            (r'^library/?$', 'higgins.core.browser.front'),
-            (r'^library/music/?$', 'higgins.core.browser.music_front'),
-            (r'^library/music/byartist/(?P<artist_id>\d+)/?$', 'higgins.core.browser.music_byartist'),
-            (r'^library/music/bysong/(?P<song_id>\d+)/?$', 'higgins.core.browser.music_bysong'),
-            (r'^library/music/byalbum/(?P<album_id>\d+)/?$', 'higgins.core.browser.music_byalbum'),
-            (r'^library/music/bygenre/(?P<genre_id>\d+)/?$', 'higgins.core.browser.music_bygenre'),
-            (r'^library/music/artists/?$', 'higgins.core.browser.music_artists'),
-            (r'^library/music/genres/?$', 'higgins.core.browser.music_genres'),
-            (r'^library/music/tags/?$', 'higgins.core.browser.music_tags'),
-            (r'^library/playlists/?$', 'higgins.core.browser.list_playlists'),
-            (r'^library/playlists/(?P<playlist_id>\d+)/?$', 'higgins.core.browser.playlist_show'),
-            (r'^settings/plugins/?$', 'higgins.core.settings.list_plugins', {'core_service': self}),
-            (r'^settings/plugins/(?P<name>\w+)/?$', 'higgins.core.settings.configure_plugin', {'core_service': self}),
-            (r'^settings/?$', 'higgins.core.settings.front', {'core_service': self}),
-            (r'^settings/(?P<name>\w+)/?$', 'higgins.core.settings.configure_toplevel', {'core_service': self}),
-            (r'^view/(?P<name>\w+)/?$', 'higgins.core.frontend.show', {'core_service': self}),
-            )
-        # connect to the django db signals, so we can fire our own
-        # signal when the database changes
-        from higgins.core.models import db_changed
-        self._db_changed = db_changed
-        self._db_changed_marker = False
-        post_save.connect(self._db_changed_callback)
-        post_delete.connect(self._db_changed_callback)
-        reactor.callLater(2, self._signal_db_changed)
         # start the webserver
         self._site = server.Site(RootResource())
         MultiService.__init__(self)
-
-    def _db_changed_callback(self, sender, **kwdargs):
-        self._db_changed_marker = True
-
-    def _signal_db_changed(self):
-        if self._db_changed_marker:
-            self._db_changed_marker = False
-            self._db_changed.signal(None)
-        reactor.callLater(2, self._signal_db_changed)
 
     def startService(self):
         MultiService.startService(self)
         self._listener = reactor.listenTCP(CoreHttpConfig.HTTP_PORT, channel.HTTPFactory(self._site))
         self.log_info("started core service")
         self.upnp_service = UPNPService()
-        # load enabled services
         try:
+            # load enabled services
             for name in conf.get("CORE_ENABLED_PLUGINS", []):
                 self.enablePlugin(name)
             self.log_debug("started all enabled services")
@@ -241,6 +186,3 @@ class CoreService(MultiService, CoreLogger):
         if plugin.running:
             return True
         return False
-
-    def renderToResponse(self, template, context):
-        return render_to_response(template, context)

@@ -5,12 +5,12 @@
 # the COPYING file.
 
 import sys, pwd, grp, os, signal
-from django.core.management import call_command as django_admin_command
+from axiom.store import Store
 from twisted.internet import reactor
 from twisted.internet.defer import maybeDeferred
 from twisted.python import usage
 from twisted.python.logfile import LogFile
-from higgins.site_settings import site_settings
+from higgins.db import store
 from higgins.conf import conf
 from higgins.loader import PluginLoader
 from higgins import logger, VERSION
@@ -28,15 +28,6 @@ class Server(object, logger.Loggable):
         """
         Initialize the application
         """
-        # check runtime dependencies
-        try:
-            import twisted
-            import django
-            import xml.etree.ElementTree
-            import mutagen
-            import setuptools
-        except ImportError, e:
-            raise ServerException("%s: make sure the corresponding python package is installed and in your PYTHONPATH." % e)
         # create environment directory if necessary
         if create:
             try:
@@ -55,9 +46,6 @@ class Server(object, logger.Loggable):
             raise ServerException("Startup failed: %s is not writable by Higgins." % env)
         if not os.access(env, os.X_OK):
             raise ServerException("Startup failed: %s is not executable by Higgins." % env)
-        # set HIGGINS_DIR and DATABASE name
-        site_settings['HIGGINS_DIR'] = env
-        site_settings['DATABASE_NAME'] = os.path.join(env, "database.dat")
         # if debug flag is specified, then don't request to daemonize and log to stdout
         if debug:
             self.daemonize = False
@@ -82,12 +70,10 @@ class Server(object, logger.Loggable):
             else:
                 self.log_error("Startup failed: another instance is already running with PID %i" % pid)
             raise ServerException("failed to start Higgins")
-        # we load conf after parsing options, but before syncing the db tables
+        # we load conf after parsing options
         conf.load(os.path.join(env, 'settings.dat'))
-        # create and upgrade db tables if necessary
-        #django_admin_command('syncdb')
-        from higgins.core.upgradedb import check_version
-        check_version(site_settings['DATABASE_NAME'])
+        # open the database
+        store = Store(os.path.join(env, 'database'))
         # load the list of plugins
         self._plugins = PluginLoader()
 
@@ -106,12 +92,12 @@ class Server(object, logger.Loggable):
             raise ServerException("failed to create PID file")
         try:
             from higgins.core.service import CoreService
-            self._core_service = CoreService()
+            self._coresvc = CoreService()
             # register plugins
             for name,plugin in self._plugins:
-                self._core_service.registerPlugin(name, plugin)
+                self._coresvc.registerPlugin(name, plugin)
             # start the core service
-            self._core_service.startService()
+            self._coresvc.startService()
             # pass control to reactor
             self.log_info("starting twisted reactor")
             self._oldsignal = signal.signal(signal.SIGINT, self._caughtSignal)
@@ -138,10 +124,10 @@ class Server(object, logger.Loggable):
         """
         if not reactor.running:
             raise Exception("Server is not running")
-        if not self._core_service.running:
+        if not self._coresvc.running:
             raise Exception("CoreService is not running")
         # stops everything
-        d = maybeDeferred(self._core_service.stopService)
+        d = maybeDeferred(self._coresvc.stopService)
         d.addCallback(self._doStop)
 
 class ServerOptions(usage.Options):

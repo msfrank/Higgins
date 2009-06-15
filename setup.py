@@ -37,8 +37,8 @@ setup(
         'higgins.http.dav.element',
         'higgins.platform',
         'higgins.plugins',
-        'higgins.plugins.daap',
-        'higgins.plugins.mediaserver',
+        #'higgins.plugins.daap',
+        #'higgins.plugins.mediaserver',
         #'higgins.plugins.mrss',
         'higgins.upnp',
         ],
@@ -71,8 +71,8 @@ setup(
             ],
         # declare packaged plugins
         'higgins.plugin': [
-            'daap=higgins.plugins.daap:DaapService',
-            'mediaserver=higgins.plugins.mediaserver:MediaserverDevice',
+            #'daap=higgins.plugins.daap:DaapService',
+            #'mediaserver=higgins.plugins.mediaserver:MediaserverDevice',
             #'mrss=higgins.plugins.mrss:MRSSService',
             ],
         },
