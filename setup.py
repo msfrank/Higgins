@@ -16,7 +16,6 @@ setup(
     # package requirements
     install_requires=[
 #        'Twisted >= 8.0.0',
-#        'Django >= 1.0.0',
 #        'pysqlite >= 2.5.0',
 #        'pybonjour >= 1.1.1',
 #        'mutagen >= 1.15',
