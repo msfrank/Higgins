@@ -4,21 +4,20 @@
 # This program is free software; for license information see
 # the COPYING file.
 
-from os.path import join as pathjoin
 from pkg_resources import resource_string
 from twisted.application.service import MultiService
 from twisted.internet import reactor
 from twisted.internet.defer import maybeDeferred
-from django.conf.urls.defaults import *
-from django.db.models.signals import post_save, post_delete
 from higgins.conf import conf
 from higgins.service import Service
 from higgins.http import server, channel
-from higgins.http import resource, wsgi
-from higgins.http.http import Response
-from higgins.core.content_resource import ContentResource
 from higgins.core.configurator import Configurator, IntegerSetting
-from higgins.core.manager import ManagerResource
+from higgins.core.dashboard import DashboardResource
+from higgins.core.content import ContentResource
+from higgins.core.static import StaticResource
+from higgins.core.manage import ManageResource
+from higgins.core.library import LibraryResource
+from higgins.core.settings import SettingsResource
 from higgins.core.logger import CoreLogger
 from higgins.upnp.service import UPNPService
 from higgins.upnp.device import UPNPDevice
@@ -28,32 +27,34 @@ class CoreHttpConfig(Configurator):
     description = "Configure the built-in HTTP Server"
     HTTP_PORT = IntegerSetting("Listening Port", 8000, min_value=0, max_value=65535)
 
-class RootResource(resource.Resource):
+class RootResource(PageResource):
     def __init__(self, service):
         self.service = service
-    def locateChild(self, request, segments):
+        self.dashboard = DashboardResource()
+        self.content = ContentResource()
+        self.static = StaticResource()
+        self.manage = ManageResource()
+        self.library = LibraryResource()
+        self.settings = SettingsResource(service)
+        #self.apps = AppResource()
+    def LocateChild(self, segments):
         if segments == []:
-            return self, []
-        if segments[0] == "content":
-            return ContentResource(), segments[1:]
-        if segments[0] == "static":
-            return StaticResource(), segments
-        if segments[0] == "manage":
-            return ManagerResource(), segments[1:]
-        if segments[0] == "library":
-            return LibraryResource(), segments[1:]
-        if segments[0] == "settings":
-            return SettingsResource(self.service), segments[1:]
-        #if segments[0] == "app":
-        #    return ManagerResource(), segments[1:]
-        None, []
-    def http_GET(self, request):
-        return render_to_response('templates/library-front.t', {})
+            return self.dashboard, []
+        if segments[0] == 'content':
+            return self.content, []
+        if segments[0] == 'static':
+            return self.static, []
+        if segments[0] == 'manage':
+            return self.manage, []
+        if segments[0] == 'library':
+            return self.library, []
+        if segments[0] == 'settings':
+            return self.settings, []
+        return StopTraversal, []
 
 class CoreService(MultiService, CoreLogger):
     def __init__(self):
         self._plugins = {}
-        # start the webserver
         self._site = server.Site(RootResource())
         MultiService.__init__(self)
 

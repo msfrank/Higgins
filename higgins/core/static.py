@@ -6,7 +6,7 @@
 
 from os.path import join as pathjoin
 from pkg_resources import resource_string
-from higgins.http import resource
+from higgins.http.resource import Resource
 from higgins.http.http import Response
 from higgins.core.logger import CoreLogger
 

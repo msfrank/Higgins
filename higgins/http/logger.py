@@ -4,7 +4,9 @@
 # This program is free software; for license information see
 # the COPYING file.
 
-from django.shortcuts import render_to_response
+from higgins.logger import Loggable
 
-def index(request):
-    return render_to_response('templates/front.t', {})
+class HttpLogger(Loggable):
+    log_domain = "http"
+
+logger = HttpLogger()
