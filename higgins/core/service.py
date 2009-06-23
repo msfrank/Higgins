@@ -4,14 +4,12 @@
 # This program is free software; for license information see
 # the COPYING file.
 
-from pkg_resources import resource_string
 from twisted.application.service import MultiService
 from twisted.internet import reactor
 from twisted.internet.defer import maybeDeferred
-from higgins.conf import conf
+from higgins.settings import settings, Configurator, IntegerSetting
 from higgins.service import Service
 from higgins.http import server, channel
-from higgins.core.configurator import Configurator, IntegerSetting
 from higgins.core.dashboard import DashboardResource
 from higgins.core.content import ContentResource
 from higgins.core.static import StaticResource
@@ -25,7 +23,7 @@ from higgins.upnp.device import UPNPDevice
 class CoreHttpConfig(Configurator):
     pretty_name = "HTTP Server"
     description = "Configure the built-in HTTP Server"
-    HTTP_PORT = IntegerSetting("Listening Port", 8000, min_value=0, max_value=65535)
+    HTTP_PORT = IntegerSetting("Listening Port", 8000, '', min=0, max=65535)
 
 class RootResource(PageResource):
     def __init__(self, service):

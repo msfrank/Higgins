@@ -6,19 +6,29 @@
 
 import os
 from pkg_resources import Environment, working_set
-from higgins.site_settings import site_settings
+from higgins.settings import settings
 from higgins.service import Service
 from higgins.logger import Loggable
 
-class PluginLoader(object, Loggable):
+class PluginStore(object, Loggable):
     log_domain = "loader"
 
     def __init__(self):
         self._plugins = {}
-        plugins_dir = os.path.join(site_settings["HIGGINS_DIR"], "plugins")
-        self.log_info("added '%s' to plugin search path" % plugins_dir)
-        working_set.add_entry(plugins_dir)
-        env = Environment([plugins_dir,])
+        self._isLoaded = False
+        self.pluginDirs = []
+
+    def load(self, dirs=[]):
+        if self._isLoaded:
+            raise Exception("plugins have already been loaded")
+        for d in dirs:
+            if os.path.isdir(d):
+                self.pluginDirs.append(d)
+                working_set.add_entry(d)
+                self.log_info("added '%s' to plugin search path" % d)
+            else:
+                self.log_warning("ignoring path %s: not a directory" % d)
+        env = Environment(self.pluginDirs)
         self._eggs,errors = working_set.find_plugins(env)
         # load plugin eggs
         for p in self._eggs:
@@ -42,13 +52,18 @@ class PluginLoader(object, Loggable):
         return self._plugins[key]
 
     def __setitem__(self, key, value):
-        raise Exception("Loader map is read-only!")
+        raise Exception("PluginStore is read-only!")
 
     def __delitem__(self, key):
-        raise Exception("Loader map is read-only!")
+        raise Exception("PluginStore is read-only!")
 
     def __iter__(self):
         return iter(self._plugins.items())
 
     def __contains__(self, item):
         return item in self._plugins
+
+plugins = PluginStore()
+
+
+__all__ = ['plugins',]

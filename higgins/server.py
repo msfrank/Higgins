@@ -10,9 +10,8 @@ from twisted.internet import reactor
 from twisted.internet.defer import maybeDeferred
 from twisted.python import usage
 from twisted.python.logfile import LogFile
-from higgins.db import store
-from higgins.conf import conf
-from higgins.loader import PluginLoader
+from higgins.settings import settings
+from higgins.loader import plugins
 from higgins import logger, VERSION
 
 class ServerException(Exception):
@@ -71,11 +70,11 @@ class Server(object, logger.Loggable):
                 self.log_error("Startup failed: another instance is already running with PID %i" % pid)
             raise ServerException("failed to start Higgins")
         # we load conf after parsing options
-        conf.load(os.path.join(env, 'settings.dat'))
+        settings.load(os.path.join(env, 'settings.dat'))
+        # load the list of plugins
+        plugins.load([os.path.join(env, 'plugins')])
         # open the database
         store = Store(os.path.join(env, 'database'))
-        # load the list of plugins
-        self._plugins = PluginLoader()
 
     def _caughtSignal(self, signum, stack):
         self.log_debug("caught signal %i" % signum)
@@ -105,7 +104,7 @@ class Server(object, logger.Loggable):
             signal.signal(signal.SIGINT, self._oldsignal)
             self.log_debug("returned from twisted reactor")
             # save configuration settings
-            conf.flush()
+            settings.flush()
         finally:
             try:
                 os.unlink(self._pidfile)

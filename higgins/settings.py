@@ -6,9 +6,12 @@
 
 import os, pickle
 from higgins.logger import Loggable
-from higgins.site_settings import site_settings
 
-class KeyStore(object, Loggable):
+class SettingsLogger(Loggable):
+    log_domain = 'settings'
+logger = SettingsLogger()
+
+class KeyStore(object):
     log_domain = "conf"
 
     def __init__(self):
@@ -32,11 +35,11 @@ class KeyStore(object, Loggable):
                 # ignore empty file error
                 pass
             except Exception, e:
-                self.log_error("failed to load settings from %s: %s" % (self.settingsPath,e))
+                logger.log_error("failed to load settings from %s: %s" % (self.settingsPath,e))
                 raise e
         # flush the initial settings
         #self._doFlush()
-        self.log_debug("loaded settings from %s" % self.settingsPath)
+        logger.log_debug("loaded settings from %s" % self.settingsPath)
 
     def __getitem__(self, name):
         if not self._isLoaded:
@@ -44,7 +47,7 @@ class KeyStore(object, Loggable):
         try:
             return self._settings[name]
         except:
-            raise Exception('Setting '%s' not found' % name)
+            raise Exception('Setting %s not found' % name)
 
     def __setitem__(self, name, value):
         if not self._isLoaded:
@@ -104,8 +107,52 @@ class KeyStore(object, Loggable):
         if not self._isLoaded:
             raise Exception("settings have not been loaded")
         self._doFlush()
-        self.log_debug("flushed settings changes")
+        logger.log_debug("flushed settings changes")
 
+class Setting(object):
+    """Base Setting object which contains common attributes for all settings."""
+
+    def __init__(self, label, default, tooltip):
+        self.label = label
+        self.default = default
+        self.tooltip = tooltip
+
+    def validate(self, value):
+        raise Exception('no validator function for this setting')
+
+class IntegerSetting(Setting):
+    """An integer setting."""
+
+    def __init__(self, label, default, tooltip, **kwds):
+        super(label, default, tooltip)
+        self.min = None
+        self.max = None
+        if 'min' in kwds:
+            self.min = self.validate(kwds['min'])
+        if 'max' in kwds:
+            self.max = self.validate(kwds['max'])
+        if self.min and self.max and self.min > self.max:
+            raise Exception('minimum value is greater than maximum value')
+
+    def validate(self, value):
+        if not isinstance(value, int):
+            raise Exception('value is not an integer')
+        if self.min and value < self.min:
+            raise Exception('value is smaller than minimum')
+        if self.max and value > self.max:
+            raise Exception('value is greater than maximum')
+        return value
+
+class StringSetting(Setting):
+    """A string setting."""
+
+    def __init__(self, label, default, tooltip, **kwds):
+        super(label, default, tooltip)
+
+    def validate(self, value):
+        if not isinstance(value, str):
+            raise Exception('value is not a string')
+        return value
 
 class ConfiguratorException(Exception):
     def __init__(self, reason):
@@ -170,50 +217,6 @@ class Configurator(object):
     pretty_name = None
     description = None
 
-class Setting(object):
-    """Base Setting object which contains common attributes for all settings."""
-
-    def __init__(self, label, default, tooltip):
-        self.label = label
-        self.default = default
-        self.tooltip = tooltip
-
-    def validate(self, value):
-        raise Exception('no validator function for this setting')
-
-class IntegerSetting(Setting):
-    """An integer setting."""
-
-    def __init__(self, label, default, tooltip, **kwds):
-        super(label, default, tooltip)
-        self.min = None
-        self.max = None
-        if 'min' in kwds:
-            self.min = self.validate(kwds['min'])
-        if 'max' in kwds:
-            self.max = self.validate(kwds['max'])
-        if self.min and self.max and self.min > self.max:
-            raise Exception('minimum value is greater than maximum value')
-
-    def validate(self, value):
-        if not isinstance(value, int):
-            raise Exception('value is not an integer')
-        if self.min and value < self.min:
-            raise Exception('value is smaller than minimum')
-        if self.max and value > self.max:
-            raise Exception('value is greater than maximum')
-        return value
-
-class StringSetting(Setting):
-    """A string setting."""
-
-    def __init__(self, label, default, tooltip, **kwds):
-        super(label, default, tooltip)
-
-    def validate(self, value):
-        if not isinstance(value, str):
-            raise Exception('value is not a string')
-        return value
 
 settings = KeyStore()
 

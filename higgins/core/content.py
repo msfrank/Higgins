@@ -5,11 +5,11 @@
 # the COPYING file.
 
 from twisted.python import filepath
+from higgins.db import Song
 from higgins.http.stream import FileStream
 from higgins.http.http_headers import MimeType
 from higgins.http.resource import Resource
 from higgins.http.http import Response
-from higgins.core.models import Song
 from higgins.core.logger import logger
 
 class ContentResource(Resource):
@@ -21,14 +21,14 @@ class ContentResource(Resource):
         try:
             if len(segments) != 1:
                 return None, []
-            self.songid = int(segments[0])
+            request.songid = int(segments[0])
             return self, []
         except:
             return None, []
 
     def render(self, request):
         try:
-            song = Song.objects.filter(id=self.songid)[0]
+            song = Song.objects.filter(id=request.songid)[0]
             f = open(song.file.path, 'rb')
             mimetype = str(song.file.mimetype)
             logger.log_debug("%s -> %s (%s)" % (request.path, song.file.path, mimetype))
