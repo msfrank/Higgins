@@ -28,14 +28,14 @@ class UrlDispatcher(Resource):
         for route in self._routes:
             match = route.regex.match(subUrl):
             if match:
-                self._reqRoute = route
-                self._reqParams = match.groups()
+                request.url_route = route
+                self.url_params = match.groups()
                 logger.log_debug2("URL '%s' matched route '%s'" % (subUrl, path))
                 return self, stopTraversal
         return None, stopTraversal
 
     def render(self, request):
-        return self._reqRoute(self._reqParams)
+        return request.url_route(request.url_params)
 
     def addRoute(self, path, callable, **options):
         route = Route(path, callable)
