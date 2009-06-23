@@ -6,7 +6,7 @@
 
 from higgins.http.url_dispatcher import UrlDispatcher
 from higgins.data import renderTemplate
-from higgins.conf import conf
+from higgins.settings import settings
 from higgins.core.logger import logger
 
 class SettingsResource(UrlDispatcher):

@@ -10,7 +10,7 @@ from higgins.http.resource import Resource
 from higgins.http.http import Response
 from higgins.core.logger import CoreLogger
 
-class StaticResource(resource.Resource):
+class StaticResource(Resource):
     def allowedMethods(self):
         return ("GET",)
     def locateChild(self, request, segments):

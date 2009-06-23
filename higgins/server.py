@@ -11,6 +11,7 @@ from twisted.internet.defer import maybeDeferred
 from twisted.python import usage
 from twisted.python.logfile import LogFile
 from higgins.settings import settings
+from higgins.db import db
 from higgins.loader import plugins
 from higgins import logger, VERSION
 
@@ -71,10 +72,10 @@ class Server(object, logger.Loggable):
             raise ServerException("failed to start Higgins")
         # we load conf after parsing options
         settings.load(os.path.join(env, 'settings.dat'))
+        # open the database
+        db.open(os.path.join(env, 'database'))
         # load the list of plugins
         plugins.load([os.path.join(env, 'plugins')])
-        # open the database
-        store = Store(os.path.join(env, 'database'))
 
     def _caughtSignal(self, signum, stack):
         self.log_debug("caught signal %i" % signum)

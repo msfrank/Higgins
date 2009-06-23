@@ -13,7 +13,6 @@
 import random, string
 from twisted.internet.defer import maybeDeferred
 from twisted.application.service import MultiService
-from higgins.conf import conf
 from higgins.upnp.ssdp_server import SSDPServer
 from higgins.upnp.upnp_server import UPnPServer
 from higgins.upnp.logger import UPnPLogger

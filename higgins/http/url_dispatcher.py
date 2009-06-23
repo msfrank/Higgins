@@ -4,11 +4,12 @@
 # This program is free software; for license information see
 # the COPYING file.
 
+import re
 from higgins.http.stream import FileStream
 from higgins.http.http_headers import MimeType
 from higgins.http.resource import Resource
 from higgins.http.http import Response
-from higgins.http.server import stopTraversal
+from higgins.http.server import StopTraversal
 from higgins.http.logger import logger
 
 class Route(object):
@@ -26,13 +27,13 @@ class UrlDispatcher(Resource):
     def locateChild(self, request, segments):
         subUrl = '/' + '/'.join(segments)
         for route in self._routes:
-            match = route.regex.match(subUrl):
+            match = route.regex.match(subUrl)
             if match:
                 request.url_route = route
                 self.url_params = match.groups()
                 logger.log_debug2("URL '%s' matched route '%s'" % (subUrl, path))
-                return self, stopTraversal
-        return None, stopTraversal
+                return self, StopTraversal
+        return None, StopTraversal
 
     def render(self, request):
         return request.url_route(request.url_params)

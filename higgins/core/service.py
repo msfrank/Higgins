@@ -10,6 +10,7 @@ from twisted.internet.defer import maybeDeferred
 from higgins.settings import settings, Configurator, IntegerSetting
 from higgins.service import Service
 from higgins.http import server, channel
+from higgins.http.resource import Resource
 from higgins.core.dashboard import DashboardResource
 from higgins.core.content import ContentResource
 from higgins.core.static import StaticResource
@@ -25,7 +26,7 @@ class CoreHttpConfig(Configurator):
     description = "Configure the built-in HTTP Server"
     HTTP_PORT = IntegerSetting("Listening Port", 8000, '', min=0, max=65535)
 
-class RootResource(PageResource):
+class RootResource(Resource):
     def __init__(self, service):
         self.service = service
         self.dashboard = DashboardResource()
@@ -53,7 +54,7 @@ class RootResource(PageResource):
 class CoreService(MultiService, CoreLogger):
     def __init__(self):
         self._plugins = {}
-        self._site = server.Site(RootResource())
+        self._site = server.Site(RootResource(self))
         MultiService.__init__(self)
 
     def startService(self):

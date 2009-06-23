@@ -36,8 +36,14 @@ class LibraryResource(UrlDispatcher):
     def render_music_artist(request, artist_id):
         return renderTemplate('templates/music-artist.t', {})
 
+    def render_music_albums(request):
+        return renderTemplate('templates/music-byalbum.t', {})
+
     def render_music_album(request, album_id):
         return renderTemplate('templates/music-album.t', {})
+
+    def render_music_songs(request):
+        return renderTemplate('templates/music-bysong.t', {})
 
     def render_music_song(request, song_id):
         return renderTemplate('templates/music-song.t', {})

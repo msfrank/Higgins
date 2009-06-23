@@ -124,7 +124,7 @@ class IntegerSetting(Setting):
     """An integer setting."""
 
     def __init__(self, label, default, tooltip, **kwds):
-        super(label, default, tooltip)
+        Setting.__init__(self, label, default, tooltip)
         self.min = None
         self.max = None
         if 'min' in kwds:
@@ -147,7 +147,7 @@ class StringSetting(Setting):
     """A string setting."""
 
     def __init__(self, label, default, tooltip, **kwds):
-        super(label, default, tooltip)
+        Setting.__init__(self, label, default, tooltip)
 
     def validate(self, value):
         if not isinstance(value, str):

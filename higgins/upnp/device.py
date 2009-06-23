@@ -8,7 +8,7 @@ import random, string, urllib
 from twisted.internet.defer import maybeDeferred
 from xml.etree.ElementTree import Element, SubElement
 from higgins.service import Service
-from higgins.conf import conf
+from higgins.settings import settings
 from higgins.upnp.device_service import UPNPDeviceService
 from higgins.upnp.prettyprint import xmlprint
 from higgins.upnp.logger import logger
@@ -17,11 +17,11 @@ class DeviceDeclarativeParser(type):
     def __new__(cls, name, bases, attrs):
         # TODO: verify required service attributes
         # create UDN if needed
-        udn_conf_key = "UPNP_" + name + "_UDN"
-        udn = conf.get(udn_conf_key)
+        udn_settings_key = "UPNP_" + name + "_UDN"
+        udn = settings.get(udn_settings_key)
         if udn == None:
             udn = ''.join(map(lambda x: random.choice(string.letters), xrange(20)))
-            conf[udn_conf_key] = udn
+            settings[udn_settings_key] = udn
         attrs['UDN'] = udn
         logger.log_debug("UDN for %s is %s" % (name, udn))
         # load services

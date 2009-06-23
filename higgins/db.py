@@ -4,6 +4,7 @@
 # This program is free software; for license information see
 # the COPYING file.
 
+from axiom.store import Store
 from axiom.item import Item
 from axiom import attributes
 from higgins.signals import Signal
@@ -55,7 +56,7 @@ class Song(Item):
         min = sec / 60
         return '%i:%02i:%02i' % (hrs, min, sec)
         
-class Genre(models.Model):
+class Genre(Item):
     name = attributes.text()
 
 #class Playlist(models.Model):
@@ -124,14 +125,50 @@ class Genre(models.Model):
 #        except Exception, e:
 #            raise Exception("failed to remove song #%i from playlist '%s'" % (position, self.name))
 
-#
-#
-db_changed = Signal()
+class DBStore(object):
+    def __init__(self):
+        self._isLoaded = False
+        self._store = None
+        self._dbPath = None
+        self.db_changed = Signal()
 
-#
-#
-#_itemCommitted = Deferred()
-#_commitFlag = False
-#def _onItemCommitted(result):
-#    _commitFlag = True
-#_itemCommitted.addCallback(_onItemCommitted)
+    def open(self, path):
+        if self._isLoaded:
+            raise Exception('database has already been loaded')
+        class SignallingStore(Store):
+            def __init__(self, dbdir, dbstore):
+                Store.__init__(self, dbdir)
+                self._dbstore = dbstore
+            def _postCommitHook(self):
+                try:
+                    Store._postCommitHook(self)
+                    self._dbstore.signal(None)
+                except:
+                    pass
+        self._store = SignallingStore(path, self)
+        self._dbPath = path
+        self._isLoaded = True
+
+    def close(self):
+        if not self._isLoaded:
+            raise Exception('database is not loaded')
+        self._store.close()
+        self._store = None
+        self._dbPath = None
+        self._isLoaded = False
+
+    def create(self, itemType, **kwds):
+        if not self._isLoaded:
+            raise Exception('database is not loaded')
+        if not issubclass(Item, itemType):
+            raise Exception('%s is not a subclass of axiom.item.Item' % str(type(itemType)))
+        kwds['store'] = self._store
+        return itemType(**kwds)
+
+    def query(self, itemType, comparison=None, limit=None, offset=None, sort=None):
+        if not self._isLoaded:
+            raise Exception('database is not loaded')
+        return self._store.query(itemType, comparison, limit, offset, sort)
+
+
+db = DBStore()
