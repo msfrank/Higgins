@@ -92,12 +92,12 @@ class Server(object, logger.Loggable):
             raise ServerException("failed to create PID file")
         try:
             from higgins.core.service import CoreService
-            self._coresvc = CoreService()
+            self._coreService = CoreService()
             # register plugins
-            for name,plugin in self._plugins:
-                self._coresvc.registerPlugin(name, plugin)
+            for name,plugin in plugins:
+                self._coreService.registerPlugin(name, plugin)
             # start the core service
-            self._coresvc.startService()
+            self._coreService.startService()
             # pass control to reactor
             self.log_info("starting twisted reactor")
             self._oldsignal = signal.signal(signal.SIGINT, self._caughtSignal)
@@ -115,6 +115,7 @@ class Server(object, logger.Loggable):
 
     def _doStop(self, result):
         self.log_debug("stopped core service")
+        self._coreService = None
         reactor.stop()
         self.log_info("stopped twisted reactor")
 
@@ -124,10 +125,10 @@ class Server(object, logger.Loggable):
         """
         if not reactor.running:
             raise Exception("Server is not running")
-        if not self._coresvc.running:
+        if not self._coreService.running:
             raise Exception("CoreService is not running")
         # stops everything
-        d = maybeDeferred(self._coresvc.stopService)
+        d = maybeDeferred(self._coreService.stopService)
         d.addCallback(self._doStop)
 
 class ServerOptions(usage.Options):

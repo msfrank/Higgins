@@ -32,11 +32,16 @@ class Loggable:
     def log_debug2(self, reason):
         log.msg(reason, level=LOG_DEBUG2, domain=self.log_domain)
 
+class IgnoreMessage(Exception):
+    pass
+
 class CommonObserver(log.DefaultObserver):
     def _formatMessage(self, params):
-        level = params.get('level', LOG_DEBUG)
+        level = params.get('level', LOG_DEBUG2)
         time_t = params.get('time', None)
         domain = params.get('domain', 'twisted')
+        if 'interface' in params:
+            raise IgnoreMessage()
         if params.get('printed') == True:
             if params.get('isError') == True:
                 domain = "stderr"
@@ -55,12 +60,15 @@ class LogfileObserver(CommonObserver):
         self.flush = f.flush
 
     def _emit(self, params):
-        level = params.get('level', LOG_DEBUG)
-        if level > self.verbosity:
-            return
-        msg = self._formatMessage(params) + '\r\n'
-        util.untilConcludes(self.write, msg)
-        util.untilConcludes(self.flush)
+        try:
+            level = params.get('level', LOG_DEBUG)
+            if level > self.verbosity:
+                return
+            msg = self._formatMessage(params) + '\r\n'
+            util.untilConcludes(self.write, msg)
+            util.untilConcludes(self.flush)
+        except IgnoreMessage:
+            pass
 
 class StdoutObserver(CommonObserver):
     def __init__(self, colorized=False, verbosity=LOG_WARNING):
@@ -75,14 +83,17 @@ class StdoutObserver(CommonObserver):
             self.END = ''
 
     def _emit(self, params):
-        level = params.get('level', LOG_DEBUG)
-        if level > self.verbosity:
-            return
-        msg = self._formatMessage(params)
-        if level < LOG_WARNING:
-            print self.START_RED + msg + self.END
-            print traceback.print_exc()
-        elif level == LOG_WARNING:
-            print self.START_YELLOW + msg + self.END
-        else:
-            print msg
+        try:
+            level = params.get('level', LOG_DEBUG)
+            if level > self.verbosity:
+                return
+            msg = self._formatMessage(params)
+            if level < LOG_WARNING:
+                print self.START_RED + msg + self.END
+                print traceback.print_exc()
+            elif level == LOG_WARNING:
+                print self.START_YELLOW + msg + self.END
+            else:
+                print msg
+        except IgnoreMessage:
+            pass

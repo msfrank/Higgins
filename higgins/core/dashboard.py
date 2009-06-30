@@ -4,11 +4,10 @@
 # This program is free software; for license information see
 # the COPYING file.
 
-from higgins.http.resource import Resource
+from higgins.core.logger import logger
+from higgins.http.http import Response
 from higgins.data import renderTemplate
 
-class DashboardResource(Resource):
-    def allowedMethods(self):
-        return ('GET')
-    def render(self, request):
-        return renderTemplate('templates/front.t', {})
+def renderDashboard(request):
+    logger.log_debug("rendering dashboard")
+    return Response(200, stream=renderTemplate('templates/front.t', {}))

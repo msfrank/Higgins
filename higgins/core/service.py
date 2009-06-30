@@ -10,14 +10,14 @@ from twisted.internet.defer import maybeDeferred
 from higgins.settings import settings, Configurator, IntegerSetting
 from higgins.service import Service
 from higgins.http import server, channel
-from higgins.http.resource import Resource
-from higgins.core.dashboard import DashboardResource
-from higgins.core.content import ContentResource
-from higgins.core.static import StaticResource
-from higgins.core.manage import ManageResource
+from higgins.core.dashboard import renderDashboard
+from higgins.http.url_dispatcher import UrlDispatcher
+#from higgins.core.content import ContentResource
+#from higgins.core.static import StaticResource
+#from higgins.core.manage import ManageResource
 from higgins.core.library import LibraryResource
-from higgins.core.settings import SettingsResource
-from higgins.core.logger import CoreLogger
+#from higgins.core.settings import SettingsResource
+from higgins.core.logger import logger
 from higgins.upnp.service import UPNPService
 from higgins.upnp.device import UPNPDevice
 
@@ -26,32 +26,17 @@ class CoreHttpConfig(Configurator):
     description = "Configure the built-in HTTP Server"
     HTTP_PORT = IntegerSetting("Listening Port", 8000, '', min=0, max=65535)
 
-class RootResource(Resource):
+class RootResource(UrlDispatcher):
     def __init__(self, service):
         self.service = service
-        self.dashboard = DashboardResource()
-        self.content = ContentResource()
-        self.static = StaticResource()
-        self.manage = ManageResource()
-        self.library = LibraryResource()
-        self.settings = SettingsResource(service)
-        #self.apps = AppResource()
-    def LocateChild(self, segments):
-        if segments == []:
-            return self.dashboard, []
-        if segments[0] == 'content':
-            return self.content, []
-        if segments[0] == 'static':
-            return self.static, []
-        if segments[0] == 'manage':
-            return self.manage, []
-        if segments[0] == 'library':
-            return self.library, []
-        if segments[0] == 'settings':
-            return self.settings, []
-        return StopTraversal, []
+        self.addRoute('/$', renderDashboard)
+        self.addRoute('/library/', LibraryResource())
+        #self.addRoute('/content/', ContentResource())
+        #self.addRoute('/static/', StaticResource())
+        #self.addRoute('/manage/', ManageResource())
+        #self.addRoute('/settings/', SettingsResource(service))
 
-class CoreService(MultiService, CoreLogger):
+class CoreService(MultiService):
     def __init__(self):
         self._plugins = {}
         self._site = server.Site(RootResource(self))
@@ -60,19 +45,19 @@ class CoreService(MultiService, CoreLogger):
     def startService(self):
         MultiService.startService(self)
         self._listener = reactor.listenTCP(CoreHttpConfig.HTTP_PORT, channel.HTTPFactory(self._site))
-        self.log_info("started core service")
+        logger.log_info("started core service")
         self.upnp_service = UPNPService()
         try:
             # load enabled services
-            for name in conf.get("CORE_ENABLED_PLUGINS", []):
+            for name in settings.get("CORE_ENABLED_PLUGINS", []):
                 self.enablePlugin(name)
-            self.log_debug("started all enabled services")
+            logger.log_debug("started all enabled services")
         except Exception, e:
             raise e
 
     def _doStopService(self, result):
         self._listener.stopListening()
-        self.log_info("stopped core service")
+        logger.log_info("stopped core service")
 
     def stopService(self):
         d = maybeDeferred(MultiService.stopService, self)
@@ -103,9 +88,9 @@ class CoreService(MultiService, CoreLogger):
                             init_configs_recursive(config)
             init_configs_recursive(plugin.configs)                
             self._plugins[name] = plugin
-            self.log_info("registered plugin '%s'" % name)
+            logger.log_info("registered plugin '%s'" % name)
         except Exception, e:
-            self.log_error("failed to register plugin '%s': %s" % (name, e))
+            logger.log_error("failed to register plugin '%s': %s" % (name, e))
 
     def unregisterPlugin(self, name):
         """
@@ -118,9 +103,9 @@ class CoreService(MultiService, CoreLogger):
             if self.pluginIsEnabled(name):
                 self.disablePlugin(name)
             del self._plugins[name]
-            self.log_info("unregistered plugin '%s'" % name)
+            logger.log_info("unregistered plugin '%s'" % name)
         except Exception, e:
-            self.log_error("failed to unregister plugin '%s': %s" % (name, e))
+            logger.log_error("failed to unregister plugin '%s': %s" % (name, e))
 
     def enablePlugin(self, name):
         """Enables the named plugin."""
@@ -149,18 +134,18 @@ class CoreService(MultiService, CoreLogger):
                 else:
                     plugin.startService()
             # update the list of enabled plugins
-            conf.set(CORE_ENABLED_PLUGINS=[pname for pname,plugin in self._plugins.items() if plugin.running])
-            self.log_info("enabled plugin '%s'" % name)
+            settings.set(CORE_ENABLED_PLUGINS=[pname for pname,plugin in self._plugins.items() if plugin.running])
+            logger.log_info("enabled plugin '%s'" % name)
         except Exception, e:
-            self.log_error("failed to enable plugin '%s': %s" % (name, e))
+            logger.log_error("failed to enable plugin '%s': %s" % (name, e))
 
     def _doDisablePlugin(self, result, name, plugin):
         #if not self.upnp_service.running == 0:
         #    self.upnp_service.disownParent()
         if isinstance(plugin, UPNPDevice):
             self.upnp_service.unregisterUPNPDevice(plugin)
-        conf.set(CORE_ENABLED_PLUGINS=[pname for pname,plugin in self._plugins.items() if plugin.running])
-        self.log_info("disabled plugin '%s'" % name)
+        settings.set(CORE_ENABLED_PLUGINS=[pname for pname,plugin in self._plugins.items() if plugin.running])
+        logger.log_info("disabled plugin '%s'" % name)
 
     def disablePlugin(self, name):
         """Disables the named service."""
@@ -173,7 +158,7 @@ class CoreService(MultiService, CoreLogger):
             d = maybeDeferred(plugin.stopService)
             d.addCallback(self._doDisablePlugin, name, plugin)
         except Exception, e:
-            self.log_error("failure while disabling plugin '%s': %s" % (name, e))
+            logger.log_error("failure while disabling plugin '%s': %s" % (name, e))
 
     def pluginIsEnabled(self, name):
         """

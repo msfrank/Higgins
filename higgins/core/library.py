@@ -11,21 +11,21 @@ from higgins.core.logger import logger
 
 class LibraryResource(UrlDispatcher):
     def __init__(self):
-        self.addRoute('/$', self.render_index)
-        self.addRoute('/music', self.render_music)
-        self.addRoute('/music/artists$', self.render_music_artists)
-        self.addRoute('/music/artists/(\d+)$', self.render_music_artist)
-        self.addRoute('/music/albums$', self.render_music_albums)
-        self.addRoute('/music/albums/(\d+)$', self.render_music_album)
-        self.addRoute('/music/songs$', self.render_music_songs)
-        self.addRoute('/music/songs/(\d+)$', self.render_music_song)
-        self.addRoute('/music/genres$', self.render_music_genres)
-        self.addRoute('/music/genres/(\d+)$', self.render_music_genre)
-        self.addRoute('/playlists$', self.render_playlists)
-        self.addRoute('/playlists/(\d+)$', self.render_playlist)
+        self.addRoute('$', self.render_index)
+        self.addRoute('music', self.render_music)
+        self.addRoute('music/artists$', self.render_music_artists)
+        self.addRoute('music/artists/(\d+)$', self.render_music_artist)
+        self.addRoute('music/albums$', self.render_music_albums)
+        self.addRoute('music/albums/(\d+)$', self.render_music_album)
+        self.addRoute('music/songs$', self.render_music_songs)
+        self.addRoute('music/songs/(\d+)$', self.render_music_song)
+        self.addRoute('music/genres$', self.render_music_genres)
+        self.addRoute('music/genres/(\d+)$', self.render_music_genre)
+        self.addRoute('playlists$', self.render_playlists)
+        self.addRoute('playlists/(\d+)$', self.render_playlist)
 
     def render_index(self, request):
-        return renderTemplate('templates/library-front.t', {})
+        return Response(200, stream=renderTemplate('templates/library-front.t', {}))
 
     def render_music(self, request):
         return renderTemplate('templates/library-music.t',{})
