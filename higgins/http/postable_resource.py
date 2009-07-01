@@ -30,7 +30,7 @@ DefaultHTTPHandler.addParser("content-disposition", (tokenize, _parseContentDisp
 
 class PostableResource(resource.Resource, CoreLogger):
 
-    def acceptFile(self, headers):
+    def acceptFile(self, request, headers):
         """
         The default function which is called before reading a file sent via an HTTP POST.
         If the return value is a string, then the stream data will be appended to the
@@ -149,7 +149,7 @@ class PostableResource(resource.Resource, CoreLogger):
                     request.ctxt.name = None
                 if content_disposition.type == 'file' or 'filename' in content_disposition.params:
                     try:
-                        request.ctxt.handle = self.acceptFile(request.ctxt.headers)
+                        request.ctxt.handle = self.acceptFile(request, request.ctxt.headers)
                     except Exception, e:
                         self.log_debug("acceptFile failed: %s" % e)
                         request.ctxt.handle = None

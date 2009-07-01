@@ -5,6 +5,7 @@
 # the COPYING file.
 
 from pkg_resources import resource_string
+from genshi.template.loader import TemplateLoader
 from higgins.logger import Loggable
 
 class DataLogger(Loggable):
@@ -34,3 +35,15 @@ def renderTemplate(path, attrs):
     except Exception, e:
         logger.log_warning("failed to load template %s: %s" % (path,e))
         raise TemplateDoesNotExist(pkg_name, template_path)
+
+class TemplateStore(TemplateLoader):
+    def __init__(self, package, auto_reload=True, **options):
+        self._dataPackage = package
+        TemplateLoader.__init__(self, search_path=self._loadFromPackage, auto_reload=auto_reload, **options)
+    def _loadFromPackage(self, path):
+        """Return template information"""
+        fileobj = resource_string(self._dataPackage, path)
+        filepath = path
+        filename = path
+        uptodate = True
+        return filepath, filename, fileobj, uptodate

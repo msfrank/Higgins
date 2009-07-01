@@ -7,33 +7,67 @@
 import re
 from higgins.http.stream import FileStream
 from higgins.http.http_headers import MimeType
-from higgins.http.resource import Resource
+from higgins.http.resource import Resource, RenderMixin
+from higgins.http.postable_resource import PostableResource
 from higgins.http.http import Response
 from higgins.http.logger import logger
 
-class Route(object):
-    def __init__(self, path, object):
+class Route(PostableResource, RenderMixin):
+    def __init__(self, path, destination, options):
         self.path = path
         self.regex = re.compile(path)
-        if isinstance(object, UrlDispatcher):
-            self._dispatcher = object
-            self._callable = self._renderDispatcher
-        elif callable(object):
-            self._callable = object
+        if isinstance(destination, UrlDispatcher):
+            self._dispatcher = destination
+            self._callable = None
+        elif callable(destination):
+            self._dispatcher = None
+            self._callable = destination
         else:
-            raise Exception('Callable is not a UrlDispatcher or callable')
+            raise Exception('destination is not a UrlDispatcher or callable')
+        # default options
+        self._allowedMethods = ['GET', 'POST']
+        self._maxFilesize = 10485760
+        self._maxParamSize = 4096
+        if 'allowedMethods' in options:
+            self._allowedMethods = options['allowedMethods']
+        if 'maxFileSize' in options:
+            self._maxFileSize = options['maxFileSize']
+        if 'maxParamSize' in options:
+            self._maxParamSize = options['maxParamSize']
+        self._options = options
 
-    def _renderDispatcher(self, request, *params):
+    def allowedMethods(self):
+        return self._allowedMethods
+
+    def acceptFile(self, request, headers):
+        return None
+
+    def acceptParam(self, request, headers):
+        return None
+
+    def _renderDispatcher(self, request):
         try:
             request._subUrl = self.regex.split(request.path, 1)[1]
             logger.log_debug2("_renderDispatcher: subUrl='%s'" % request._subUrl)
             return self._dispatcher.renderHTTP(request)
         except Exception, e:
             logger.log_debug('_renderDispatcher failed: %s' % str(e))
-            return Response(500, stream=str(e))
+            return Response(500, stream="Internal Server Error")
 
-    def renderHTTP(self, request, *params):
-        return self._callable(request, *params)
+    def renderHTTP(self, request):
+        if self._dispatcher:
+            return self._renderDispatcher(request)
+        if not request.method in self._allowedMethods:
+            response = Response(405, stream="Method Not Allowed")
+            response.headers.setHeader("allow", self._allowedMethods)
+            return response
+        return RenderMixin.renderHTTP(self, request)
+
+    def render(self, request):
+        if self._callable == None:
+            return Response(500, stream="Internal Server Error")
+        logger.log_debug("Route.render: %s %s" % (request.method, request.path))
+        return self._callable(request, *request._urlParams)
 
 class UrlDispatcher(Resource):
     _routes = []
@@ -48,10 +82,20 @@ class UrlDispatcher(Resource):
         for route in self._routes:
             match = route.regex.match(request._subUrl)
             if match:
-                params = match.groups()
+                request._urlParams = match.groups()
                 logger.log_debug2("subUrl '%s' matched route '%s'" % (request._subUrl, route.path))
-                return route.renderHTTP(request, *params)
+                return route.renderHTTP(request)
         return Response(404, stream="Resource Not Found" % request.path)
 
     def addRoute(self, path, object, **options):
-        self._routes.append(Route(path, object))
+        for route in self._routes:
+            if route.path == path:
+                raise Exception("route '%s' already exists" % path)
+        self._routes.append(Route(path, object, options))
+
+    def removeRoute(self, path):
+        for route in self._routes:
+            if route.path == path:
+                self._routes.remove(route)
+                return
+        raise Exception("route '%s' doesn't exist" % path)
