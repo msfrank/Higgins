@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html
+  xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:py="http://genshi.edgewall.org/"
+  py:strip="">
+
+    <py:match path="head" once="true">
+    <head py:attrs="select('@*')">
+        <link href="/static/css/base.css" rel="stylesheet" type="text/css" media="screen"/>
+        ${select('*')}
+    </head>
+    </py:match>
+
+    <py:match path="body" once="true">
+    <body>
+        <div id="enclosure">
+            <div id="higgins-title">Higgins</div>
+            <div class="higgins-content-separator" />
+            <table id="higgins-nav">
+                <tr id="higgins-nav-row">
+                    <td class="higgins-nav-item"><a href="/">Home</a></td>
+                    <td class="higgins-nav-item"><a href="/library/">Library</a></td>
+                    <td class="higgins-nav-item"><a href="/settings/">Settings</a></td>
+                </tr>
+            </table>
+            <div class="higgins-separator"> <!-- subnav goes here --> </div>
+            <div id="higgins-content">${select('*|text()')}</div>
+        </div>
+    </body>
+    </py:match>
+</html>

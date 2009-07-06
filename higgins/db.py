@@ -4,11 +4,15 @@
 # This program is free software; for license information see
 # the COPYING file.
 
+from axiom import attributes
 from axiom.store import Store
 from axiom.item import Item
-from axiom import attributes
 from higgins.signals import Signal
+from higgins.logger import Loggable
 
+class DBLogger(Loggable):
+    log_domain = 'db'
+logger = DBLogger()
 
 # we must increment this every time a change is made which alters
 # the database schema
@@ -142,10 +146,11 @@ class DBStore(object):
             def _postCommitHook(self):
                 try:
                     Store._postCommitHook(self)
-                    self._dbstore.signal(None)
-                except:
-                    pass
-        self._store = SignallingStore(path, self)
+                    self._dbstore.db_changed.signal(None)
+                except Exception, e:
+                    logger.log_debug("_postCommitHook: %s" % str(e))
+        #self._store = SignallingStore(path, self)
+        self._store = Store(path)
         self._dbPath = path
         self._isLoaded = True
 
@@ -153,6 +158,7 @@ class DBStore(object):
         if not self._isLoaded:
             raise Exception('database is not loaded')
         self._store.close()
+        #self._store._dbstore = None
         self._store = None
         self._dbPath = None
         self._isLoaded = False

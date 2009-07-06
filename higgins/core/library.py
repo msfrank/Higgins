@@ -6,7 +6,7 @@
 
 from higgins.http.url_dispatcher import UrlDispatcher
 from higgins.http.http import Response
-from higgins.data import renderTemplate
+from higgins.data import templates
 from higgins.core.logger import logger
 
 class LibraryResource(UrlDispatcher):
@@ -25,10 +25,10 @@ class LibraryResource(UrlDispatcher):
         self.addRoute('playlists/(\d+)$', self.render_playlist)
 
     def render_index(self, request):
-        return Response(200, stream=renderTemplate('templates/library-front.t', {}))
+        return Response(200, stream=templates.render('templates/library-front.t', {}))
 
     def render_music(self, request):
-        return renderTemplate('templates/library-music.t',{})
+        return Response(200, stream=templates.render('templates/library-music.t',{}))
 
     def render_music_artists(request):
         return renderTemplate('templates/music-byartist.t', {})

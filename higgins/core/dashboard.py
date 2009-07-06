@@ -6,8 +6,8 @@
 
 from higgins.core.logger import logger
 from higgins.http.http import Response
-from higgins.data import renderTemplate
+from higgins.data import templates
 
 def renderDashboard(request):
     logger.log_debug("rendering dashboard")
-    return Response(200, stream=renderTemplate('templates/front.t', {}))
+    return Response(200, stream=templates.render('templates/front.html', {}))

@@ -85,7 +85,8 @@ class UrlDispatcher(Resource):
                 request._urlParams = match.groups()
                 logger.log_debug2("subUrl '%s' matched route '%s'" % (request._subUrl, route.path))
                 return route.renderHTTP(request)
-        return Response(404, stream="Resource Not Found" % request.path)
+        logger.log_debug("resource %s not found" % request.path)
+        return Response(404, stream="Resource %s Not Found" % request.path)
 
     def addRoute(self, path, object, **options):
         for route in self._routes:
