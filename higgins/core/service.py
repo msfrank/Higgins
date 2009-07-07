@@ -10,12 +10,12 @@ from twisted.internet.defer import maybeDeferred
 from higgins.settings import settings, Configurator, IntegerSetting
 from higgins.service import Service
 from higgins.http import server, channel
-from higgins.core.dashboard import renderDashboard
 from higgins.http.url_dispatcher import UrlDispatcher
-#from higgins.core.content import ContentResource
-#from higgins.core.static import StaticResource
-#from higgins.core.manage import ManageResource
+from higgins.core.dashboard import renderDashboard
+from higgins.core.static import renderStaticContent
 from higgins.core.library import LibraryResource
+#from higgins.core.content import ContentResource
+#from higgins.core.manage import ManageResource
 #from higgins.core.settings import SettingsResource
 from higgins.core.logger import logger
 from higgins.upnp.service import UPNPService
@@ -30,9 +30,9 @@ class RootResource(UrlDispatcher):
     def __init__(self, service):
         self.service = service
         self.addRoute('/$', renderDashboard)
+        self.addRoute('/static/(.+)$', renderStaticContent)
         self.addRoute('/library/', LibraryResource())
         #self.addRoute('/content/', ContentResource())
-        #self.addRoute('/static/', StaticResource())
         #self.addRoute('/manage/', ManageResource())
         #self.addRoute('/settings/', SettingsResource(service))
 

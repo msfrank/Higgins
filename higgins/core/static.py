@@ -4,21 +4,20 @@
 # This program is free software; for license information see
 # the COPYING file.
 
-from os.path import join as pathjoin
 from pkg_resources import resource_string
-from higgins.http.resource import Resource
 from higgins.http.http import Response
-from higgins.core.logger import CoreLogger
+from higgins.core.logger import logger
 
-class StaticResource(Resource):
-    def allowedMethods(self):
-        return ("GET",)
-    def locateChild(self, request, segments):
-        path = pathjoin(*segments)
+def renderStaticContent(request, path):
+    try:
         try:
-            self.data = resource_string('higgins.data', path)
-            return self, []
-        except:
-            return None, []
-    def render(self, request):
-        return Response(200, headers=None, stream=self.data)
+            data = resource_string('higgins.data', '/static/' + path)
+            return Response(200, headers=None, stream=data)
+        except IOError, e:
+            if e.errno == 2:
+                logger.log_debug("couldn't find static resource %s" % path)
+                return Response(404, stream="Resource %s Not Found" % path)
+            raise e
+    except Exception, e:
+        logger.log_debug("failed to render static resource %s: %s" % (path, str(e)))
+        return Response(500, stream="Internal Server Error" % path)

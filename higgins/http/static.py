@@ -9,7 +9,6 @@ I deal with static resources.
 # System Imports
 import os, time, stat
 import tempfile
-import md5
 
 # Sibling Imports
 from higgins.http import http_headers, resource
