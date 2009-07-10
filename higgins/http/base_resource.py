@@ -5,10 +5,11 @@
 # the COPYING file.
 
 from twisted.internet import defer
-from higgins.http import http, resource, http_headers
-from higgins.http.http_headers import DefaultHTTPHandler, tokenize, parseArgs
+from higgins.http.resource import Resource
+from higgins.http.http_headers import Headers, DefaultHTTPHandler, tokenize, parseArgs
+from higgins.http.http import Response
 from higgins.http.stream import BufferedStream
-from higgins.core.logger import CoreLogger
+from higgins.http.logger import logger
 
 class ContentDisposition:
     def __init__(self, type, params):
@@ -21,16 +22,48 @@ def _parseContentDisposition(header):
     """
     Parses a Content-Disposition header.
     """
-    type,args = http_headers.parseArgs(header)
+    type,args = parseArgs(header)
     type = type[0].lower()
     if not type == "form-data" and not type == "file":
         raise ValueError("Content-Disposition type is not 'form-data' or 'file'")
     return ContentDisposition(type, dict(args))
 DefaultHTTPHandler.addParser("content-disposition", (tokenize, _parseContentDisposition))
 
-class PostableResource(resource.Resource, CoreLogger):
+class BaseResource(Resource):
+    def allowedMethods(self):
+        return ('HEAD','GET','POST','PUT','DELETE','OPTIONS')
 
-    def acceptFile(self, request, headers):
+    def renderHTTP(self, request):
+        request.post = {}
+        request.files = []
+        return Resource.renderHTTP(self, request)
+
+    def http_POST(self, request):
+        content_type = request.headers.getHeader('content-type')
+        if content_type.mediaType == 'multipart' and content_type.mediaSubtype == 'form-data':
+            request.boundary = content_type.params.get('boundary')
+            request.buffered_stream = BufferedStream(request.stream)
+            return self._readMultipartFormData(request).addCallbacks(lambda l: self.render(request))
+        elif content_type.mediaType == 'application' and content_type.mediaSubtype == 'x-www-form-urlencoded':
+            return Response(400)
+        return Response(400)
+
+    def http_PUT(self, request):
+        content_type = request.headers.getHeader('content-type')
+        if content_type.mediaType == 'multipart' and content_type.mediaSubtype == 'form-data':
+            request.boundary = content_type.params.get('boundary')
+            request.buffered_stream = BufferedStream(request.stream)
+            return self._readMultipartFormData(request).addCallbacks(lambda l: self.render(request))
+        elif content_type.mediaType == 'application' and content_type.mediaSubtype == 'x-www-form-urlencoded':
+            return Response(400)
+        return Response(400)
+
+    def http_DELETE(self, request):
+        if request.stream.length != 0:
+            return responsecode.REQUEST_ENTITY_TOO_LARGE
+        return self.render(request)
+
+    def acceptFile(self, request, subheaders):
         """
         The default function which is called before reading a file sent via an HTTP POST.
         If the return value is a string, then the stream data will be appended to the
@@ -75,7 +108,7 @@ class PostableResource(resource.Resource, CoreLogger):
             def __init__(self):
                 self.state = Context.STATE_READ_FIRST_BOUNDARY
                 self.leftover = None
-                self.headers = http_headers.Headers()
+                self.headers = Headers()
                 self.is_done = False
 
         # Write data to opaque handle instance.
@@ -100,7 +133,7 @@ class PostableResource(resource.Resource, CoreLogger):
                     request.ctxt.state = Context.STATE_PROCESS_BODY
                 else:
                     if request.ctxt.state != Context.STATE_READ_HEADERS:
-                        self.log_error("reached end of request, state is %s" % request.ctxt.state)
+                        logger.log_error("reached end of request, state is %s" % request.ctxt.state)
                     break
 
             ##########################################################
@@ -114,8 +147,8 @@ class PostableResource(resource.Resource, CoreLogger):
                     data = data.getResult()
                 data = data.strip()
                 if not data == "--" + request.boundary:
-                    self.log_debug("boundary error: expected '%s'" % (request.boundary))
-                    self.log_debug("     `--------> received '%s'" % (data))
+                    logger.log_debug("boundary error: expected '%s'" % (request.boundary))
+                    logger.log_debug("     `--------> received '%s'" % (data))
                 request.ctxt.state = Context.STATE_READ_HEADERS
 
             ##########################################################
@@ -136,7 +169,7 @@ class PostableResource(resource.Resource, CoreLogger):
                         name, value = namevalue
                         request.ctxt.headers.addRawHeader(name, value.strip())
                     else:
-                        self.log_debug("header error: failed to parse '%s'" % data)
+                        logger.log_debug("header error: failed to parse '%s'" % data)
 
             ##########################################################
             # STATE_PROCESS_HEADERS                                  #
@@ -151,7 +184,7 @@ class PostableResource(resource.Resource, CoreLogger):
                     try:
                         request.ctxt.handle = self.acceptFile(request, request.ctxt.headers)
                     except Exception, e:
-                        self.log_debug("acceptFile failed: %s" % e)
+                        logger.log_debug("acceptFile failed: %s" % e)
                         request.ctxt.handle = None
                 else:
                     request.ctxt.handle = []
@@ -201,19 +234,19 @@ class PostableResource(resource.Resource, CoreLogger):
             # STATE_PROCESS_BODY                                     #
             ##########################################################
             if request.ctxt.state == Context.STATE_PROCESS_BODY:
-                self.log_debug("STATE_PROCESS_BODY")
+                logger.log_debug("STATE_PROCESS_BODY")
                 if request.ctxt.handle:
                     # add the form data to the http.Request.post dictionary
                     if isinstance(request.ctxt.handle, list):
                         value = u''.join(request.ctxt.handle)
                         request.post[request.ctxt.name] = value
-                        self.log_debug("parsed post param '%s'='%s'" % (request.ctxt.name,value))
+                        logger.log_debug("parsed post param '%s'='%s'" % (request.ctxt.name,value))
                     # add the file info to the http.Request.files list
                     else:
                         request.files.append(request.ctxt.handle)
-                        self.log_debug("created file '%s'" % request.ctxt.handle.path)
+                        logger.log_debug("created file '%s'" % request.ctxt.handle.path)
                 # reset the context
-                request.ctxt.headers = http_headers.Headers()
+                request.ctxt.headers = Headers()
                 request.ctxt.leftover = None
                 if request.ctxt.is_done == True:
                     request.ctxt.state = Context.STATE_FINISHED
@@ -236,16 +269,4 @@ class PostableResource(resource.Resource, CoreLogger):
         Any error which results in this callback being triggered should be returned
         to the client as an internal server error.
         """
-        return http.Response(500)
-
-    def http_POST(self, request):
-        request.post = {}
-        request.files = []
-        content_type = request.headers.getHeader('content-type')
-        if content_type.mediaType == 'multipart' and content_type.mediaSubtype == 'form-data':
-            request.boundary = content_type.params.get('boundary')
-            request.buffered_stream = BufferedStream(request.stream)
-            return self._readMultipartFormData(request).addCallbacks(lambda l: self.render(request))
-        elif content_type.mediaType == 'application' and content_type.mediaSubtype == 'x-www-form-urlencoded':
-            return http.Response(400)
-        return http.Response(400)
+        return Response(500)

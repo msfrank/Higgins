@@ -72,7 +72,7 @@ class Server(object, logger.Loggable):
         # we load conf after parsing options
         settings.load(os.path.join(env, 'settings.dat'))
         # open the database
-        #db.open(os.path.join(env, 'database'))
+        db.open(os.path.join(env, 'database'))
         # load the list of plugins
         plugins.load([os.path.join(env, 'plugins')])
 

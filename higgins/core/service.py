@@ -14,6 +14,7 @@ from higgins.http.url_dispatcher import UrlDispatcher
 from higgins.core.dashboard import renderDashboard
 from higgins.core.static import renderStaticContent
 from higgins.core.library import LibraryResource
+from higgins.core.restapi import APIResource
 #from higgins.core.content import ContentResource
 #from higgins.core.manage import ManageResource
 #from higgins.core.settings import SettingsResource
@@ -32,6 +33,7 @@ class RootResource(UrlDispatcher):
         self.addRoute('/$', renderDashboard)
         self.addRoute('/static/(.+)$', renderStaticContent)
         self.addRoute('/library/', LibraryResource())
+        self.addRoute('/api/1.0/', APIResource())
         #self.addRoute('/content/', ContentResource())
         #self.addRoute('/manage/', ManageResource())
         #self.addRoute('/settings/', SettingsResource(service))

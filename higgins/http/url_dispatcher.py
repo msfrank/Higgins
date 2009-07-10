@@ -7,12 +7,12 @@
 import re
 from higgins.http.stream import FileStream
 from higgins.http.http_headers import MimeType
-from higgins.http.resource import Resource, RenderMixin
-from higgins.http.postable_resource import PostableResource
+from higgins.http.resource import Resource
+from higgins.http.base_resource import BaseResource
 from higgins.http.http import Response
 from higgins.http.logger import logger
 
-class Route(PostableResource, RenderMixin):
+class Route(BaseResource):
     def __init__(self, path, destination, options):
         self.path = path
         self.regex = re.compile(path)
@@ -25,7 +25,7 @@ class Route(PostableResource, RenderMixin):
         else:
             raise Exception('destination is not a UrlDispatcher or callable')
         # default options
-        self._allowedMethods = ['GET', 'POST']
+        self._allowedMethods = BaseResource.allowedMethods(self)
         self._maxFilesize = 10485760
         self._maxParamSize = 4096
         if 'allowedMethods' in options:
@@ -39,10 +39,10 @@ class Route(PostableResource, RenderMixin):
     def allowedMethods(self):
         return self._allowedMethods
 
-    def acceptFile(self, request, headers):
+    def acceptFile(self, request, subheaders):
         return None
 
-    def acceptParam(self, request, headers):
+    def acceptParam(self, request, subheaders):
         return None
 
     def _renderDispatcher(self, request):
@@ -61,7 +61,7 @@ class Route(PostableResource, RenderMixin):
             response = Response(405, stream="Method Not Allowed")
             response.headers.setHeader("allow", self._allowedMethods)
             return response
-        return RenderMixin.renderHTTP(self, request)
+        return BaseResource.renderHTTP(self, request)
 
     def render(self, request):
         if self._callable == None:

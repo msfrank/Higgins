@@ -74,7 +74,7 @@ class Uploader(object, Loggable):
             lines.append('')
             lines.append(value)
         if self.isLocal:
-            post_uri = '/manage/create/?is_local=True'
+            post_uri = '/api/1.0/songs?is_local=True'
             file_size = 0
         else:
             # if not local mode, then add the headers for the file part
@@ -83,7 +83,7 @@ class Uploader(object, Loggable):
             lines.append('Content-Type: %s' % metadata['mimetype'])
             lines.append('')
             lines.append('')
-            post_uri = '/manage/create/'
+            post_uri = '/api/1.0/songs'
             st = stat(file)
             file_size = st.st_size
         output = '\r\n'.join(lines)

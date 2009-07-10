@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html
   xmlns="http://www.w3.org/1999/xhtml"
   xmlns:py="http://genshi.edgewall.org/"
@@ -11,7 +10,7 @@
     </head>
     </py:match>
 
-    <py:match path="body" once="true">
+    <py:match path="body">
     <body>
         <div id="enclosure">
             <div id="higgins-title">Higgins</div>
@@ -23,8 +22,16 @@
                     <td class="higgins-nav-item"><a href="/settings/">Settings</a></td>
                 </tr>
             </table>
-            <div class="higgins-separator"> <!-- subnav goes here --> </div>
-            <div id="higgins-content">${select('*|text()')}</div>
+
+            <py:match path="subnav">
+            <div class="higgins-separator" py:attrs="select('@*')">${select('*|text()')}</div>
+            </py:match>
+            
+            <py:match path="content">
+            <div id="higgins-content" py:attrs="select('@*')">${select('*|text()')}</div>
+            </py:match>
+
+            ${select('*|text()')}
         </div>
     </body>
     </py:match>
