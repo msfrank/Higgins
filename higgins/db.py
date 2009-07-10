@@ -31,25 +31,25 @@ class Artist(Item):
     rating = attributes.integer(allowNone=True)
 
 class Album(Item):
-    date_added = attributes.timestamp()
+    dateAdded = attributes.timestamp()
     name = attributes.text()
     artist = attributes.reference()
     genre = attributes.reference()
-    release_date = attributes.integer(allowNone=True)
+    releaseDate = attributes.integer(allowNone=True)
     rating = attributes.integer(allowNone=True)
 
 class Song(Item):
-    date_added = attributes.timestamp()
+    dateAdded = attributes.timestamp()
     name = attributes.text()
     artist = attributes.reference()
     album = attributes.reference()
     duration = attributes.integer()
-    track_number = attributes.integer(allowNone=True)
-    volume_number = attributes.integer(allowNone=True)
+    trackNumber = attributes.integer(allowNone=True)
+    volumeNumber = attributes.integer(allowNone=True)
     rating = attributes.integer(allowNone=True)
     file = attributes.reference()
 
-    def print_duration(self):
+    def printDuration(self):
         duration = self.duration / 1000
         if duration < 60:
             return '0:%02i' % duration
@@ -166,10 +166,17 @@ class DBStore(object):
     def create(self, itemType, **kwds):
         if not self._isLoaded:
             raise Exception('database is not loaded')
-        if not issubclass(Item, itemType):
+        if not issubclass(itemType, Item):
             raise Exception('%s is not a subclass of axiom.item.Item' % str(type(itemType)))
         kwds['store'] = self._store
         return itemType(**kwds)
+
+    def getOrCreate(self, itemType, **kwds):
+        if not self._isLoaded:
+            raise Exception('database is not loaded')
+        if not issubclass(itemType, Item):
+            raise Exception('%s is not a subclass of axiom.item.Item' % str(type(itemType)))
+        return self._store.findOrCreate(itemType, **kwds)
 
     def query(self, itemType, comparison=None, limit=None, offset=None, sort=None):
         if not self._isLoaded:

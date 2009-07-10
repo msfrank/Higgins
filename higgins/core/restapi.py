@@ -5,6 +5,7 @@
 # the COPYING file.
 
 import simplejson
+from higgins.db import db, Artist, Album, Song, Genre
 from higgins.http.url_dispatcher import UrlDispatcher
 from higgins.http.http_headers import MimeType
 from higgins.http.http import Response
@@ -31,35 +32,48 @@ class APIResource(UrlDispatcher):
         logger.log_debug('manage_songs: method=%s, args=%s, post=%s' %
                         (request.method, request.args, request.post)
                         )
-        return Response(200)
         if request.method == 'GET':
-            return Response(200)
+            offset = request.args.get('offset', None)
+            if offset != None: offset = int(offset[0])
+            limit = request.args.get('limit', None)
+            if limit != None: offset = int(limit[0])
+            items = []
+            for song in db.query(Song, offset=offset, limit=limit):
+                items.append({'name': song.name,
+                             'id': song.storeID,
+                             'artist': song.artist.storeID,
+                             'album': song.album.storeID
+                             })
+            if offset == None: offset = 0
+            response = {'nitems': len(items), 'offset': offset, 'items': items}
+            response = simplejson.dumps(response)
+            return Response(200, {'content-type':MimeType.fromString('application/json')}, response)
         elif request.method == 'POST':
-            try:
+        #    try:
                 # title is required
                 title = request.post.get('title', None)
                 if title == None:
                     return HttpResponse(400, stream="Missing required form item 'title")
                 # create or get the artist object
                 value = request.post.get('artist', '')
-                artist = db.get_or_create(Artist, name=value)
+                artist = db.getOrCreate(Artist, name=value)
                 # create or get the genre object
                 value = request.post.get('genre', '')
-                genre = db.get_or_create(Genre, name=value)
+                genre = db.getOrCreate(Genre, name=value)
                 # create or get the album object
                 value = request.post.get('album', '')
-                album = db.get_or_create(Album, name=value, artist=artist, genre=genre)
+                album = db.getOrCreate(Album, name=value, artist=artist, genre=genre)
                 # create the song object
-                song = db.create(Song, name=title, album=album, artist=artist, file=file)
+                song = db.create(Song, name=title, album=album, artist=artist)
                 if 'track' in request.post:
                     song.trackNumber = int(request.post['track'])
                 if 'length' in request.post:
                     song.duration = int(request.post['length'])
-                self.log_debug("successfully added new song '%s'" % title)
+                logger.log_debug("successfully added new song '%s'" % title)
                 return Response(200, stream="success!")
-            except Exception, e:
-                self.log_debug("failed to add song: %s" % e)
-                return Response(500, stream="Internal Server Error")
+        #    except Exception, e:
+        #        logger.log_debug("failed to add song: %s" % e)
+        #        return Response(500, stream="Internal Server Error")
         return Response(500)
 
     def manage_song_item(self, request, item):
