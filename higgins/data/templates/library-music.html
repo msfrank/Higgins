@@ -1,0 +1,59 @@
+<html
+  xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:xi="http://www.w3.org/2001/XInclude"
+  xmlns:py="http://genshi.edgewall.org/">
+    <xi:include href="base.html" />
+    <head>
+        <link href="/static/css/browse.css" rel="stylesheet" type="text/css" media="screen" />
+        <title>Higgins - Browse Music</title>
+    </head>
+    <body>
+
+        <ul>
+            <li><a href="/library/music">Music</a></li>
+            <li><a href="/library/videos">Videos</a></li>
+            <li><a href="/library/photos">Photos</a></li>
+            <li><a href="/library/playlists">Playlists</a></li>
+        </ul>
+
+        <div id="browse">
+            <span id="browse-title">Browse Your Music</span>
+            <ul id="browse-list">
+                <li><a id="browse-byartist" href="/library/music/artists/">By Artist</a></li>
+                <li><a id="browse-bygenre" href="/library/music/genres/">By Genre</a></li>
+                <li><a id="browse-bytags" href="/library/music/tags/">By Tag</a></li>
+            </ul>
+        </div>
+
+        <div id="latest">
+            <span id="latest-title">Latest Song Additions</span>
+            <py:choose test="latest_songs">
+                <py:when test="None"><p>No data for newest additions.</p></py:when>
+                <py:otherwise>
+                <ol id="latest-list">
+                    <li py:for="song in latest_songs">
+                        <a href="/library/music/bysong/${song.storeID}/">${song.name}</a> by
+                        <a href="/library/music/byartist/${song.artist.storeID}/">${song.artist.name}</a>
+                    </li>
+                </ol>
+                </py:otherwise>
+            </py:choose>
+        </div>
+
+        <div id="popular">
+            <span id="popular-title">Most Popular Selections</span>
+            <py:choose test="popular_songs">
+                <py:when test="None"><p>No data for most popular songs.</p></py:when>
+                <py:otherwise>
+                <ul id="popular-list">
+                    <li py:for="song in popular_songs">
+                        <a href="/library/music/bysong/${song.storeID}/">${song.name}</a> by
+                        <a href="/library/music/byartist/${song.artist.storeID}/">${song.artist.name}</a>
+                    </li>
+                </ul>
+                </py:otherwise>
+            </py:choose>
+        </div>
+
+    </body>
+</html>

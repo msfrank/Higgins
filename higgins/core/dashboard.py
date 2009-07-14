@@ -10,4 +10,8 @@ from higgins.data import templates
 
 def renderDashboard(request):
     logger.log_debug("rendering dashboard")
-    return Response(200, stream=templates.render('templates/front.html', {}))
+    return Response(200,
+        stream=templates.render('templates/front.html',
+            {'topnav': [('Home', '/', True), ('Library', '/library', False),]}
+            )
+        )

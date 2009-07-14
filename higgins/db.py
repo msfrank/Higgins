@@ -25,7 +25,7 @@ class File(Item):
     size = attributes.integer()
 
 class Artist(Item):
-    date_added = attributes.timestamp()
+    dateAdded = attributes.timestamp()
     name = attributes.text()
     website = attributes.text(allowNone=True)
     rating = attributes.integer(allowNone=True)

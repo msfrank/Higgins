@@ -32,7 +32,7 @@ class RootResource(UrlDispatcher):
         self.service = service
         self.addRoute('/$', renderDashboard)
         self.addRoute('/static/(.+)$', renderStaticContent)
-        self.addRoute('/library/', LibraryResource())
+        self.addRoute('/library', LibraryResource())
         self.addRoute('/api/1.0/', APIResource())
         #self.addRoute('/content/', ContentResource())
         #self.addRoute('/manage/', ManageResource())
