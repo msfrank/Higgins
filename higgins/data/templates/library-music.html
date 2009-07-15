@@ -32,8 +32,8 @@
                 <py:otherwise>
                 <ol id="latest-list">
                     <li py:for="song in latest_songs">
-                        <a href="/library/music/bysong/${song.storeID}/">${song.name}</a> by
-                        <a href="/library/music/byartist/${song.artist.storeID}/">${song.artist.name}</a>
+                        <a href="/library/music/songs/${song.storeID}">${song.name}</a> by
+                        <a href="/library/music/artists/${song.artist.storeID}">${song.artist.name}</a>
                     </li>
                 </ol>
                 </py:otherwise>
@@ -47,8 +47,8 @@
                 <py:otherwise>
                 <ul id="popular-list">
                     <li py:for="song in popular_songs">
-                        <a href="/library/music/bysong/${song.storeID}/">${song.name}</a> by
-                        <a href="/library/music/byartist/${song.artist.storeID}/">${song.artist.name}</a>
+                        <a href="/library/music/songs/${song.storeID}">${song.name}</a> by
+                        <a href="/library/music/artists/${song.artist.storeID}">${song.artist.name}</a>
                     </li>
                 </ul>
                 </py:otherwise>

@@ -178,6 +178,13 @@ class DBStore(object):
             raise Exception('%s is not a subclass of axiom.item.Item' % str(type(itemType)))
         return self._store.findOrCreate(itemType, **kwds)
 
+    def get(self, itemType, comparison):
+        if not self._isLoaded:
+            raise Exception('database is not loaded')
+        if not issubclass(itemType, Item):
+            raise Exception('%s is not a subclass of axiom.item.Item' % str(type(itemType)))
+        return self._store.findUnique(itemType, comparison=comparison)
+
     def query(self, itemType, comparison=None, limit=None, offset=None, sort=None):
         if not self._isLoaded:
             raise Exception('database is not loaded')

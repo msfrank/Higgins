@@ -15,6 +15,7 @@ from higgins.core.dashboard import renderDashboard
 from higgins.core.static import renderStaticContent
 from higgins.core.library import LibraryResource
 from higgins.core.restapi import APIResource
+from higgins.core.errorresponse import ErrorResponse
 #from higgins.core.content import ContentResource
 #from higgins.core.manage import ManageResource
 #from higgins.core.settings import SettingsResource
@@ -37,6 +38,12 @@ class RootResource(UrlDispatcher):
         #self.addRoute('/content/', ContentResource())
         #self.addRoute('/manage/', ManageResource())
         #self.addRoute('/settings/', SettingsResource(service))
+        self.addRoute('', self.renderNotFound)
+    def renderNotFound(self, request):
+        return ErrorResponse(404,"""
+            The requested resource %s could not be found.
+            """ % request.path
+            )
 
 class CoreService(MultiService):
     def __init__(self):
