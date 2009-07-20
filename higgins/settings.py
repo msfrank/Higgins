@@ -193,7 +193,9 @@ class ConfiguratorDeclarativeParser(type):
         as a class attribute.
         """
         if name in cls._config_fields:
-            return settings['CFG__' + cls._config_name + '__' + name]
+            value = settings['CFG__' + cls._config_name + '__' + name]
+            logger.log_debug("%s: %s == %s" % (cls._config_name, name, value))
+            return value
         raise AttributeError("Configurator is missing config field %s" % name)
 
     def __setattr__(cls, name, value):

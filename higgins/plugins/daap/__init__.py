@@ -7,16 +7,20 @@
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred, DeferredList, maybeDeferred
 from higgins.service import Service
-from higgins.core import configurator
+from higgins.settings import Configurator, StringSetting, IntegerSetting
 from higgins.plugins.daap.logger import logger
 
-class DaapConfig(configurator.Configurator):
+class DaapConfig(Configurator):
     pretty_name = "DAAP"
     description = "Configure DAAP sharing"
-    SHARE_NAME = configurator.StringSetting("Share Name", "Higgins DAAP Share")
+    SHARE_NAME = StringSetting("Share Name", "Higgins DAAP Share",
+        "The name of the share which is displayed to all clients"
+        )
 
-class DaapPrivate(configurator.Configurator):
-    REVISION_NUMBER = configurator.IntegerSetting("Revision Number", 1)
+class DaapPrivate(Configurator):
+    REVISION_NUMBER = IntegerSetting("Revision Number", 1,
+        "Each time an the media library changes, the revision number is incremented by one"
+        )
 
 from higgins.plugins.daap.commands import DAAPFactory
 

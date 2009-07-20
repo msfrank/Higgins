@@ -12,7 +12,7 @@ from higgins.http.http import Response
 from higgins.http.resource import Resource
 from higgins.http.stream import SimpleStream, FileStream
 from higgins.http.http_headers import MimeType
-from higgins.core.models import File, Song, Playlist, db_changed
+from higgins.db import db, File, Song
 from higgins.plugins.daap import DaapConfig, DaapPrivate
 from higgins.plugins.daap.codebag import CodeBag, ContentCode
 from higgins.plugins.daap.content_codes import content_codes, content_code_str_to_int

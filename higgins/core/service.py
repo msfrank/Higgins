@@ -16,9 +16,8 @@ from higgins.core.static import renderStaticContent
 from higgins.core.library import LibraryResource
 from higgins.core.restapi import APIResource
 from higgins.core.errorresponse import ErrorResponse
+from higgins.core.settings import SettingsResource
 #from higgins.core.content import ContentResource
-#from higgins.core.manage import ManageResource
-#from higgins.core.settings import SettingsResource
 from higgins.core.logger import logger
 from higgins.upnp.service import UPNPService
 from higgins.upnp.device import UPNPDevice
@@ -30,14 +29,14 @@ class CoreHttpConfig(Configurator):
 
 class RootResource(UrlDispatcher):
     def __init__(self, service):
+        UrlDispatcher.__init__(self)
         self.service = service
         self.addRoute('/$', renderDashboard)
         self.addRoute('/static/(.+)$', renderStaticContent)
         self.addRoute('/library', LibraryResource())
         self.addRoute('/api/1.0/', APIResource())
+        self.addRoute('/settings', SettingsResource(service))
         #self.addRoute('/content/', ContentResource())
-        #self.addRoute('/manage/', ManageResource())
-        #self.addRoute('/settings/', SettingsResource(service))
         self.addRoute('', self.renderNotFound)
     def renderNotFound(self, request):
         return ErrorResponse(404,"""
@@ -83,19 +82,6 @@ class CoreService(MultiService):
                 raise Exception("plugin already exists")
             plugin = plugin()
             plugin.setName(name)
-            # initialize any discovered configurators
-            def init_configs_recursive(configs):
-                if configs == None:
-                    return
-                if isinstance(configs, Configurator):
-                    configs()
-                elif isinstance(configs, dict):
-                    for name,config in configs.items():
-                        if isinstance(config, Configurator):
-                            config()
-                        elif isinstance(config, dict):
-                            init_configs_recursive(config)
-            init_configs_recursive(plugin.configs)                
             self._plugins[name] = plugin
             logger.log_info("registered plugin '%s'" % name)
         except Exception, e:

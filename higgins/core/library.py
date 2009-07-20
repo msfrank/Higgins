@@ -12,6 +12,7 @@ from higgins.core.logger import logger
 
 class LibraryResource(UrlDispatcher):
     def __init__(self):
+        UrlDispatcher.__init__(self)
         self.addRoute('/?$', self.render_index)
         self.addRoute('/music/?$', self.render_music)
         self.addRoute('/music/artists/?$', self.render_music_artists)

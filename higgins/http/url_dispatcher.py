@@ -70,7 +70,8 @@ class Route(BaseResource):
         return self._callable(request, *request._urlParams)
 
 class UrlDispatcher(Resource):
-    _routes = []
+    def __init__(self):
+        self._routes = []
 
     def locateChild(self, request, segments):
         return self, []

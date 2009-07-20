@@ -13,6 +13,7 @@ from higgins.core.logger import logger
 
 class APIResource(UrlDispatcher):
     def __init__(self):
+        UrlDispatcher.__init__(self)
         self.addRoute('songs/?$', self.manage_songs, allowedMethods=('GET','POST'))
         self.addRoute('songs/(\d+)/?$',
                       self.manage_song_item,

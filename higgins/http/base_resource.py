@@ -9,6 +9,7 @@ from higgins.http.resource import Resource
 from higgins.http.http_headers import Headers, DefaultHTTPHandler, tokenize, parseArgs
 from higgins.http.http import Response
 from higgins.http.stream import BufferedStream
+from higgins.http import fileupload
 from higgins.http.logger import logger
 
 class ContentDisposition:
@@ -45,7 +46,11 @@ class BaseResource(Resource):
             request.buffered_stream = BufferedStream(request.stream)
             return self._readMultipartFormData(request).addCallbacks(lambda l: self.render(request))
         elif content_type.mediaType == 'application' and content_type.mediaSubtype == 'x-www-form-urlencoded':
-            return Response(400)
+            d = fileupload.parse_urlencoded(request.stream)
+            d.addCallback(self.updatePost, request)
+            d.addCallback(lambda l: self.render(request))
+            return d
+        logger.log_debug("can't handle POST request: unknown media type %s/%s" % (content_type.mediaType,content_type.mediaSubtype))
         return Response(400)
 
     def http_PUT(self, request):
@@ -55,13 +60,21 @@ class BaseResource(Resource):
             request.buffered_stream = BufferedStream(request.stream)
             return self._readMultipartFormData(request).addCallbacks(lambda l: self.render(request))
         elif content_type.mediaType == 'application' and content_type.mediaSubtype == 'x-www-form-urlencoded':
-            return Response(400)
+            d = fileupload.parse_urlencoded(request.stream)
+            d.addCallback(self.updatePost, request)
+            d.addCallback(lambda l: self.render(request))
+            return d
         return Response(400)
 
     def http_DELETE(self, request):
         if request.stream.length != 0:
             return responsecode.REQUEST_ENTITY_TOO_LARGE
         return self.render(request)
+
+    def updatePost(self, args, request):
+        request.post.update(args)
+        logger.log_debug("parsed POST args: %s" % args)
+        return request
 
     def acceptFile(self, request, subheaders):
         """
@@ -234,7 +247,6 @@ class BaseResource(Resource):
             # STATE_PROCESS_BODY                                     #
             ##########################################################
             if request.ctxt.state == Context.STATE_PROCESS_BODY:
-                logger.log_debug("STATE_PROCESS_BODY")
                 if request.ctxt.handle:
                     # add the form data to the http.Request.post dictionary
                     if isinstance(request.ctxt.handle, list):
