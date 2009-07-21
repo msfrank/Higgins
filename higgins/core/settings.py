@@ -8,6 +8,7 @@ from genshi.input import HTML
 from higgins.http.url_dispatcher import UrlDispatcher
 from higgins.http.http import Response
 from higgins.data import templates
+from higgins.core.config import CoreHttpConfig
 from higgins.settings import settings, IntegerSetting, StringSetting
 from higgins.core.errorresponse import ErrorResponse
 from higgins.core.logger import logger
@@ -41,7 +42,6 @@ class SettingsResource(UrlDispatcher):
 
     def configureHttpSettings(self, request):
         try:
-            from higgins.core.service import CoreHttpConfig
             if request.method == 'POST':
                 form = SettingsForm(CoreHttpConfig, request.post)
             else:
@@ -63,9 +63,25 @@ class SettingsResource(UrlDispatcher):
             )
 
     def configurePlugins(self, request):
-        from higgins.core.service import CoreHttpConfig
+        if request.method == 'POST':
+            for name,plugin in self.core._plugins.items():
+                if name in request.post and not self.core.pluginIsEnabled(name):
+                    self.core.enablePlugin(name)
+                if not name in request.post and self.core.pluginIsEnabled(name):
+                    self.core.disablePlugin(name)
+            return Response(200,
+                stream=templates.render('templates/settings-plugins.html', {
+                        'topnav': [('Home', '/', False), ('Library', '/library', False),],
+                        'subnav': [
+                            ('General', '/settings/general', False),
+                            (CoreHttpConfig.pretty_name, '/settings/http', False),
+                            ('Plugins', '/settings/plugins', True),
+                            ],
+                        'plugins': self.core._plugins.values()
+                        }
+                    )
+                )
         logger.log_debug("discovered plugins: %s" % self.core._plugins.items())
-
         return Response(200,
             stream=templates.render('templates/settings-plugins.html', {
                     'topnav': [('Home', '/', False), ('Library', '/library', False),],

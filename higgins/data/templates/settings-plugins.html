@@ -1,0 +1,49 @@
+<html
+  xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:xi="http://www.w3.org/2001/XInclude"
+  xmlns:py="http://genshi.edgewall.org/">
+    <xi:include href="base.html" />
+    <head>
+        <link href="/static/css/settings.css" rel="stylesheet" type="text/css" media="screen"/>
+        <title>Higgins - Plugins</title>
+    </head>
+    <body>
+        <ul>
+            <li py:for="item in subnav"><a href="${item[1]}">${item[0]}</a></li>
+        </ul>
+        <p id="higgins-settings-description">
+            All available plugins are listed below.  Checked plugins are currently running.
+            To disable a plugin, uncheck it and click the Update Plugins button.  To configure
+            a specific plugin, click on its Settings link.
+        </p>
+        <form id="higgins-settings-form" method="post" action="">
+            <table id="higgins-settings-plugins">
+                <tr py:for="plugin in plugins">
+                    <td>
+                    <py:choose test="plugin.running">
+                        <py:when test="True"> 
+                        <input type="checkbox"
+                               name="${plugin.name}"
+                               value="enabled" checked="true" />
+                        </py:when>
+                        <py:otherwise>
+                        <input type="checkbox"
+                               name="${plugin.name}"
+                               value="enabled" />
+                        </py:otherwise>
+                    </py:choose>
+                    </td>
+                    <td>
+                        <span class="higgins-settings-plugin-name">${plugin.pretty_name}</span>
+                        <br/>
+                        <span class="higgins-settings-plugin-descripton">${plugin.description}</span>
+                    </td>
+                    <td>
+                        <a py:if="plugin.configs" href="${plugin.name}/">Settings</a>
+                    </td>
+                </tr>
+            </table>
+            <p><input id="higgins-settings-submit" type="submit" value="Update Plugins"/></p>
+        </form>
+    </body>
+</html>

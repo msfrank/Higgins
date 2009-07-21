@@ -11,6 +11,7 @@ from higgins.settings import settings, Configurator, IntegerSetting
 from higgins.service import Service
 from higgins.http import server, channel
 from higgins.http.url_dispatcher import UrlDispatcher
+from higgins.core.config import CoreHttpConfig
 from higgins.core.dashboard import renderDashboard
 from higgins.core.static import renderStaticContent
 from higgins.core.library import LibraryResource
@@ -22,10 +23,6 @@ from higgins.core.logger import logger
 from higgins.upnp.service import UPNPService
 from higgins.upnp.device import UPNPDevice
 
-class CoreHttpConfig(Configurator):
-    pretty_name = "HTTP Server"
-    description = "Configure the built-in HTTP Server"
-    HTTP_PORT = IntegerSetting("Listening Port", 8000, '', min=0, max=65535)
 
 class RootResource(UrlDispatcher):
     def __init__(self, service):
