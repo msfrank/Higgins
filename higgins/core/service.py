@@ -49,7 +49,12 @@ class CoreService(MultiService):
 
     def startService(self):
         MultiService.startService(self)
-        self._listener = reactor.listenTCP(CoreHttpConfig.HTTP_PORT, channel.HTTPFactory(self._site))
+        iface = CoreHttpConfig.HTTP_ADDRESS
+        if iface == '0.0.0.0':
+            iface = ''
+        self._listener = reactor.listenTCP(CoreHttpConfig.HTTP_PORT,
+                                           channel.HTTPFactory(self._site),
+                                           interface=iface)
         logger.log_info("started core service")
         self.upnp_service = UPNPService()
         try:

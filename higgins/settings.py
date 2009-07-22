@@ -4,7 +4,9 @@
 # This program is free software; for license information see
 # the COPYING file.
 
-import os, pickle
+import os
+import pickle
+from higgins.platform import netif
 from higgins.logger import Loggable
 
 class SettingsLogger(Loggable):
@@ -154,6 +156,21 @@ class StringSetting(Setting):
             raise Exception('value is not a string')
         return value
 
+class NetworkInterfaceSetting(Setting):
+    def __init__(self, label, default, tooltip, allowLocalhost=False, **kwds):
+        Setting.__init__(self, label, default, tooltip)
+        self.addresses = {'All Interfaces': '0.0.0.0' }
+        for name,iface in netif.list_interfaces().items():
+            logger.log_debug("netif: name=%s, iface=%s" % (name,iface))
+            self.addresses[name] = iface.address
+
+    def validate(self, value):
+        if not isinstance(value, str):
+            raise Exception('value is not a string')
+        if not value in self.addresses.values():
+            raise Exception('%s is not a valid interface' % value)
+        return value
+
 class ConfiguratorException(Exception):
     def __init__(self, reason):
         self.reason = reason
@@ -194,7 +211,7 @@ class ConfiguratorDeclarativeParser(type):
         """
         if name in cls._config_fields:
             value = settings['CFG__' + cls._config_name + '__' + name]
-            logger.log_debug("%s: %s == %s" % (cls._config_name, name, value))
+            #logger.log_debug("%s: %s == %s" % (cls._config_name, name, value))
             return value
         raise AttributeError("Configurator is missing config field %s" % name)
 
