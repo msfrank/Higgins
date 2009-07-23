@@ -8,9 +8,15 @@
         <title>Higgins - Plugins</title>
     </head>
     <body>
-        <ul>
-            <li py:for="item in subnav"><a href="${item[1]}">${item[0]}</a></li>
-        </ul>
+        <ul id="higgins-subnav"><py:for each="item in subnav"><py:choose test="item[2]">
+            <py:when test="True"><li class="higgins-subnav-selected">
+                <a class="higgins-subnav-link-selected" href="${item[1]}">${item[0]}</a>
+            </li></py:when>
+            <py:when test="False"><li class="higgins-subnav-normal">
+                <a class="higgins-subnav-link-normal" href="${item[1]}">${item[0]}</a>
+            </li></py:when>
+        </py:choose></py:for></ul>
+
         <p id="higgins-settings-description">
             All available plugins are listed below.  Checked plugins are currently running.
             To disable a plugin, uncheck it and click the Update Plugins button.  To configure

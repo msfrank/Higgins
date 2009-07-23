@@ -17,9 +17,7 @@ class SettingsResource(UrlDispatcher):
     def __init__(self, core):
         UrlDispatcher.__init__(self)
         self.core = core
-        self.addRoute('/?$', self.showSettings)
-        self.addRoute('/general/?$', self.configureGeneralSettings)
-        self.addRoute('/http/?$', self.configureHttpSettings)
+        self.addRoute('/?$', self.configureGeneralSettings)
         self.addRoute('/plugins/?$', self.configurePlugins)
         self.addRoute('/plugins/(\s+)/?$', self.configurePluginSettings)
 
@@ -29,8 +27,7 @@ class SettingsResource(UrlDispatcher):
             stream=templates.render('templates/settings-front.html', {
                     'topnav': [('Home', '/', False), ('Library', '/library', False),],
                     'subnav': [
-                        ('General', '/settings/general', False),
-                        (CoreHttpConfig.pretty_name, '/settings/http', False),
+                        ('General', '/settings', False),
                         ('Plugins', '/settings/plugins', False),
                         ]
                     }
@@ -38,9 +35,6 @@ class SettingsResource(UrlDispatcher):
             )
 
     def configureGeneralSettings(self, request):
-        return ErrorResponse(404, "resource not found")
-
-    def configureHttpSettings(self, request):
         form = None
         try:
             if request.method == 'POST':
@@ -53,8 +47,7 @@ class SettingsResource(UrlDispatcher):
             stream=templates.render('templates/settings-configure.html', {
                     'topnav': [('Home', '/', False), ('Library', '/library', False),],
                     'subnav': [
-                        ('General', '/settings/general', False),
-                        (CoreHttpConfig.pretty_name, '/settings/http', False),
+                        ('General', '/settings', False),
                         ('Plugins', '/settings/plugins', False),
                         ],
                     'form': form,
@@ -74,8 +67,7 @@ class SettingsResource(UrlDispatcher):
                 stream=templates.render('templates/settings-plugins.html', {
                         'topnav': [('Home', '/', False), ('Library', '/library', False),],
                         'subnav': [
-                            ('General', '/settings/general', False),
-                            (CoreHttpConfig.pretty_name, '/settings/http', False),
+                            ('General', '/settings', False),
                             ('Plugins', '/settings/plugins', True),
                             ],
                         'plugins': self.core._plugins.values()
@@ -87,8 +79,7 @@ class SettingsResource(UrlDispatcher):
             stream=templates.render('templates/settings-plugins.html', {
                     'topnav': [('Home', '/', False), ('Library', '/library', False),],
                     'subnav': [
-                        ('General', '/settings/general', False),
-                        (CoreHttpConfig.pretty_name, '/settings/http', False),
+                        ('General', '/settings', False),
                         ('Plugins', '/settings/plugins', True),
                         ],
                     'plugins': self.core._plugins.values()
@@ -133,7 +124,7 @@ class NetworkInterfaceFormField(FormField):
     def _validate(self, text):
         return self.field.validate(str(text))
     def __str__(self):
-        html =  '<select class="higgins-settings-field" name="%s">\n' % self.name
+        html =  '\n<select class="higgins-settings-field" name="%s">\n' % self.name
         for name,addr in self.field.addresses.items():
             if addr == self.text:
                 html += '<option selected="true" value="%s">%s (%s)</option>\n' % (addr, name, addr)
