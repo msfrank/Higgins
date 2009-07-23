@@ -7,30 +7,36 @@
 from axiom import attributes
 from axiom.store import Store
 from axiom.item import Item
+from epsilon.extime import Time
 from higgins.signals import Signal
 from higgins.logger import Loggable
 
-class DBLogger(Loggable):
+class _DBLogger(Loggable):
     log_domain = 'db'
-logger = DBLogger()
+logger = _DBLogger()
 
 # we must increment this every time a change is made which alters
 # the database schema
 DB_VERSION = 1
 
+class _SignalsDBStore(object):
+    def committed(self):
+        db.db_changed.signal(None)
+        logger.log_debug2("committed %s" % str(self))
+        Item.committed(self)
 
-class File(Item):
+class File(_SignalsDBStore, Item):
     path = attributes.path()
     mimetype = attributes.text()
     size = attributes.integer()
 
-class Artist(Item):
+class Artist(_SignalsDBStore, Item):
     dateAdded = attributes.timestamp()
     name = attributes.text()
     website = attributes.text(allowNone=True)
     rating = attributes.integer(allowNone=True)
 
-class Album(Item):
+class Album(_SignalsDBStore, Item):
     dateAdded = attributes.timestamp()
     name = attributes.text()
     artist = attributes.reference()
@@ -38,7 +44,7 @@ class Album(Item):
     releaseDate = attributes.integer(allowNone=True)
     rating = attributes.integer(allowNone=True)
 
-class Song(Item):
+class Song(_SignalsDBStore, Item):
     dateAdded = attributes.timestamp()
     name = attributes.text()
     artist = attributes.reference()
@@ -60,7 +66,7 @@ class Song(Item):
         min = sec / 60
         return '%i:%02i:%02i' % (hrs, min, sec)
         
-class Genre(Item):
+class Genre(_SignalsDBStore, Item):
     name = attributes.text()
 
 #class Playlist(models.Model):
@@ -139,17 +145,6 @@ class DBStore(object):
     def open(self, path):
         if self._isLoaded:
             raise Exception('database has already been loaded')
-        class SignallingStore(Store):
-            def __init__(self, dbdir, dbstore):
-                Store.__init__(self, dbdir)
-                self._dbstore = dbstore
-            def _postCommitHook(self):
-                try:
-                    Store._postCommitHook(self)
-                    self._dbstore.db_changed.signal(None)
-                except Exception, e:
-                    logger.log_debug("_postCommitHook: %s" % str(e))
-        #self._store = SignallingStore(path, self)
         self._store = Store(path)
         self._dbPath = path
         self._isLoaded = True
@@ -176,7 +171,11 @@ class DBStore(object):
             raise Exception('database is not loaded')
         if not issubclass(itemType, Item):
             raise Exception('%s is not a subclass of axiom.item.Item' % str(type(itemType)))
-        return self._store.findOrCreate(itemType, **kwds)
+        isNew = False
+        def _setIsNew(newItem):
+            isNew = True
+        item = self._store.findOrCreate(itemType, _setIsNew, **kwds)
+        return (item, isNew)
 
     def get(self, itemType, comparison):
         if not self._isLoaded:

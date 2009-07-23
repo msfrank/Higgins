@@ -5,6 +5,7 @@
 # the COPYING file.
 
 import simplejson
+from epsilon.extime import Time
 from higgins.db import db, Artist, Album, Song, Genre
 from higgins.http.url_dispatcher import UrlDispatcher
 from higgins.http.http_headers import MimeType
@@ -57,15 +58,22 @@ class APIResource(UrlDispatcher):
                     return HttpResponse(400, stream="Missing required form item 'title")
                 # create or get the artist object
                 value = request.post.get('artist', '')
-                artist = db.getOrCreate(Artist, name=value)
+                artist,isNew = db.getOrCreate(Artist, name=value)
+                if isNew:
+                    artist.dateAdded = Time()
                 # create or get the genre object
                 value = request.post.get('genre', '')
-                genre = db.getOrCreate(Genre, name=value)
+                genre,isNew = db.getOrCreate(Genre, name=value)
+                if isNew:
+                    genre.dateAdded = Time()
                 # create or get the album object
                 value = request.post.get('album', '')
-                album = db.getOrCreate(Album, name=value, artist=artist, genre=genre)
+                album,isNew = db.getOrCreate(Album, name=value, artist=artist, genre=genre)
+                if isNew:
+                    album.dateAdded = Time()
                 # create the song object
                 song = db.create(Song, name=title, album=album, artist=artist)
+                song.dateAdded = Time()
                 if 'track' in request.post:
                     song.trackNumber = int(request.post['track'])
                 if 'length' in request.post:
