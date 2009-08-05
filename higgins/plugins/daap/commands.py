@@ -12,7 +12,7 @@ from higgins.http.http import Response
 from higgins.http.resource import Resource
 from higgins.http.stream import SimpleStream, FileStream
 from higgins.http.http_headers import MimeType
-from higgins.db import db, File, Song
+from higgins.db import db, File, Song, Playlist
 from higgins.plugins.daap import DaapConfig, DaapPrivate
 from higgins.plugins.daap.codebag import CodeBag, ContentCode
 from higgins.plugins.daap.content_codes import content_codes, content_code_str_to_int
@@ -98,16 +98,23 @@ class LoginCommand(Command):
 
 class UpdateStream(SimpleStream):
     def __init__(self, service):
+        self._DBChanged = False
         self.length = 32
-        self._signal = db_changed.connect()
-        self._signal.addCallback(self._caughtUpdate)
+        self._signal = db.db_changed.connect()
+        self._signal.addCallback(self._setDBChanged)
         self.deferred = defer.Deferred()
         self.deferred.addCallback(self._render)
+        reactor.callLater(2, self._checkForUpdate)
         self._service = service
         self._service.streams[self] = self
-    def _caughtUpdate(self, unused):
+    def _setDBChanged(self, unused):
+        self._DBChanged = True
         self._signal = None
+    def _checkForUpdate(self):
         if not self.deferred:
+            return
+        if not self._DBChanged:
+            reactor.callLater(2, self._checkForUpdate)
             return
         new_revision = DaapPrivate.REVISION_NUMBER + 1
         DaapPrivate.REVISION_NUMBER = new_revision
@@ -119,7 +126,7 @@ class UpdateStream(SimpleStream):
             logger.log_debug("UpdateStream: signaling disconnect (revision %i)" % revision)
         # if _caughtUpdate was not called, then disconnect from the signal
         if self._signal:
-            db_changed.disconnect(self._signal)
+            db.db_changed.disconnect(self._signal)
             self._signal = None
         # delete the reference to self.deferred
         self.deferred = None
@@ -196,7 +203,7 @@ class DatabaseCommand(Command):
         record.add(ContentCode("miid", 1))                              # database ID
         record.add(ContentCode("mper", 1))                              # database persistent ID
         record.add(ContentCode("minm", str(DaapConfig.SHARE_NAME)))     # db name
-        record.add(ContentCode("mimc", len(Song.objects.all())))        # number of db items
+        record.add(ContentCode("mimc", db.count(Song)))                 # number of db items
         record.add(ContentCode("mctc", 1))                              # container count
         listing.add(record)
         avdb.add(listing)
@@ -216,27 +223,31 @@ class ListItemsCommand(Command):
         return StreamSongCommand(songid), []
     def _retrieveSongs(self, d, adbs, listing, songs):
         try:
-            for n in range(10):
+            logger.log_debug("ListItemsCommand: retrieving 20 song items")
+            # retrieve up to 20 songs
+            i = 0
+            while i < 20:
                 song = songs.next()
+                logger.log_debug("ListItemsCommand: got item %s" % song)
                 item = CodeBag("mlit")
-                item.add(ContentCode("mikd", 2))                      # item kind (2 for music)
-                item.add(ContentCode("miid", int(song.id)))           # item id
-                item.add(ContentCode("minm", str(song.name)))         # item name (track name)
-                item.add(ContentCode("mper", int(song.id)))           # persistent id
-                item.add(ContentCode("asdk", 0))                      # song data kind
-                item.add(ContentCode("asul", str('')))                # song data URL
+                item.add(ContentCode("mikd", 2))                              # item kind (2 for music)
+                item.add(ContentCode("miid", int(song.storeID)))              # item id
+                item.add(ContentCode("minm", str(song.name)))                 # item name (track name)
+                item.add(ContentCode("mper", int(song.storeID)))              # persistent id
+                item.add(ContentCode("asdk", 0))                              # song data kind
+                item.add(ContentCode("asul", str('')))                        # song data URL
                 item.add(ContentCode("asal", str(song.album.name)))
-                item.add(ContentCode("agrp", str('')))                # album group?
-                item.add(ContentCode("asar", str(song.artist.name)))  # artist name
-                item.add(ContentCode("asbr", 0))                      # song bitrate
-                item.add(ContentCode("asbt", 0))                      # song beats-per-minute
-                item.add(ContentCode("ascm", str('')))                # song comment
-                item.add(ContentCode("asco", False))                  # song is compilation?
-                item.add(ContentCode("ascp", str('')))                #
-                item.add(ContentCode("asda", 1))                      # date added
-                item.add(ContentCode("asdm", 1))                      # date modified
-                item.add(ContentCode("asdc", 1))                      # disc count
-                item.add(ContentCode("asdn", 1))                      # disc number
+                item.add(ContentCode("agrp", str('')))                        # album group?
+                item.add(ContentCode("asar", str(song.artist.name)))          # artist name
+                item.add(ContentCode("asbr", 0))                              # song bitrate
+                item.add(ContentCode("asbt", 0))                              # song beats-per-minute
+                item.add(ContentCode("ascm", str('')))                        # song comment
+                item.add(ContentCode("asco", False))                          # song is compilation?
+                item.add(ContentCode("ascp", str('')))                        #
+                item.add(ContentCode("asda", 1))                              # date added
+                item.add(ContentCode("asdm", 1))                              # date modified
+                item.add(ContentCode("asdc", 1))                              # disc count
+                item.add(ContentCode("asdn", 1))                              # disc number
                 item.add(ContentCode("asdb", False))                          # song disabled?
                 item.add(ContentCode("aseq", str('')))                        # song EQ preset
                 item.add(ContentCode("asfm", "mp3"))                          # file format
@@ -249,16 +260,18 @@ class ListItemsCommand(Command):
                 item.add(ContentCode("assp", 0))                              # song stop time
                 item.add(ContentCode("astm", int(song.duration)))             # song time in ms
                 item.add(ContentCode("astc", 1))                              # number of tracks on album
-                item.add(ContentCode("astn", int(song.track_number)))         # track number on album
+                item.add(ContentCode("astn", int(song.trackNumber)))          # track number on album
                 item.add(ContentCode("asur", 0))                              # song user rating
                 item.add(ContentCode("asyr", 0))                              # song publication year
                 listing.add(item)
+                i += 1
             # pass control back to twisted for a while
             reactor.callLater(0, self._retrieveSongs, d, adbs, listing, songs)
         except StopIteration:
-            d.callback(adbs)
+            pass
         except Exception, e:
             d.errback(e)
+        d.callback(adbs)
 
     def _renderDAAP(self, adbs):
         return Response(200, { 'content-type': x_dmap_tagged }, adbs.render())
@@ -283,22 +296,23 @@ class ListItemsCommand(Command):
         adbs = CodeBag("adbs")
         adbs.add(ContentCode("mstt", 200))      # status code
         adbs.add(ContentCode("muty", 1))        # always 0?
-        songs = Song.objects.all()
-        adbs.add(ContentCode("mtco", len(songs)))       # total number of matching records
-        adbs.add(ContentCode("mrco", len(songs)))       # total number of records returned
+        songs = db.query(Song)
+        songcount = songs.count()
+        adbs.add(ContentCode("mtco", songcount))       # total number of matching records
+        adbs.add(ContentCode("mrco", songcount))       # total number of records returned
         listing = CodeBag("mlcl")
         adbs.add(listing)
         d = defer.Deferred()
         d.addCallback(self._renderDAAP)
         d.addErrback(self._errDAAP)
-        reactor.callLater(0, self._retrieveSongs, d, adbs, listing, iter(songs))
+        reactor.callLater(0, self._retrieveSongs, d, adbs, listing, songs.paginate())
         return d
 
 class StreamSongCommand(Command):
     def __init__(self, songid):
         self.songid = songid
     def render(self, request):
-        song = Song.objects.filter(id=self.songid)
+        song = db.get(Song, Song.storeID==int(self.songid))
         if song == []:
             return Response(404)
         try:
@@ -329,7 +343,7 @@ class ListPlaylistsCommand(Command):
         aply.add(ContentCode("muty", 1))        # always 0?
         aply.add(ContentCode("mtco", 1))        # total number of matching records
         aply.add(ContentCode("mrco", 1))        # total number of records returned
-        songs = Song.objects.all()
+        songs = db.query(Song)
         listing = CodeBag("mlcl")
         aply.add(listing)
         # base playlist
@@ -337,16 +351,16 @@ class ListPlaylistsCommand(Command):
         item.add(ContentCode("miid", 1))    
         item.add(ContentCode("mper", 1))
         item.add(ContentCode("minm", str(DaapConfig.SHARE_NAME)))
-        item.add(ContentCode("mimc", int(len(songs))))
+        item.add(ContentCode("mimc", int(songs.count())))
         item.add(ContentCode("abpl", 1))
         listing.add(item)
         # add each playlist
-        for pls in Playlist.objects.all():
+        for pls in db.query(Playlist):
             item = CodeBag("mlit")
-            item.add(ContentCode("miid", pls.id + 1))
-            item.add(ContentCode("mper", pls.id + 1))
+            item.add(ContentCode("miid", pls.storeID + 1))
+            item.add(ContentCode("mper", pls.storeID + 1))
             item.add(ContentCode("minm", str(pls.name)))
-            item.add(ContentCode("mimc", len(pls)))
+            item.add(ContentCode("mimc", pls.length()))
             listing.add(item)
         return aply
 
@@ -355,20 +369,23 @@ class ListPlaylistItemsCommand(Command):
         self.plsid = int(plsid) - 1
     def _retrieveSongs(self, d, apso, listing, songs):
         try:
-            # add 10 items to the listing
-            for n in range(10):
+            # retrieve up to 20 songs
+            i = 0
+            while i < 20:
                 song = songs.next()
                 item = CodeBag("mlit")
                 item.add(ContentCode("mikd", 2))
-                item.add(ContentCode("miid", song.id))
-                item.add(ContentCode("mcti", song.id))
+                item.add(ContentCode("miid", song.storeID))
+                item.add(ContentCode("mcti", song.storeID))
                 listing.add(item)
+                i += 1
             # pass control back to twisted for a while
             reactor.callLater(0, self._retrieveSongs, d, apso, listing, songs)
         except StopIteration:
-            d.callback(apso)
+            pass
         except Exception, e:
             d.errback(e)
+        d.callback(apso)
     def _renderDAAP(self, apso):
         return Response(200, { 'content-type': x_dmap_tagged }, apso.render())
     def _errDAAP(self, failure):
@@ -382,19 +399,22 @@ class ListPlaylistItemsCommand(Command):
         apso.add(ContentCode("muty", 1))        # always 1?
         # a playlist id of 0 is special and means list all items in the database.
         if self.plsid == 0:
-            songs = Song.objects.all()
+            q = db.query(Song)
+            songs = q.paginate()
+            numSongs = q.count()
         # otherwise look up the playlist with the specified id
         else:
-            pls = Playlist.objects.get(id=self.plsid)
-            songs = pls.list_songs()
-        apso.add(ContentCode("mtco", len(songs)))   # total number of matching records
-        apso.add(ContentCode("mrco", len(songs)))   # total number of records returned
+            q = db.get(Playlist, Playlist.storeID==int(self.plsid))
+            songs = q.listSongs()
+            numSongs = q.length()
+        apso.add(ContentCode("mtco", numSongs))   # total number of matching records
+        apso.add(ContentCode("mrco", numSongs))   # total number of records returned
         listing = CodeBag("mlcl")
         apso.add(listing)
         d = defer.Deferred()
         d.addCallback(self._renderDAAP)
         d.addErrback(self._errDAAP)
-        reactor.callLater(0, self._retrieveSongs, d, apso, listing, iter(songs))
+        reactor.callLater(0, self._retrieveSongs, d, apso, listing, songs)
         return d
 
 class LogoutCommand(Command):

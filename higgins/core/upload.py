@@ -4,7 +4,11 @@
 from sys import argv, exit
 from os import stat, walk
 from os.path import abspath, basename, join as pathjoin
-import httplib, urllib
+import httplib
+import urllib
+import simplejson
+import random
+import string
 from mutagen import File
 from twisted.python import usage, log
 from higgins.logger import Loggable, LEVELS
@@ -22,9 +26,9 @@ class UploaderException(Exception):
 
 class Uploader(object, Loggable):
     domain = 'uploader'
-    boundary = '----------ThIs_Is_tHe_bouNdaRY_$'
 
     def __init__(self, paths, host='localhost', port=8000, isLocal=False, recursive=False):
+        self.boundary = ''.join(map(lambda x: random.choice(string.letters+string.digits), xrange(50)))
         self.paths = paths
         self.host = host
         self.log_debug("host: %s" % host)
@@ -41,23 +45,21 @@ class Uploader(object, Loggable):
             f = File(path)
             mimetype = f.mime[0]
             if mimetype in mimetype_conversions:
-                metadata['mimetype'] = mimetype_conversions[mimetype]
+                metadata['MIMEType'] = mimetype_conversions[mimetype]
             else:
-                metadata['mimetype'] = mimetype
+                metadata['MIMEType'] = mimetype
             metadata['artist'] = u''.join(f['TPE1'].text)
             metadata['album'] = u''.join(f['TALB'].text)
             metadata['title'] = u''.join(f['TIT2'].text)
             metadata['genre'] = u''.join(f['TCON'].text)
             metadata['length'] = str(int(f.info.length*1000))
-            metadata['bitrate'] = str(f.info.bitrate)
-            metadata['samplerate'] = str(f.info.sample_rate)
             # hack to deal with TRCK tags formatted as numerator/denominator
             try:
                 track_num = int(f['TRCK'])
-                metadata['track'] = u''.join(f['TRCK'].text)
+                metadata['trackNumber'] = u''.join(f['TRCK'].text)
             except:
                 a = str(f['TRCK']).split('/')
-                metadata['track'] = str(a[0])
+                metadata['trackNumber'] = str(a[0])
             return metadata
         except KeyError, e:
             raise UploaderException("missing metadata field %s" % e)
@@ -67,29 +69,29 @@ class Uploader(object, Loggable):
     def _upload(self, file, metadata):
         # create the multipart body
         lines = []
+        if self.isLocal:
+            metadata['file'] = file
         # add each metadata part
         for (key, value) in metadata.items():
             lines.append('--' + self.boundary)
             lines.append('Content-Disposition: form-data; name="%s"' % key)
             lines.append('')
             lines.append(value)
-        if self.isLocal:
-            post_uri = '/api/1.0/songs?is_local=True'
-            file_size = 0
-        else:
+        if not self.isLocal:
             # if not local mode, then add the headers for the file part
             lines.append('--' + self.boundary)
             lines.append('Content-Disposition: form-data; name="file"; filename="%s"' % basename(file))
             lines.append('Content-Type: %s' % metadata['mimetype'])
             lines.append('')
             lines.append('')
-            post_uri = '/api/1.0/songs'
             st = stat(file)
             file_size = st.st_size
+        else:
+            file_size = 0
         output = '\r\n'.join(lines)
         # create the http client connection
         request = httplib.HTTPConnection("%s:%i" % (self.host,self.port))
-        request.putrequest('POST', post_uri)
+        request.putrequest('POST', '/api/1.0/songs')
         request.putheader('User-Agent', 'higgins-uploader')
         request.putheader('Content-Type', 'multipart/form-data; boundary=%s' % self.boundary)
         request.putheader('Content-Length', len(output) + file_size)
@@ -115,8 +117,6 @@ class Uploader(object, Loggable):
     def _process_file(self, path):
         try:
             metadata = self._get_metadata(path)
-            if self.isLocal:
-                metadata['local_path'] = path
             self.log_debug("parsed metadata: %s" % metadata)
             result = self._upload(path, metadata)
             self.log_info("uploaded %s" % path)
