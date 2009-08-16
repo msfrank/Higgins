@@ -4,10 +4,14 @@
 # This program is free software; for license information see
 # the COPYING file.
 
-from axiom import attributes
-from axiom.store import Store
-from axiom.item import Item
-from epsilon.extime import Time
+import warnings
+with warnings.catch_warnings():
+    warnings.simplefilter('ignore')
+    from axiom import attributes
+    from axiom.store import Store
+    from axiom.item import Item
+    from epsilon.extime import Time
+
 from higgins.signals import Signal
 from higgins.logger import Loggable
 

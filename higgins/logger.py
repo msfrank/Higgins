@@ -65,6 +65,8 @@ class LogfileObserver(CommonObserver):
             if level > self.verbosity:
                 return
             msg = self._formatMessage(params) + '\r\n'
+            if self.verbosity >= LOG_DEBUG:
+                msg += traceback.print_exc()
             util.untilConcludes(self.write, msg)
             util.untilConcludes(self.flush)
         except IgnoreMessage:
@@ -90,7 +92,8 @@ class StdoutObserver(CommonObserver):
             msg = self._formatMessage(params)
             if level < LOG_WARNING:
                 print self.START_RED + msg + self.END
-                print traceback.print_exc()
+                if self.verbosity >= LOG_DEBUG:
+                    print traceback.print_exc()
             elif level == LOG_WARNING:
                 print self.START_YELLOW + msg + self.END
             else:
