@@ -5,17 +5,17 @@
 # the COPYING file.
 
 from genshi.input import HTML
-from higgins.http.url_dispatcher import UrlDispatcher
-from higgins.http.http import Response
+from higgins.settings import settings, IntegerSetting, StringSetting, NetworkInterfaceSetting
 from higgins.data import templates
 from higgins.core.config import CoreHttpConfig
-from higgins.settings import settings, IntegerSetting, StringSetting, NetworkInterfaceSetting
-from higgins.core.errorresponse import ErrorResponse
+from higgins.core.dispatcher import Dispatcher
+from higgins.core.error import ErrorResponse
 from higgins.core.logger import logger
+from higgins.http.http import Response
 
-class SettingsResource(UrlDispatcher):
+class SettingsResource(Dispatcher):
     def __init__(self, core):
-        UrlDispatcher.__init__(self)
+        Dispatcher.__init__(self)
         self.core = core
         self.addRoute('/?$', self.configureGeneralSettings)
         self.addRoute('/plugins/?$', self.configurePlugins)

@@ -10,41 +10,27 @@ from twisted.internet.defer import maybeDeferred
 from higgins.settings import settings, Configurator, IntegerSetting
 from higgins.service import Service
 from higgins.http import server, channel
-from higgins.http.url_dispatcher import UrlDispatcher
 from higgins.core.config import CoreHttpConfig
-from higgins.core.dashboard import renderDashboard
-from higgins.core.static import renderStaticContent
+from higgins.core.dispatcher import RootDispatcher
+from higgins.core.dashboard import DashboardResource
+from higgins.core.static import StaticResource
 from higgins.core.library import LibraryResource
 from higgins.core.restapi import APIResource
-from higgins.core.errorresponse import ErrorResponse
 from higgins.core.settings import SettingsResource
-#from higgins.core.content import ContentResource
 from higgins.core.logger import logger
 from higgins.upnp.service import UPNPService
 from higgins.upnp.device import UPNPDevice
 
-
-class RootResource(UrlDispatcher):
-    def __init__(self, service):
-        UrlDispatcher.__init__(self)
-        self.service = service
-        self.addRoute('/$', renderDashboard)
-        self.addRoute('/static/(.+)$', renderStaticContent)
-        self.addRoute('/library', LibraryResource())
-        self.addRoute('/api/1.0/', APIResource())
-        self.addRoute('/settings', SettingsResource(service))
-        #self.addRoute('/content/', ContentResource())
-        self.addRoute('', self.renderNotFound)
-    def renderNotFound(self, request):
-        return ErrorResponse(404,"""
-            The requested resource %s could not be found.
-            """ % request.path
-            )
-
 class CoreService(MultiService):
     def __init__(self):
         self._plugins = {}
-        self._site = server.Site(RootResource(self))
+        self._root = RootDispatcher()
+        self._root.addToplevelRoute('/$', DashboardResource(), "Home", "/")
+        self._root.addToplevelRoute('/library', LibraryResource(), "Library", "/library")
+        self._root.addRoute('/settings', SettingsResource(self))
+        self._root.addRoute('/api/1.0/', APIResource())
+        self._root.addRoute('/static', StaticResource())
+        self._site = server.Site(self._root)
         MultiService.__init__(self)
 
     def startService(self):

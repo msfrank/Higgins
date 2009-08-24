@@ -8,10 +8,10 @@ import os
 import simplejson
 from epsilon.extime import Time
 from higgins.db import db, Artist, Album, Song, Genre, File
-from higgins.http.url_dispatcher import UrlDispatcher
+from higgins.core.dispatcher import Dispatcher
+from higgins.core.logger import logger
 from higgins.http.http_headers import MimeType
 from higgins.http.http import Response
-from higgins.core.logger import logger
 
 NO_ERROR = 0
 ERROR_INTERNAL_SERVER_ERROR = 1
@@ -47,9 +47,9 @@ class RestErrorResponse(Response):
             raise Exception('Unknown response format %s' % type)
         Response.__init__(self, 200, headers, stream)
 
-class APIResource(UrlDispatcher):
+class APIResource(Dispatcher):
     def __init__(self):
-        UrlDispatcher.__init__(self)
+        Dispatcher.__init__(self)
         self.addRoute('songs/?$', self.manageSongs, allowedMethods=('GET','POST'))
         self.addRoute('songs/(\d+)/?$',
                       self.manageSongItem,

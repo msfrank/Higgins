@@ -5,14 +5,14 @@
 # the COPYING file.
 
 from higgins.db import db, Artist, Album, Song
-from higgins.http.url_dispatcher import UrlDispatcher
+from higgins.core.dispatcher import Dispatcher
 from higgins.http.http import Response
 from higgins.data import templates
 from higgins.core.logger import logger
 
-class LibraryResource(UrlDispatcher):
+class LibraryResource(Dispatcher):
     def __init__(self):
-        UrlDispatcher.__init__(self)
+        Dispatcher.__init__(self)
         self.addRoute('/?$', self.render_index)
         self.addRoute('/music/?$', self.render_music)
         self.addRoute('/music/artists/?$', self.render_music_artists)
