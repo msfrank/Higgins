@@ -25,8 +25,7 @@
 /* album actions */
 #album-actions {
     width: 100%;
-    background-color: #F0F0F0;
-    border: 1px solid #D0D0D0;
+    margin-top: 20px;
     margin-bottom: 20px;
 }
 .album-action { margin: 6px; }
