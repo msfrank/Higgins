@@ -24,8 +24,8 @@ class SettingsResource(Dispatcher):
     def showSettings(self, request):
         from higgins.core.service import CoreHttpConfig
         return Response(200,
-            stream=templates.render('templates/settings-front.html', {
-                    'topnav': [('Home', '/', False), ('Library', '/library', False),],
+            stream=self.renderTemplate(
+                'templates/settings-front.html', {
                     'subnav': [
                         ('General', '/settings', False),
                         ('Plugins', '/settings/plugins', False),
@@ -44,8 +44,7 @@ class SettingsResource(Dispatcher):
         except Exception, e:
             logger.log_error("configureHttpSettings: %s" % e)
         return Response(200,
-            stream=templates.render('templates/settings-configure.html', {
-                    'topnav': [('Home', '/', False), ('Library', '/library', False),],
+            stream=self.renderTemplate('templates/settings-configure.html', {
                     'subnav': [
                         ('General', '/settings', False),
                         ('Plugins', '/settings/plugins', False),
@@ -64,8 +63,8 @@ class SettingsResource(Dispatcher):
                 if not name in request.post and self.core.pluginIsEnabled(name):
                     self.core.disablePlugin(name)
             return Response(200,
-                stream=templates.render('templates/settings-plugins.html', {
-                        'topnav': [('Home', '/', False), ('Library', '/library', False),],
+                stream=self.renderTemplate(
+                    'templates/settings-plugins.html', {
                         'subnav': [
                             ('General', '/settings', False),
                             ('Plugins', '/settings/plugins', True),
@@ -76,8 +75,8 @@ class SettingsResource(Dispatcher):
                 )
         logger.log_debug("discovered plugins: %s" % self.core._plugins.items())
         return Response(200,
-            stream=templates.render('templates/settings-plugins.html', {
-                    'topnav': [('Home', '/', False), ('Library', '/library', False),],
+            stream=self.renderTemplate(
+                'templates/settings-plugins.html', {
                     'subnav': [
                         ('General', '/settings', False),
                         ('Plugins', '/settings/plugins', True),

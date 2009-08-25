@@ -117,6 +117,11 @@ class RootDispatcher(BaseDispatcher):
         self._toplevels.append((d, name, root))
         BaseDispatcher.addRoute(self, path, d)
 
+    def addRoute(self, path, object, **options):
+        if isinstance(object, Dispatcher):
+            object._root = self
+        BaseDispatcher.addRoute(self, path, object, **options)
+
 class Dispatcher(BaseDispatcher):
     def addRoute(self, path, f, **options):
         if not callable(f):
