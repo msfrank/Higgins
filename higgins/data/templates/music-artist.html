@@ -41,8 +41,8 @@
                     <tbody>
                         <tr py:for="album in album_list">
                             <td class="album-released">${album.releaseDate}</td>
-                            <td class="album-title"><a href="/library/music/albums/${album.storeID}">${album.name}</a></td>
-                            <td class="album-genre"><a href="/library/music/genres/${album.genre.storeID}">${album.genre.name}</a></td>
+                            <td class="album-title"><a href="/library/music/album/${album.storeID}">${album.name}</a></td>
+                            <td class="album-genre"><a href="/library/genre/${album.genre.storeID}">${album.genre.name}</a></td>
                         </tr>
                     </tbody>
                 </table>

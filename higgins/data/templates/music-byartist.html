@@ -1,0 +1,22 @@
+<html
+  xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:xi="http://www.w3.org/2001/XInclude"
+  xmlns:py="http://genshi.edgewall.org/">
+    <xi:include href="base.html" />
+    <head>
+        <link href="/static/css/browse.css" rel="stylesheet" type="text/css" media="screen" />
+        <title>Higgins - Browse Music By Artist</title>
+    </head>
+    <body>
+
+        <div id="browse">
+            <div id="browse-title">Browsing music</div>
+            <ul>
+                <li py:for="artist in artists">
+                    <a href="/library/music/artist/${artist.storeID}">${artist.name}</a>
+                </li>
+            </ul>
+        </div>
+
+    </body>
+</html>

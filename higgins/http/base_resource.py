@@ -50,6 +50,8 @@ class BaseResource(Resource):
             d.addCallback(self.updatePost, request)
             d.addCallback(lambda l: self.render(request))
             return d
+        elif content_type.mediaType == 'application' and content_type.mediaSubtype == 'xml':
+            return self._readApplicationXML(request).addCallbacks(lambda l: self.render(request))
         logger.log_debug("can't handle POST request: unknown media type %s/%s" % (content_type.mediaType,content_type.mediaSubtype))
         return Response(400)
 
@@ -64,6 +66,9 @@ class BaseResource(Resource):
             d.addCallback(self.updatePost, request)
             d.addCallback(lambda l: self.render(request))
             return d
+        elif content_type.mediaType == 'application' and content_type.mediaSubtype == 'xml':
+            return self._readApplicationXML(request).addCallbacks(lambda l: self.render(request))
+        logger.log_debug("can't handle PUT request: unknown media type %s/%s" % (content_type.mediaType,content_type.mediaSubtype))
         return Response(400)
 
     def http_DELETE(self, request):
@@ -282,3 +287,20 @@ class BaseResource(Resource):
         to the client as an internal server error.
         """
         return Response(500)
+
+    def _readApplicationXML(self, request):
+        nread = 1024 * 10   # read at max 10kbytes
+        buffer = []
+        stream = BufferedStream(request.stream)
+        data = stream.read()
+        while data != None:
+            if isinstance(data, defer.Deferred):
+                data = defer.waitForDeferred(data)
+                yield data
+                data = data.getResult()
+            nread -= len(data)
+            if nread < 0:
+                raise Exception("XML input exceeded maximum length")
+            buffer += data
+        logger.log_debug2("readApplicationXML:\n%s" % ''.join(buffer))
+    _readApplicationXML = defer.deferredGenerator(_readApplicationXML)

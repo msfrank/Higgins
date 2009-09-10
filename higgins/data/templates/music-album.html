@@ -18,11 +18,11 @@
                 <div id="album-info-container">
                     <table id="album-info-viewer">
                         <tr><td class="song-album">${album.name}</td></tr>
-                        <tr><td>by <a href="/library/music/artists/${album.artist.storeID}">${album.artist.name}</a></td></tr>
+                        <tr><td>by <a href="/library/music/artist/${album.artist.storeID}">${album.artist.name}</a></td></tr>
                         <tr><td><a id="edit-album" href="#">(edit)</a></td></tr>
                     </table>
                     <div id="album-info-editor">
-                        <form id="album-editor-form" action="/library/music/albums/${album.storeID}/" method="post">
+                        <form id="album-editor-form" action="/library/music/album/${album.storeID}/" method="post">
                             <input type="hidden" name="is-playlist" value="false" />
                             <table id="album-info-table">
                                 {{ editor.as_table }}
@@ -41,7 +41,7 @@
                     <tbody>
                     <tr py:for="song in song_list">
                         <td class="song-tracknumber">${song.trackNumber}</td>
-                        <td class="song-title"><a href="/library/music/songs/${song.storeID}">${song.name}</a></td>
+                        <td class="song-title"><a href="/library/music/song/${song.storeID}">${song.name}</a></td>
                         <td>${song.printDuration()}</td>
                         <td><input class="song-selector" type="checkbox" value="${song.storeID}"/></td>
                     </tr>

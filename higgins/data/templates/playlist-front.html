@@ -1,0 +1,96 @@
+<html
+  xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:xi="http://www.w3.org/2001/XInclude"
+  xmlns:py="http://genshi.edgewall.org/">
+    <xi:include href="base.html" />
+    <head>
+        <title>Higgins - Browse Playlists</title>
+        <link href="/static/css/playlists.css" rel="stylesheet" type="text/css" media="screen"/>
+        <link type="text/css" href="/static/css/smoothness/jquery-ui-1.7.custom.css" rel="stylesheet" />
+        <script type="text/javascript" language="javascript" src="/static/js/jquery-1.3.2.min.js"></script>
+        <script type="text/javascript" language="javascript" src="/static/js/jquery-ui-1.7.min.js"></script>
+        <script type="text/javascript" language="javascript" src="/static/js/datatables-1.4.min.js"></script>
+        <script type="text/javascript" language="javascript" src="/static/js/higgins-playlist.js"></script>
+    </head>
+    <body>
+
+        <table class="display" id="playlist-listing">
+            <thead>
+                <th class="playlist-header">Name</th>
+                <th class="playlist-header">Items</th>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th></th>
+            </thead>
+            <tbody>
+                <tr py:for="playlist in pl_list">
+                    <td><a href="/library/playlist/${playlist.storeID}">${playlist.name}</a></td>
+                    <td>${playlist.length}</td>
+                    <td>${playlist.name}</td>
+                    <td>${playlist.storeID}</td>
+                    <td>
+                        <a class="rename-button" href="#" value="${playlist.storeID}">
+                        <span class="ui-state-default ui-corner-all ui-icon ui-icon-pencil" title="Rename '${playlist}'"></span>
+                        </a>
+                    </td>
+                    <td>
+                        <a class="remove-button" href="#" value="${playlist.storeID}">
+                        <span class="ui-state-default ui-corner-all ui-icon ui-icon-trash" title="Remove '${playlist.name}'"></span>
+                        </a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div id="playlists-actions">
+            <input id="create-playlist-action" type="button" value="Create Playlist" />
+        </div>
+
+        <div id="create-playlist-dialog">
+            <p id="create-playlist-form">
+                Enter a name for the new playlist:
+                <p>
+                    <input id="create-playlist-title" type="text" name="name" value="New Playlist" maxlength="80" />
+                </p>
+                <table id="create-playlist-buttons">
+                    <tr>
+                        <td><input id="create-playlist-cancel" type="button" value="Cancel" /></td>
+                        <td><input id="create-playlist-ok" type="button" value="OK" /></td>
+                    </tr>
+                </table>
+            </p>
+        </div>
+
+        <div id="rename-playlist-dialog">
+            <p id="rename-playlist-form">
+                Enter a new name for the playlist:
+                <p>
+                    <input id="rename-playlist-title" type="text" name="name" value="" maxlength="80" />
+                </p>
+                <table id="rename-playlist-buttons">
+                    <tr>
+                        <td><input id="rename-playlist-cancel" type="button" value="Cancel" /></td>
+                        <td><input id="rename-playlist-ok" type="button" value="OK" /></td>
+                    </tr>
+                </table>
+            </p>
+        </div>
+
+        <div id="remove-playlist-dialog">
+            <p id="remove-playlist-form">
+                <p>
+                    Are you sure you want to delete this playlist?
+                </p>
+                <table id="remove-playlist-buttons">
+                    <tr>
+                        <td><input id="remove-playlist-cancel" type="button" value="Cancel" /></td>
+                        <td><input id="remove-playlist-ok" type="button" value="OK" /></td>
+                    </tr>
+                </table>
+            </p>
+        </div>
+
+        <div id="overlay"></div>
+    </body>
+</html>

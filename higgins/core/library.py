@@ -4,7 +4,7 @@
 # This program is free software; for license information see
 # the COPYING file.
 
-from higgins.db import db, Artist, Album, Song
+from higgins.db import db, Artist, Album, Song, Playlist
 from higgins.core.dispatcher import Dispatcher
 from higgins.core.logger import logger
 from higgins.http.http import Response
@@ -13,29 +13,19 @@ class LibraryResource(Dispatcher):
     def __init__(self):
         Dispatcher.__init__(self)
         self.addRoute('/?$', self.render_index)
-        self.addRoute('/music/?$', self.render_music)
-        self.addRoute('/music/artists/?$', self.render_music_artists)
-        self.addRoute('/music/artists/(\d+)/?$', self.render_music_artist)
-        self.addRoute('/music/albums/?$', self.render_music_albums)
-        self.addRoute('/music/albums/(\d+)/?$', self.render_music_album)
-        self.addRoute('/music/songs/?$', self.render_music_songs)
-        self.addRoute('/music/songs/(\d+)/?$', self.render_music_song)
-        self.addRoute('/music/genres/?$', self.render_music_genres)
-        self.addRoute('/music/genres/(\d+)/?$', self.render_music_genre)
+        self.addRoute('/music/?$', self.render_music_artists)
+        self.addRoute('/music/artist/(\d+)/?$', self.render_music_artist)
+        self.addRoute('/music/album/(\d+)/?$', self.render_music_album)
+        self.addRoute('/music/song/(\d+)/?$', self.render_music_song)
         self.addRoute('/playlists/?$', self.render_playlists)
         self.addRoute('/playlists/(\d+)/?$', self.render_playlist)
 
     def render_index(self, request):
-        return Response(200,
-            stream=self.renderTemplate('templates/library-front.html', {})
-            )
-
-    def render_music(self, request):
-        latest_songs = db.query(Song, limit=5, sort=Song.dateAdded.descending)
+        latest_songs = db.query(Song, limit=10, sort=Song.dateAdded.descending)
         popular_songs = []
         return Response(200,
             stream=self.renderTemplate(
-                'templates/library-music.html', {
+                'templates/library-front.html', {
                     'latest_songs': latest_songs,
                     'popular_songs': popular_songs
                     }
@@ -43,8 +33,13 @@ class LibraryResource(Dispatcher):
             )
 
     def render_music_artists(self, request):
+        artist_list = db.query(Artist)
         return Response(200,
-            stream=self.renderTemplate('templates/music-byartist.html', {})
+            stream=self.renderTemplate(
+                'templates/music-byartist.html', {
+                    'artists': artist_list
+                    }
+                )
             )
 
     def render_music_artist(self, request, artistID):
@@ -59,9 +54,6 @@ class LibraryResource(Dispatcher):
                 )
             )
 
-    def render_music_albums(self, request):
-        return self.renderTemplate('templates/music-byalbum.html', {})
-
     def render_music_album(self, request, albumID):
         album = db.get(Album, Album.storeID==int(albumID))
         song_list = db.query(Song, Song.album==album, sort=Song.trackNumber.ascending)
@@ -74,20 +66,26 @@ class LibraryResource(Dispatcher):
                 )
             )
 
-    def render_music_songs(request):
-        return self.renderTemplate('templates/music-bysong.html', {})
+    def render_music_song(self, request, songID):
+        song = db.get(Song, Song.storeID==int(songID))
+        return Response(200,
+            stream=self.renderTemplate(
+                'templates/music-song.html', {'song': song}
+                )
+            )
 
-    def render_music_song(request, song_id):
-        return self.renderTemplate('templates/music-song.html', {})
+    def render_playlists(self, request):
+        pl_list = db.query(Playlist)
+        return Response(200,
+            stream=self.renderTemplate(
+                'templates/playlist-front.html', {'pl_list': pl_list}
+                )
+            )
 
-    def render_music_genres(request):
-        return self.renderTemplate('templates/music-bygenre.html', {})
-
-    def render_music_genre(request, genre_id):
-        return self.renderTemplate('templates/music-genre.html', {})
-
-    def render_playlists(request):
-        return self.renderTemplate('templates/playlist-byname.html', {})
-
-    def render_playlist(request, playlist_id):
-        return self.renderTemplate('templates/playlist-songs.html', {})
+    def render_playlist(self, request, playlistID):
+        playlist = db.get(Playlist, Playlist.storeID==int(playlistID))
+        return Response(200,
+            stream=self.renderTemplate(
+                'templates/playlist-songs.html', {'playlist': playlist}
+                )
+            )

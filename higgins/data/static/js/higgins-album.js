@@ -41,13 +41,17 @@ $(document).ready(function() {
             top: ($(window).height()/2) - ($('#add-to-playlist-dialog').height()/2),
             left: ($(window).width()/2) - ($('#add-to-playlist-dialog').width()/2),
         });
-        $.post("/library/playlists/",
-            { action: 'list' },
+        $.post("/api/1.0/playlists",
+            {action: 'list', id: 0 },
             function (retval) {
-                if (retval.status == 200) {
+                if (retval.status == 0) {
                     var playlists_html = '';
-                    for (var i = 0; i < retval.playlists.length; i++) {
-                        playlists_html += '<option value="' + retval.playlists[i].id + '">' + retval.playlists[i].title + "</option>";
+                    for (var i = 0; i < retval.nitems; i++) {
+                        playlists_html += '<option value="' + 
+                            retval.playlists[i].playlistID +
+                            '">' +
+                            retval.playlists[i].title +
+                            "</option>";
                     }
                     $("#add-to-playlist-combobox").html(playlists_html);
                     $("#overlay").fadeIn ("fast", function () {
@@ -71,8 +75,8 @@ $(document).ready(function() {
             for (var i = 0; i < checked.length; i++) {
                 selected.push($(checked[i]).val());
             }
-            $.post("/library/playlists/" + id + '/',
-                { action: 'add', ids: selected },
+            $.post("/api/1.0/playlist/addItems",
+                { playlistID: id, songIDs: selected },
                 function (retval) {
                     $("#add-to-playlist-dialog").fadeOut ("fast", function () {
                         $("#overlay").fadeOut ("fast");

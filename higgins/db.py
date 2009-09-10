@@ -92,8 +92,9 @@ class Playlist(_SignalsDBStore, Item):
     data = attributes.text()
     rating = attributes.integer(allowNone=True)
 
+    @property
     def length(self):
-        if self.data == '':
+        if self.data == None or self.data == '':
             return 0
         return len(self.data.split(','))
 
@@ -121,12 +122,12 @@ class Playlist(_SignalsDBStore, Item):
         if not isinstance(song, Song):
             raise Exception('failed to insert song: not a Song instance')
         try:
-            if self.data == '':
-                self.data = str(int(song.storeID))
+            if self.data == None or self.data == '':
+                self.data = unicode(int(song.storeID))
             else:
                 songlist = self.data.split(',')
-                songlist.insert(position, str(song.id))
-                self.data = ','.join(songlist)
+                songlist.insert(position, unicode(song.storeID))
+                self.data = u','.join(songlist)
         except Exception, e:
             raise Exception("failed to insert song '%s' into playlist '%s': %s" % (song, self.name, e))
 
@@ -146,7 +147,7 @@ class Playlist(_SignalsDBStore, Item):
         try:
             songlist = self.data.split(',')
             del songlist[position]
-            self.data = ','.join(songlist)
+            self.data = u','.join(songlist)
         except IndexError, e:
             raise e
         except Exception, e:
@@ -211,5 +212,8 @@ class DBStore(object):
             raise Exception('database is not loaded')
         return self._store.count(itemType, comparison=comparison, offset=offset)
 
+    def delete(self, itemType, comparison=None, limit=None, offset=None):
+        q = self.query(itemType, comparison, limit, offset)
+        q.deleteFromStore()
 
 db = DBStore()
