@@ -1,16 +1,22 @@
-#browse-title { text-align: left; font-weight: bold; }
-#browse
-{
-    width: 30%;
-    padding: 10px;
-    float: left;
+#browse-subnav {
+    padding: 0;
+    width: 100%;
+    margin: 0 0 20px 0;
+    border-left: 1px dotted black;
 }
-#browse-list li { list-style-type: square; }
+
+#browse-subnav li {
+    display: inline;
+}
+#browse-subnav li a {
+    padding: 3px 18px;
+    border-right: 1px dotted black;
+    font-size: 10pt;
+}
 
 #latest-title { font-weight: bold; }
 #latest
 {
     width: 60%;
     padding: 10px;
-    float: left;
 }

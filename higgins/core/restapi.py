@@ -54,6 +54,8 @@ class APIResource(Dispatcher):
         self.addRoute('song/add$', self.addSong, allowedMethods=('POST'), acceptFile=self.acceptSongItem)
         self.addRoute('song/update$', self.updateSong, allowedMethods=('POST'))
         self.addRoute('song/delete$', self.deleteSong, allowedMethods=('POST'))
+        self.addRoute('album/update$', self.updateAlbum, allowedMethods=('POST'))
+        self.addRoute('artist/update$', self.updateArtist, allowedMethods=('POST'))
         self.addRoute('playlists$', self.listPlaylists, allowedMethods=('POST'))
         self.addRoute('playlist/add$', self.addPlaylist, allowedMethods=('POST'))
         self.addRoute('playlist/get$', self.getPlaylist, allowedMethods=('POST'))
@@ -155,6 +157,59 @@ class APIResource(Dispatcher):
 
     def deleteSong(self, request):
         return RestErrorResponse(ERROR_INTERNAL_SERVER_ERROR)
+
+    def updateAlbum(self, request):
+        try:
+            logger.log_debug("updateAlbum: %s" % request.post)
+            # check for required params before updating anything in the database
+            albumID = request.post.get('albumID', [None])[0]
+            if albumID == None:
+                return RestErrorResponse(ERROR_INVALID_INPUT, "Missing albumID")
+            albumID = int(albumID)
+            title = request.post.get('title', [None])[0]
+            if title != None:
+                title = unicode(title)
+            genre = request.post.get('genre', [None])[0]
+            if genre != None:
+                genre = unicode(genre)
+            yearReleased = request.post.get('yearReleased', [None])[0]
+            if yearReleased != None:
+                if yearReleased == '':
+                    yearReleased = -1
+                else:
+                    yearReleased = int(yearReleased)
+            # update the playlist object
+            album = db.get(Album, Album.storeID==albumID)
+            if title:
+                album.name = title
+            if yearReleased:
+                if yearReleased < 0:
+                    album.releaseDate = None
+                else:
+                    album.releaseDate = yearReleased
+            return RestResponse()
+        except Exception, e:
+            logger.log_debug("failed to update Album: %s" % e)
+            return RestErrorResponse(ERROR_INTERNAL_SERVER_ERROR)
+
+    def updateArtist(self, request):
+        try:
+            # check for required params before updating anything in the database
+            artistID = request.post.get('artistID', [None])[0]
+            if artistID == None:
+                return RestErrorResponse(ERROR_INVALID_INPUT, "Missing artistID")
+            artistID = int(artistID)
+            name = request.post.get('name', [None])[0]
+            if name != None:
+                name = unicode(name)
+            # update the playlist object
+            artist = db.get(Artist, Artist.storeID==artistID)
+            if name:
+                artist.name = name
+            return RestResponse()
+        except Exception, e:
+            logger.log_debug("failed to update Artist: %s" % e)
+            return RestErrorResponse(ERROR_INTERNAL_SERVER_ERROR)
 
     def listPlaylists(self, request):
         try:

@@ -1,4 +1,27 @@
 $(document).ready(function() {
+    $('#album-editor-form').validate ({
+        rules: {
+            title: { required: true },
+            genre: { minlength: 1 },
+            yearReleased: { range: [1900,2050], digits: true }
+        },
+        messages: {
+            title: "Album Title is required",
+            yearReleased: {
+                digits: "Release year must be a number",
+                range: "Release year is out of range"
+            }
+        },
+        submitHandler: function(form) {
+            $(form).ajaxSubmit (function () {
+                /* update the page elements */
+                $("#album-info-editor").fadeOut("def", function () {
+                    $("#album-info-viewer").fadeIn("def");
+                });
+            });
+        }
+    });
+
     $('#song-listing').dataTable({
         "bPaginate": false,
         "bLengthChange": true,
@@ -14,6 +37,7 @@ $(document).ready(function() {
     });
     $('#edit-cancel').click (function () {
         $("#album-info-editor").fadeOut("def", function () {
+            $('#album-editor-form').resetForm ();
             $("#album-info-viewer").fadeIn("def");
         });
     });

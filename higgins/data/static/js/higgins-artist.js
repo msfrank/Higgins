@@ -1,4 +1,21 @@
 $(document).ready(function() {
+    $('#artist-editor-form').validate ({
+        rules: {
+            name: { required: true },
+        },
+        messages: {
+            name: "Artist name is required",
+        },
+        submitHandler: function(form) {
+            $(form).ajaxSubmit (function () {
+                /* update the page elements */
+                $("#artist-info-editor").fadeOut("def", function () {
+                    $("#artist-info-viewer").fadeIn("def");
+                });
+            });
+        }
+    });
+
     $('#song-listing').dataTable( {
     "bPaginate": false,
     "bLengthChange": true,
