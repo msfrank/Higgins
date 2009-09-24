@@ -26,6 +26,7 @@ setup(
         'higgins.core',
         'higgins.core.upgradedb',
         'higgins.data',
+        'higgins.gst',
         'higgins.http',
         'higgins.http.auth',
         'higgins.http.channel',

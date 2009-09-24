@@ -5,36 +5,43 @@
 # the COPYING file.
 
 from twisted.python import filepath
-from higgins.db import Song
-from higgins.http.stream import FileStream
+from axiom.errors import ItemNotFound
+from higgins.db import db, File
+from higgins.http.stream import FileStream as TwistedFileStream
 from higgins.http.http_headers import MimeType
 from higgins.http.resource import Resource
 from higgins.http.http import Response
+from higgins.gst.transcode import TranscodingStream
+from higgins.core.dispatcher import Dispatcher
 from higgins.core.logger import logger
 
-class ContentResource(Resource):
+class FileStream(TwistedFileStream):
+    def __init__(self, file):
+        self.length = file.size
+        self.mimetype = MimeType.fromString(str(file.MIMEType))
+        f = open(str(file.path), 'rb')
+        TwistedFileStream.__init__(self, f)
 
-    def allowedMethods(self):
-        return ("GET",)
+class ContentResource(Dispatcher):
+    def __init__(self):
+        Dispatcher.__init__(self)
+        self.addRoute('(\d+)$', self.renderContent, allowedMethods=('GET'))
 
-    def locateChild(self, request, segments):
+    def renderContent(self, request, fileID):
         try:
-            if len(segments) != 1:
-                return None, []
-            request.songid = int(segments[0])
-            return self, []
-        except:
-            return None, []
-
-    def render(self, request):
-        try:
-            song = Song.objects.filter(id=request.songid)[0]
-            f = open(song.file.path, 'rb')
-            mimetype = str(song.file.mimetype)
-            logger.log_debug("%s -> %s (%s)" % (request.path, song.file.path, mimetype))
-            mimetype = MimeType.fromString(mimetype)
-            return Response(200, {'content-type': mimetype}, FileStream(f))
-        except IndexError:
-            return Response(404) 
-        except:
+            fileID = int(fileID)
+            file = db.get(File, File.storeID==fileID)
+            logger.log_debug("file=%s" % str(file))
+            if 'mimetype' in request.args:
+                mimetype = request.args['mimetype'][0]
+                logger.log_debug("streaming %s as %s" % (file.path, mimetype))
+                stream = TranscodingStream(file, mimetype)
+            else:
+                logger.log_debug("streaming %s" % file.path)
+                stream = FileStream(file)
+            return Response(200, {'content-type': stream.mimetype}, stream)
+        except ItemNotFound, e:
+            return Response(404)
+        except Exception, e:
+            logger.log_error("failed to stream fileID %s: %s" % (str(fileID), str(e)))
             return Response(500)

@@ -17,6 +17,7 @@ from higgins.core.static import StaticResource
 from higgins.core.library import LibraryResource
 from higgins.core.restapi import APIResource
 from higgins.core.settings import SettingsResource
+from higgins.core.content import ContentResource
 from higgins.core.logger import logger
 from higgins.upnp.service import UPNPService
 from higgins.upnp.device import UPNPDevice
@@ -30,6 +31,7 @@ class CoreService(MultiService):
         self._root.addRoute('/settings', SettingsResource(self))
         self._root.addRoute('/api/1.0/', APIResource())
         self._root.addRoute('/static', StaticResource())
+        self._root.addRoute('/content/', ContentResource())
         self._site = server.Site(self._root)
         MultiService.__init__(self)
 

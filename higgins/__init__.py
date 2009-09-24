@@ -12,3 +12,6 @@ _dist = get_distribution('higgins')
 
 PROJECT_NAME = _dist.project_name
 VERSION = _dist.version
+
+# installs the glib reactor
+import higgins.gst
