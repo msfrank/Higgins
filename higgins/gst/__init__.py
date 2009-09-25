@@ -4,12 +4,11 @@
 # This program is free software; for license information see
 # the COPYING file.
 
-import gobject
-import pygst
-pygst.require('0.10')
-import gst
-
-gobject.threads_init()
-
-from twisted.internet import glib2reactor
-glib2reactor.install()
+def installGstReactor():
+    import gobject
+    import pygst
+    pygst.require('0.10')
+    import gst
+    gobject.threads_init()
+    from twisted.internet import glib2reactor
+    glib2reactor.install()

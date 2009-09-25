@@ -5,13 +5,9 @@
 # the COPYING file.
 
 import sys, pwd, grp, os, signal
-from twisted.internet import reactor
 from twisted.internet.defer import maybeDeferred
 from twisted.python import usage
 from twisted.python.logfile import LogFile
-from higgins.settings import settings
-from higgins.db import db
-from higgins.loader import plugins
 from higgins import logger, VERSION
 
 class ServerException(Exception):
@@ -70,11 +66,22 @@ class Server(object, logger.Loggable):
                 self.log_error("Startup failed: another instance is already running with PID %i" % pid)
             raise ServerException("failed to start Higgins")
         # we load conf after parsing options
+        from higgins.settings import settings
         settings.load(os.path.join(env, 'settings.dat'))
+        self._settings = settings
+        # install the GST reactor (really the glib2 reactor)
+        from higgins.gst import installGstReactor
+        installGstReactor()
+        from twisted.internet import reactor
+        self._reactor = reactor
         # open the database
+        from higgins.db import db
         db.open(os.path.join(env, 'database'))
+        self._db = db
         # load the list of plugins
+        from higgins.loader import plugins
         plugins.load([os.path.join(env, 'plugins')])
+        self._plugins = plugins
 
     def _caughtSignal(self, signum, stack):
         self.log_debug("caught signal %i" % signum)
@@ -93,18 +100,18 @@ class Server(object, logger.Loggable):
             from higgins.core.service import CoreService
             self._coreService = CoreService()
             # register plugins
-            for name,plugin in plugins:
+            for name,plugin in self._plugins:
                 self._coreService.registerPlugin(name, plugin)
             # start the core service
             self._coreService.startService()
             # pass control to reactor
             self.log_info("starting twisted reactor")
             self._oldsignal = signal.signal(signal.SIGINT, self._caughtSignal)
-            reactor.run()
+            self._reactor.run()
             signal.signal(signal.SIGINT, self._oldsignal)
             self.log_debug("returned from twisted reactor")
             # save configuration settings
-            settings.flush()
+            self._settings.flush()
         finally:
             try:
                 os.unlink(self._pidfile)
@@ -115,14 +122,14 @@ class Server(object, logger.Loggable):
     def _doStop(self, result):
         self.log_debug("stopped core service")
         self._coreService = None
-        reactor.stop()
+        self._reactor.stop()
         self.log_info("stopped twisted reactor")
 
     def stop(self):
         """
         Stop the twisted reactor
         """
-        if not reactor.running:
+        if not self._reactor.running:
             raise Exception("Server is not running")
         if not self._coreService.running:
             raise Exception("CoreService is not running")
@@ -193,6 +200,7 @@ def run_application():
     if server.daemonize:
         if os.fork():
             os._exit(0)
+        # connect stdin, stdout, stderr to /dev/null
         null = os.open('/dev/null', os.O_RDWR)
         for i in range(3):
             os.dup2(null, i)

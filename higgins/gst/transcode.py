@@ -28,6 +28,9 @@ profiles = {
         },
     }
 
+class ProfileNotFound(Exception):
+    pass
+
 class TranscodingStream(SimpleStream):
 
     def __init__(self, file, requestedMimetype, maxBuffers=None, drop=False):
@@ -38,7 +41,7 @@ class TranscodingStream(SimpleStream):
         try:
             profile = profiles[requestedMimetype]
         except:
-            raise Exception('No profile to convert %s to %s' % (file.path, requestedMimetype))
+            raise ProfileNotFound('No profile to convert %s to %s' % (file.path, requestedMimetype))
         # check whether profile accepts destination mimetype
         try:
             for dsttype in profile['accepts']:
@@ -47,7 +50,7 @@ class TranscodingStream(SimpleStream):
                     raise StopIteration
                 if mediaType == sourceMimetype.mediaType and (mediaSubtype == '*' or mediaSubtype == sourceMimetype.mediaSubtype):
                     raise StopIteration
-            raise Exception('No acceptable profiles found to convert %s to %s' % (file.path, requestedMimetype))
+            raise ProfileNotFound('No acceptable profiles found to convert %s to %s' % (file.path, requestedMimetype))
         except StopIteration:
             pass
         self.mimetype = MimeType.fromString(requestedMimetype)

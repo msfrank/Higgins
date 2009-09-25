@@ -11,7 +11,7 @@ from higgins.http.stream import FileStream as TwistedFileStream
 from higgins.http.http_headers import MimeType
 from higgins.http.resource import Resource
 from higgins.http.http import Response
-from higgins.gst.transcode import TranscodingStream
+from higgins.gst.transcode import TranscodingStream, ProfileNotFound
 from higgins.core.dispatcher import Dispatcher
 from higgins.core.logger import logger
 
@@ -42,6 +42,9 @@ class ContentResource(Dispatcher):
             return Response(200, {'content-type': stream.mimetype}, stream)
         except ItemNotFound, e:
             return Response(404)
+        except ProfileNotFound, e:
+            logger.log_debug("failed to stream fileID %s: %s" % (str(fileID), str(e)))
+            return Response(400)
         except Exception, e:
             logger.log_error("failed to stream fileID %s: %s" % (str(fileID), str(e)))
             return Response(500)
