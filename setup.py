@@ -13,13 +13,6 @@ setup(
     url="http://www.syntaxjockey.com/higgins",
     author="Michael Frank",
     author_email="msfrank@syntaxockey.com",
-    # package requirements
-    install_requires=[
-#        'Twisted >= 8.0.0',
-#        'pysqlite >= 2.5.0',
-#        'pybonjour >= 1.1.1',
-#        'mutagen >= 1.15',
-        ],
     # package contents
     packages=[
         'higgins',
@@ -67,7 +60,7 @@ setup(
         # auto-generate scripts
         'console_scripts': [
             'higgins-media-server=higgins.server:run_application',
-            'higgins-upload=higgins.core.upload:run_application',
+            'higgins-upload=higgins.uploader:run_application',
             ],
         # declare packaged plugins
         'higgins.plugin': [
