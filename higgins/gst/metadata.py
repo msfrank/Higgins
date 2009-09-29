@@ -5,7 +5,12 @@
 # the COPYING file.
 
 import sys, os
-import gobject, pygst, gst
+import gobject
+import pygst
+pygst.require('0.10')
+import gst
+from twisted.internet.defer import Deferred
+from higgins.gst.logger import logger
 
 class MetadataFinder(object):
 
@@ -17,7 +22,7 @@ class MetadataFinder(object):
         filesrc = gst.element_factory_make("filesrc", "source")
         decodebin = gst.element_factory_make("decodebin", "decoder")
         self._fakesink = gst.element_factory_make("fakesink", "sink")
-        self._pipeline.add(self._filesrc, decodebin, fakesink)
+        self._pipeline.add(filesrc, decodebin, self._fakesink)
         gst.element_link_many(filesrc, decodebin)
         typefinder = decodebin.get_by_name("typefind")
         typefinder.connect("have-type", self._onHaveType)
@@ -25,9 +30,9 @@ class MetadataFinder(object):
         # set location to parse metadata from
         filesrc.set_property("location", path)
         # get on the bus!
-        self._bus = pipeline.get_bus()
+        self._bus = self._pipeline.get_bus()
         self._bus.add_signal_watch()
-        self._bus.connect("message", on_message)
+        self._bus.connect("message", self._onMessage)
 
     def parseMetadata(self):
         """Returns a Deferred which fires once the metadata has been parsed."""
@@ -43,7 +48,7 @@ class MetadataFinder(object):
         if self._deferred == None:
             return
         mimetype = caps.to_string()
-        print "file has type %s (probability=%s)" % (caps.to_string(), probability)
+        logger.log_debug("file has type %s (probability=%s)" % (caps.to_string(), probability))
         self._metadata['mimetype'] = mimetype
         self._metadata['mimetype-probability'] = int(probability)
 
@@ -62,8 +67,10 @@ class MetadataFinder(object):
             for key in taglist.keys():
                 self._metadata[key] = taglist[key]
         elif message.type == gst.MESSAGE_EOS:
+            from twisted.internet import reactor
             reactor.callLater(0, self._finishParsing)
         elif message.type == gst.MESSAGE_ERROR:
+            from twisted.internet import reactor
             error, debug = message.parse_error()
             reactor.callLater(0, self._parsingFailure, error)
         elif message.type == gst.MESSAGE_STATE_CHANGED:
@@ -72,6 +79,7 @@ class MetadataFinder(object):
                 return
             if message.src.get_name() != 'parse-metadata':
                 return
+            from twisted.internet import reactor
             reactor.callLater(0, self._finishParsing)
 
     def _finishParsing(self):
@@ -79,7 +87,7 @@ class MetadataFinder(object):
         self._fakesink = None
         self._pipeline = None
         self._bus = None
-        d.callback(self._metadata)
+        self._deferred.callback(self._metadata)
         self._deferred = None
 
     def _parsingFailure(self, message):
@@ -87,5 +95,5 @@ class MetadataFinder(object):
         self._fakesink = None
         self._pipeline = None
         self._bus = None
-        d.errback(Exception(message))
+        self._deferred.errback(Exception(message))
         self._deferred = None
