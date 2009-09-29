@@ -17,6 +17,9 @@ cdef extern from "netif-internal.h":
     void __netif_free_interface_list (netif *ifs, int nifs)
     int __netif_shares_subnet (char *address, char *netmask, char *dest)
 
+class NetifException(Exception):
+    pass
+
 class Interface(object):
     def sharesSubnet(self, dest):
         cdef char *c_address
@@ -31,7 +34,7 @@ class Interface(object):
             return True
         if retval == 0:
             return False
-        raise Exception("Invalid destination address %s" % dest)
+        raise NetifException("Invalid destination address %s" % dest)
     def __str__(self):
         return "%s (%s/%s)" % (self.name,self.address,self.netmask)
 

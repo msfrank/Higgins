@@ -35,10 +35,7 @@ cdef extern from "inotify-internal.h":
     int __inotify_read_next(char *buffer, int nread, int *curr, __inotify_event *ev)
 
 class InotifyException(Exception):
-    def __init__(self, reason):
-        self.reason = reason
-    def __str__(self):
-        return self.reason
+    pass
 
 def open():
     return __inotify_open ()
