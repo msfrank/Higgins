@@ -1,9 +1,37 @@
 #!/usr/bin/env python
 
+import sys
+
+# initialize setuptools and ez_setup
+#
 from ez_setup import use_setuptools
 use_setuptools()
 from setuptools import setup, Extension
 
+# check for runtime dependencies
+#
+try:
+    import Pyrex
+    import twisted
+    import axiom
+    import genshi
+    import gobject
+    import dbus
+    import avahi
+    import pygst
+    try:
+        pygst.require('0.10')
+    except pygst.RequiredVersionError, e:
+        raise Exception("Higgins needs pygst version 0.10, detected version %s" % pygst._pygst_version)
+except ImportError, e:
+    print "setup.py failed due to a missing dependency: %s" % e
+    sys.exit(1)
+except Exception, e:
+    print "setup.py failed: %s" % e
+    sys.exit(1)
+
+# pass control to setuptools
+#
 setup(
     # package description
     name = "Higgins",
