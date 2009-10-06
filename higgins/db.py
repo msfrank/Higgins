@@ -98,11 +98,13 @@ class Playlist(_SignalsDBStore, Item):
             return 0
         return len(self.data.split(','))
 
-    def listSongs(self):
+    def listSongs(self, offset=None, limit=None):
         """
         Returns a list containing all of the Song objects in the playlist.
         Raises Exception on failure.
         """
+        if offset != None or limit != None:
+            raise Exception("offset and limit parameters not yet implemented")
         try:
             songlist = [ int(i) for i in self.data.split(',') ]
         except:
