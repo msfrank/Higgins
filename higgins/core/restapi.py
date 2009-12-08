@@ -112,11 +112,11 @@ class APIResource(Dispatcher):
             logger.log_debug("referencing %s" % request.post['file'])
             if not os.access(path, os.R_OK):
                 return RestErrorResponse(ERROR_INVALID_INPUT, "higgins doesn't have permission to read file")
-            if not 'MIMEType' in request.post:
+            if not 'mimetype' in request.post:
                 return RestErrorResponse(ERROR_INVALID_INPUT, "Missing required form item 'mimetype'")
             size = int(os.stat(path).st_size)
             # create the file object
-            file = db.create(File, path=path, size=size, MIMEType=request.post.get('MIMEType'))
+            file = db.create(File, path=path, size=size, MIMEType=request.post.get('mimetype'))
             # create or get the artist object
             value = request.post.get('artist', '')
             artist,artistIsNew = db.getOrCreate(Artist, name=value)

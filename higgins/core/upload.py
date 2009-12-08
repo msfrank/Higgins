@@ -55,14 +55,14 @@ class Uploader(object):
             lines.append('Content-Disposition: form-data; name="file"; filename="%s"' % basename(filePath))
             lines.append('Content-Type: %s' % metadata['mimetype'])
             lines.append('')
-            #lines.append('')
+            lines.append('')
         # create the stream which is sent to the server 
         stream = MemoryStream('\r\n'.join(lines))
         if not self.isLocal:
             stream = CompoundStream((stream, FileStream(open(filePath, 'rb'))))
         return stream
 
-    def _processFile(self):
+    def _doSendFiles(self):
         for path in self.paths:
             # parse metadata
             finder = MetadataFinder(path)
@@ -79,24 +79,25 @@ class Uploader(object):
             logger.log_debug("connected to %s:%i" % (self.host, self.port))
             # upload the file
             request = ClientRequest('POST',
-                                    '/api/1.0/song/add', {
-                                        'host': '%s:%i' % (self.host, self.port),
-                                        'content-type': MimeType('multipart', 'form-data', {'boundary': self.boundary}),
-                                        'user-agent': 'higgins-uploader/%s' % VERSION
-                                        },
-                                    self._makePostStream(path, metadata))
+                '/api/1.0/song/add', {
+                    'host': '%s:%i' % (self.host, self.port),
+                    'content-type': MimeType('multipart', 'form-data', {'boundary': self.boundary}),
+                    'user-agent': 'higgins-uploader/%s' % VERSION
+                    },
+                self._makePostStream(path, metadata)
+                )
             post = waitForDeferred(server.submitRequest(request))
             yield post
             post.getResult()
             logger.log_info("uploaded %s" % path)
         self._deferred.callback(True)
-    _processFile = deferredGenerator(_processFile)
+    _doSendFiles = deferredGenerator(_doSendFiles)
 
     def sendFiles(self):
         if self._deferred:
             raise UploaderException("Uploader instance is already running")
         self._deferred = Deferred()
-        reactor.callLater(0, self._processFile)
+        reactor.callLater(0, self._doSendFiles)
         return self._deferred
 
 __all__ = ['Uploader', 'UploaderException']
