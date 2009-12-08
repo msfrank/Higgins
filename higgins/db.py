@@ -4,14 +4,10 @@
 # This program is free software; for license information see
 # the COPYING file.
 
-import warnings
-with warnings.catch_warnings():
-    warnings.simplefilter('ignore')
-    from axiom import attributes
-    from axiom.store import Store
-    from axiom.item import Item
-    from epsilon.extime import Time
-
+from axiom import attributes
+from axiom.store import Store
+from axiom.item import Item
+from epsilon.extime import Time
 from higgins.signals import Signal
 from higgins.logger import Loggable
 
@@ -57,7 +53,9 @@ class Song(_SignalsDBStore, Item):
     file = attributes.reference()
 
     def printDuration(self):
-        duration = self.duration / 1000
+        duration = self.duration
+        if duration == None:
+            return 'unknown'
         if duration < 60:
             return '0:%02i' % duration
         if duration < 3600:

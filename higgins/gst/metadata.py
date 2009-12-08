@@ -83,6 +83,12 @@ class MetadataFinder(object):
             reactor.callLater(0, self._finishParsing)
 
     def _finishParsing(self):
+        try:
+            length = self._pipeline.query_duration(gst.Format(gst.FORMAT_TIME), None)[0]
+            self._metadata['length'] = int(length / 1000000000)
+            logger.log_debug("duration is %i seconds" % self._metadata['length'])
+        except Exception, e:
+            logger.log_debug("failed to query duration: %s" % e)
         self._pipeline.set_state(gst.STATE_NULL)
         self._fakesink = None
         self._pipeline = None
