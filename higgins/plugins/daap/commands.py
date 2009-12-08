@@ -313,15 +313,16 @@ class StreamSongCommand(Command):
         self.songid = songid
     def render(self, request):
         song = db.get(Song, Song.storeID==int(self.songid))
-        if song == []:
+        if song == None:
             return Response(404)
         try:
-            f = open(song[0].file.path, 'rb')
-        except:
+            f = open(song.file.path, 'rb')
+        except EnvironmentError, (errno, reason):
+            logger.log_debug("failed to open song %s: %s" % (song.file.path, reason))
             return Response(404) 
-        mimetype = str(song[0].file.mimetype)
-        logger.log_debug("%s -> %s (%s)" % (request.path, song[0].file.path, mimetype))
-        mimetype = MimeType.fromString(mimetype)
+        mimetype = str(song.file.MIMEType)
+        logger.log_debug("%s -> %s (%s)" % (request.path, song.file.path, mimetype))
+        #mimetype = MimeType.fromString(mimetype)
         return Response(200, {'content-type': x_dmap_tagged}, FileStream(f))
 
 class ListPlaylistsCommand(Command):
