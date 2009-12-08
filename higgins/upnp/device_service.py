@@ -37,7 +37,7 @@ class Subscription(object):
             else:
                 raise Exception("StateVar '%s' is not evented" % statevar.name)
         postData = xmlprint(propset)
-        logger.log_debug("NOTIFY property set:\n" + postData)
+        logger.log_debug2("NOTIFY property set:\n" + postData)
         # send the NOTIFY request to each callback
         for url,urlparts in self.callbacks:
             # set the NOTIFY headers

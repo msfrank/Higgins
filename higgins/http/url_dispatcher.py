@@ -51,7 +51,7 @@ class Route(BaseResource):
             logger.log_debug2("_renderDispatcher: subUrl='%s'" % request._subUrl)
             return self._dispatcher.renderHTTP(request)
         except Exception, e:
-            logger.log_debug('_renderDispatcher failed: %s' % str(e))
+            logger.log_error('_renderDispatcher failed: %s' % str(e))
             return Response(500, stream="Internal Server Error")
 
     def renderHTTP(self, request):

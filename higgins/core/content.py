@@ -41,6 +41,7 @@ class ContentResource(Dispatcher):
                 stream = FileStream(file)
             return Response(200, {'content-type': stream.mimetype}, stream)
         except ItemNotFound, e:
+            logger.log_debug("failed to stream fileID %s: no such item" % str(fileID))
             return Response(404)
         except ProfileNotFound, e:
             logger.log_debug("failed to stream fileID %s: %s" % (str(fileID), str(e)))
