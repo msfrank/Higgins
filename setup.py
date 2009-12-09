@@ -45,7 +45,7 @@ setup(
     packages=[
         'higgins',
         'higgins.core',
-        'higgins.core.upgradedb',
+        'higgins.core.rest',
         'higgins.data',
         'higgins.gst',
         'higgins.http',

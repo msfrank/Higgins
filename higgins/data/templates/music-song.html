@@ -41,7 +41,7 @@
                         <tr><td><a id="edit-artist" href="">(edit)</a></td></tr>
                     </table>
                     <div id="song-info-editor">
-                        <form id="song-editor-form" method="POST" action="/api/1.0/song/update">
+                        <form id="song-editor-form" method="POST" action="/api/1.0/updateSong">
                             <input name="songID" value="${song.storeID}" type="hidden"/>
                             <table id="song-info-table">
                                 <tr><td>Song Title</td><td><input type="text" name="title" value="${song.name}"/></td></tr>

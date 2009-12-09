@@ -38,7 +38,7 @@
                         <tr><td><a id="edit-album" href="#">(edit)</a></td></tr>
                     </table>
                     <div id="album-info-editor">
-                        <form id="album-editor-form" method="POST" action="/api/1.0/album/update">
+                        <form id="album-editor-form" method="POST" action="/api/1.0/updateAlbum">
                             <input name="albumID" value="${album.storeID}" type="hidden"/>
                             <table id="album-info-table">
                                 <tr><td>Album Name</td><td><input type="text" name="title" value="${album.name}"/></td></tr>

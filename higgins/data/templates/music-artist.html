@@ -38,7 +38,7 @@
                         <tr><td><a id="edit-artist" href="#">(edit)</a></td></tr>
                     </table>
                     <div id="artist-info-editor">
-                        <form id="artist-editor-form" method="POST" action="/api/1.0/artist/update">
+                        <form id="artist-editor-form" method="POST" action="/api/1.0/updateArtist">
                             <input name="artistID" value="${artist.storeID}" type="hidden"/>
                             <table id="artist-info-table">
                                 <tr><td>Artist Name</td><td><input type="text" name="name" value="${artist.name}"/></td></tr>

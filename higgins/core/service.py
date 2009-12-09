@@ -15,7 +15,7 @@ from higgins.core.dispatcher import RootDispatcher
 from higgins.core.dashboard import DashboardResource
 from higgins.core.static import StaticResource
 from higgins.core.library import LibraryResource
-from higgins.core.restapi import APIResource
+from higgins.core.rest.resource import RestResource
 from higgins.core.settings import SettingsResource
 from higgins.core.content import ContentResource
 from higgins.core.logger import logger
@@ -29,7 +29,7 @@ class CoreService(MultiService):
         self._root.addToplevelRoute('/$', DashboardResource(), "Home", "/")
         self._root.addToplevelRoute('/library', LibraryResource(), "Library", "/library")
         self._root.addRoute('/settings', SettingsResource(self))
-        self._root.addRoute('/api/1.0/', APIResource())
+        self._root.addRoute('/api/1.0/', RestResource())
         self._root.addRoute('/static', StaticResource())
         self._root.addRoute('/content/', ContentResource())
         self._site = server.Site(self._root)
