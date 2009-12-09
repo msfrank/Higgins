@@ -361,7 +361,7 @@ class ListPlaylistsCommand(Command):
             item.add(ContentCode("miid", pls.storeID + 1))
             item.add(ContentCode("mper", pls.storeID + 1))
             item.add(ContentCode("minm", str(pls.name)))
-            item.add(ContentCode("mimc", pls.length()))
+            item.add(ContentCode("mimc", pls.length))
             listing.add(item)
         return aply
 
@@ -407,7 +407,7 @@ class ListPlaylistItemsCommand(Command):
         else:
             q = db.get(Playlist, Playlist.storeID==int(self.plsid))
             songs = q.listSongs()
-            numSongs = q.length()
+            numSongs = q.length
         apso.add(ContentCode("mtco", numSongs))   # total number of matching records
         apso.add(ContentCode("mrco", numSongs))   # total number of records returned
         listing = CodeBag("mlcl")
