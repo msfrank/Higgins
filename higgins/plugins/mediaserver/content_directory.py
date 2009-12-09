@@ -237,7 +237,7 @@ class ContentDirectory(UPNPDeviceService):
                 resource = SubElement(item, "res")
                 resource.attrib["protocolInfo"] = "http-get:*:%s:*" % str(song.file.MIMEType)
                 resource.attrib["size"] = str(song.file.size)
-                resource.text = "http://%s:%i/content/%i" % (host,port,song.storeID)
+                resource.text = "http://%s:%i/content/%i" % (host,port,song.file.storeID)
             return (db.count(Song, Song.album==album), count, didl)
         # return songs in the specified playlist
         if key == 'playlist':
@@ -267,7 +267,7 @@ class ContentDirectory(UPNPDeviceService):
                 resource = SubElement(item, "res")
                 resource.attrib["protocolInfo"] = "http-get:*:%s:*" % str(song.file.MIMEType)
                 resource.attrib["size"] = str(song.file.size)
-                resource.text = "http://%s:%i/content/%i" % (host,port,song.storeID)
+                resource.text = "http://%s:%i/content/%i" % (host,port,song.file.storeID)
             return (playlist.length, count, didl)
         return None
 
