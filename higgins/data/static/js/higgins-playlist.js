@@ -41,7 +41,7 @@ $(document).ready(function() {
         });
     });
     $('#create-playlist-ok').click (function () {
-        $.post("/api/1.0/playlist/add",
+        $.post("/api/1.0/addPlaylist",
             { title: $('#create-playlist-title').val() },
             function (retval) {
                 if (retval.status == 0) {
@@ -97,7 +97,7 @@ $(document).ready(function() {
     });
     $('#rename-playlist-ok').click (function () {
         var row = playlistsTable.fnGetData (selectedRow);
-        $.post("/api/1.0/playlist/update",
+        $.post("/api/1.0/updatePlaylist",
             { playlistID: row[3], title: $('#rename-playlist-title').val() },
             function (retval) {
                 if (retval.status == 0) {
@@ -138,7 +138,7 @@ $(document).ready(function() {
     });
     $('#remove-playlist-ok').click (function () {
         var row = playlistsTable.fnGetData (selectedRow);
-        $.post("/api/1.0/playlist/delete",
+        $.post("/api/1.0/deletePlaylist",
             { playlistID: row[3] },
             function (retval) {
                 if (retval.status == 0) {

@@ -65,8 +65,8 @@ $(document).ready(function() {
             top: ($(window).height()/2) - ($('#add-to-playlist-dialog').height()/2),
             left: ($(window).width()/2) - ($('#add-to-playlist-dialog').width()/2),
         });
-        $.post("/api/1.0/playlists",
-            {action: 'list', id: 0 },
+        $.post("/api/1.0/listPlaylists",
+            {},
             function (retval) {
                 if (retval.status == 0) {
                     var playlists_html = '';
@@ -99,7 +99,7 @@ $(document).ready(function() {
             for (var i = 0; i < checked.length; i++) {
                 selected.push($(checked[i]).val());
             }
-            $.post("/api/1.0/playlist/addItems",
+            $.post("/api/1.0/addPlaylistItems",
                 { playlistID: id, songIDs: selected },
                 function (retval) {
                     $("#add-to-playlist-dialog").fadeOut ("fast", function () {
