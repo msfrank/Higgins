@@ -49,7 +49,7 @@ class Route(BaseResource):
     def _renderDispatcher(self, request):
         try:
             request._subUrl = self.regex.split(request.path, 1)[1]
-            logger.log_debug2("_renderDispatcher: subUrl='%s'" % request._subUrl)
+            #logger.log_debug2("_renderDispatcher: subUrl='%s'" % request._subUrl)
             return self._dispatcher.renderHTTP(request)
         except Exception, e:
             logger.log_error('_renderDispatcher failed: %s' % str(e))
@@ -67,7 +67,7 @@ class Route(BaseResource):
     def render(self, request):
         if self._callable == None:
             return Response(500, stream="Internal Server Error")
-        logger.log_debug("Route.render: %s %s" % (request.method, request.path))
+        logger.log_debug("%s %s" % (request.method, request.path))
         return self._callable(request, *request._urlParams)
 
 class BaseDispatcher(Resource):

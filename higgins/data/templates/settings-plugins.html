@@ -23,7 +23,7 @@
             a specific plugin, click on its Settings link.
         </p>
         <form id="higgins-settings-form" method="post" action="">
-            <table id="higgins-settings-plugins">
+            <table class="higgins-settings-table">
                 <tr py:for="plugin in plugins">
                     <td>
                     <py:choose test="plugin.running">
@@ -45,7 +45,7 @@
                         <span class="higgins-settings-plugin-descripton">${plugin.description}</span>
                     </td>
                     <td>
-                        <a py:if="plugin.configs" href="${plugin.name}/">Settings</a>
+                        <a py:if="plugin.configs" href="/settings/plugins/${plugin.name}">Settings</a>
                     </td>
                 </tr>
             </table>

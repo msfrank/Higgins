@@ -66,7 +66,7 @@ $(document).ready(function() {
             left: ($(window).width()/2) - ($('#add-to-playlist-dialog').width()/2),
         });
         $.post("/api/1.0/listPlaylists",
-            {},
+            {blah: 'unused'},
             function (retval) {
                 if (retval.status == 0) {
                     var playlists_html = '';

@@ -25,7 +25,7 @@ class FileStream(TwistedFileStream):
 class ContentResource(Dispatcher):
     def __init__(self):
         Dispatcher.__init__(self)
-        self.addRoute('(\d+)$', self.renderContent, allowedMethods=('GET'))
+        self.addRoute('(\d+)\.?.*$', self.renderContent, allowedMethods=('GET'))
 
     def renderContent(self, request, fileID):
         try:

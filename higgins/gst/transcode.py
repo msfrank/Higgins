@@ -12,7 +12,7 @@ from higgins.gst.logger import logger
 
 profiles = {
     'audio/x-wav': {
-        'accepts': ['audio/ogg','audio/mpeg'],
+        'accepts': ['audio/ogg','audio/mpeg','application/x-id3'],
         'extension': 'wav',
         'pipeline': 'decodebin ! audioconvert ! audio/x-raw-int,rate=44100,channels=2 ! wavenc'
         },
