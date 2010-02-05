@@ -5,11 +5,15 @@
 # the COPYING file.
 
 import os
-from epsilon.extime import Time
 from higgins.http.routes import Dispatcher
 from higgins.db import db, Artist, Album, Song, Genre, File
 from higgins.rest import RestResponse, RestInternalServerError, RestInvalidInputError
 from higgins.logger import Loggable
+
+import warnings
+with warnings.catch_warnings():
+    warnings.simplefilter('ignore')
+    from epsilon.extime import Time
 
 class SongMethods(Dispatcher, Loggable):
     def __init__(self):

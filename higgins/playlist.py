@@ -4,16 +4,21 @@
 # This program is free software; for license information see
 # the COPYING file.
 
-from epsilon.extime import Time
 from higgins.http.routes import Dispatcher
 from higgins.db import db, Song, File, Playlist
 from higgins.rest import RestResponse, RestInternalServerError, RestInvalidInputError
 from higgins.logger import Loggable
 
+import warnings
+with warnings.catch_warnings():
+    warnings.simplefilter('ignore')
+    from epsilon.extime import Time
+
 class PlaylistMethods(Dispatcher, Loggable):
     log_domain = "core"
 
     def __init__(self):
+        Dispatcher.__init__(self)
         self.addRoute('list$', self.listPlaylists, allowedMethods=('POST'))
         self.addRoute('get$', self.getPlaylist, allowedMethods=('POST'))
         self.addRoute('add$', self.addPlaylist, allowedMethods=('POST'))

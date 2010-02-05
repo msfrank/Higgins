@@ -5,7 +5,6 @@
 # the COPYING file.
 
 import re
-from higgins.data import templates
 from higgins.http.stream import FileStream
 from higgins.http.http_headers import MimeType
 from higgins.http.resource import Resource
@@ -123,19 +122,12 @@ class RootDispatcher(BaseDispatcher):
         BaseDispatcher.addRoute(self, path, object, **options)
 
 class Dispatcher(BaseDispatcher):
+    def __init__(self):
+        BaseDispatcher.__init__(self)
+
     def addRoute(self, path, f, **options):
         if not callable(f):
             raise Exception('f is not a callable')
         BaseDispatcher.addRoute(self, path, f, **options)
-
-    def renderTemplate(self, template, vars):
-        toplevels = []
-        for d,name,root in self._root._toplevels:
-            if d == self:
-                toplevels.append((name, root, True))
-            else:
-                toplevels.append((name, root, False))
-        vars['topnav'] = toplevels
-        return templates.render(template, vars)
 
 __all__ = ['Route', 'RootDispatcher', 'Dispatcher']

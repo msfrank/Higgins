@@ -23,18 +23,16 @@ class Service(EntryPoint, _Service):
 class PluginStore(object, Loggable):
     log_domain = "loader"
 
-    def __init__(self, pluginDirs=[]):
-        self.pluginDirs = []
+    def load(self, pluginDirs=[]):
+        _pluginDirs = []
         for d in pluginDirs:
             if os.path.isdir(d):
-                self.pluginDirs.append(d)
                 working_set.add_entry(d)
+                _pluginDirs.append(d)
                 self.log_info("added %s to plugin search path" % d)
             else:
                 self.log_warning("ignoring path %s: not a directory" % d)
-
-    def load(self):
-        env = Environment(pluginDirs)
+        env = Environment(_pluginDirs)
         eggs,errors = working_set.find_plugins(env)
         # load plugin eggs
         for p in eggs:
@@ -60,7 +58,7 @@ class PluginStore(object, Loggable):
         return eps
 
     def getEntryPoint(self, group, name, type):
-        eps = working_set.iter_entry_points(group, name):
+        eps = working_set.iter_entry_points(group, name)
         ep = eps[0]
         try:
             cls = ep.load()

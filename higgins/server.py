@@ -7,6 +7,7 @@
 import sys
 from higgins.gst.reactor import installReactor
 installReactor()
+from twisted.internet import reactor
 
 import pwd, grp, os, signal
 from twisted.internet.defer import maybeDeferred
@@ -16,7 +17,7 @@ from higgins.settings import settings
 from higgins.db import db
 from higgins.entrypoint import plugins
 from higgins.core import CoreService
-from higgins.logger import Loggable, Severity
+from higgins.logger import Loggable, Severity, StdoutObserver, LogfileObserver
 from higgins import VERSION
 
 class ServerException(Exception):
@@ -53,11 +54,11 @@ class Server(object, Loggable):
         # if debug flag is specified, then don't request to daemonize and log to stdout
         if debug:
             self.daemonize = False
-            self.observer = logger.StdoutObserver(colorized=True, verbosity=verbosity)
+            self.observer = StdoutObserver(colorized=True, verbosity=verbosity)
         # otherwise daemonize and log to logs/higgins.log
         else:
             self.daemonize = True
-            self.observer = logger.LogfileObserver(LogFile('higgins.log', os.path.join(env, 'logs')), verbosity=verbosity)
+            self.observer = LogfileObserver(LogFile('higgins.log', os.path.join(env, 'logs')), verbosity=verbosity)
         self.observer.start()
         self.log_info("Higgins version is %s" % VERSION)
         if create:
@@ -96,9 +97,6 @@ class Server(object, Loggable):
             raise ServerException("failed to create PID file")
         try:
             self._coreService = CoreService()
-            # register plugins
-            for name,plugin in self._plugins:
-                self._coreService.registerPlugin(name, plugin)
             # start the core service
             self._coreService.startService()
             # pass control to reactor

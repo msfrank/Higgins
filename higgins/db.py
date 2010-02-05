@@ -11,6 +11,11 @@ from epsilon.extime import Time
 from higgins.signals import Signal
 from higgins.logger import Loggable
 
+import warnings
+with warnings.catch_warnings():
+    warnings.simplefilter('ignore')
+    from epsilon.extime import Time
+
 class _DBLogger(Loggable):
     log_domain = 'db'
 logger = _DBLogger()

@@ -43,7 +43,6 @@ setup(
     # package contents
     packages=[
         'higgins',
-        'higgins.core',
         'higgins.gst',
         'higgins.http',
         'higgins.http.auth',
@@ -56,10 +55,9 @@ setup(
         'higgins.platform',
         'higgins.plugins',
         'higgins.plugins.daap',
-        'higgins.plugins.mediaserver',
+        #'higgins.plugins.mediaserver',
         #'higgins.plugins.mrss',
-        'higgins.scripts',
-        'higgins.upnp',
+        #'higgins.plugins.upnp',
         ],
     namespace_packages=['higgins', 'higgins.plugins'],
     ext_modules=[
@@ -73,13 +71,12 @@ setup(
     entry_points={
         # auto-generate scripts
         'console_scripts': [
-            'higgins-media-server=higgins.scripts.server:run_application',
-            'higgins=higgins.scripts.client:run_application',
+            'higgins-media-server=higgins.server:run_application',
             ],
         # declare packaged plugins
         'higgins.plugin': [
             'daap=higgins.plugins.daap:DaapService',
-            'mediaserver=higgins.plugins.mediaserver:MediaserverDevice',
+            #'mediaserver=higgins.plugins.mediaserver:MediaserverDevice',
             #'mrss=higgins.plugins.mrss:MRSSService',
             ],
         },

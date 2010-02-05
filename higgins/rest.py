@@ -18,7 +18,8 @@ class Error(object):
         "Internal Server Error",
         "Validation Error"
         ]
-    @getString(cls, errno):
+    @classmethod
+    def getString(cls, errno):
         try:
             return cls._errors[errno]
         except:

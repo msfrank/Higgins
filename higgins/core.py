@@ -22,13 +22,14 @@ from higgins.album import AlbumMethods
 from higgins.song import SongMethods
 from higgins.playlist import PlaylistMethods
 from higgins.gst.transcode import TranscodingStream, ProfileNotFound
+from higgins.logger import Loggable
 
 class CoreConfiguration(object):
     HTTP_INTERFACE = '0.0.0.0'
     HTTP_PORT = 2727
     SERVICES = ['daap']
 
-class CoreService(MultiService):
+class CoreService(MultiService, Loggable):
     log_domain = "core"
 
     def __init__(self):
@@ -44,7 +45,7 @@ class CoreService(MultiService):
     def startService(self):
         MultiService.startService(self)
         # create the listening socket
-        iface = CoreConfiguration.HTTP_ADDRESS
+        iface = CoreConfiguration.HTTP_INTERFACE
         if iface == '0.0.0.0':
             iface = ''
         port = CoreConfiguration.HTTP_PORT
@@ -61,7 +62,7 @@ class CoreService(MultiService):
                 self.log_info("enabled service '%s'" % name)
             except Exception, e:
                 self.log_warning("failed to enable service %s: %s" % (name, e))
-        logger.log_debug("started all enabled services")
+        self.log_debug("started all enabled services")
 
     def _doStopService(self, result):
         self._listener.stopListening()
@@ -77,26 +78,26 @@ class CoreService(MultiService):
             # look up the fileID
             fileID = int(fileID)
             file = db.get(File, File.storeID==fileID)
-            logger.log_debug("file=%s" % str(file))
+            self.log_debug("file=%s" % str(file))
             # if mimetype is part of the request, then set up a transcoding stream
             if 'mimetype' in request.args:
                 mimetype = request.args['mimetype'][0]
-                logger.log_debug("streaming %s as %s" % (file.path, mimetype))
+                self.log_debug("streaming %s as %s" % (file.path, mimetype))
                 stream = TranscodingStream(file, mimetype)
                 return Response(200, {'content-type': stream.mimetype}, stream)
             # otherwise set up a normal file stream
-            logger.log_debug("streaming %s" % file.path)
+            self.log_debug("streaming %s" % file.path)
             mimetype = MimeType.fromString(str(file.MIMEType))
             f = open(str(file.path), 'rb')
             stream = FileStream(f)
             stream.length = file.size
             return Response(200, {'content-type': mimetype}, stream)
         except ItemNotFound, e:
-            logger.log_debug("failed to stream fileID %s: no such item" % str(fileID))
+            self.log_debug("failed to stream fileID %s: no such item" % str(fileID))
             return Response(404)
         except ProfileNotFound, e:
-            logger.log_debug("failed to stream fileID %s: %s" % (str(fileID), str(e)))
+            self.log_debug("failed to stream fileID %s: %s" % (str(fileID), str(e)))
             return Response(400)
         except Exception, e:
-            logger.log_error("failed to stream fileID %s: %s" % (str(fileID), str(e)))
+            self.log_error("failed to stream fileID %s: %s" % (str(fileID), str(e)))
             return Response(500)
