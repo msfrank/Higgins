@@ -8,36 +8,42 @@ from time import ctime
 import traceback
 from twisted.python import log, logfile, util
 
-LOG_FATAL = 0
-LOG_ERROR = 1
-LOG_WARNING = 2
-LOG_INFO = 3
-LOG_DEBUG = 4
-LOG_DEBUG2 = 5
-
-LEVELS = ['FATAL','ERROR','WARNING','info','debug','debug2']
+class Severity:
+    FATAL = 0
+    ERROR = 1
+    WARNING = 2
+    INFO = 3
+    DEBUG = 4
+    DEBUG2 = 5
+    _names = ('FATAL','ERROR','WARNING','info','debug','debug2')
+    @classmethod
+    def getName(cls, severity):
+        try:
+            return cls._names[severity]
+        except:
+            return 'Unknown'
 
 class Loggable:
     log_domain = "default"
     def log_fatal(self, reason):
-        log.msg(reason, level=LOG_FATAL, domain=self.log_domain)
+        log.msg(reason, level=Severity.FATAL, domain=self.log_domain)
     def log_error(self, reason):
-        log.msg(reason, level=LOG_ERROR, domain=self.log_domain)
+        log.msg(reason, level=Severity.ERROR, domain=self.log_domain)
     def log_warning(self, reason):
-        log.msg(reason, level=LOG_WARNING, domain=self.log_domain)
+        log.msg(reason, level=Severity.WARNING, domain=self.log_domain)
     def log_info(self, reason):
-        log.msg(reason, level=LOG_INFO, domain=self.log_domain)
+        log.msg(reason, level=Severity.INFO, domain=self.log_domain)
     def log_debug(self, reason):
-        log.msg(reason, level=LOG_DEBUG, domain=self.log_domain)
+        log.msg(reason, level=Severity.DEBUG, domain=self.log_domain)
     def log_debug2(self, reason):
-        log.msg(reason, level=LOG_DEBUG2, domain=self.log_domain)
+        log.msg(reason, level=Severity.DEBUG2, domain=self.log_domain)
 
 class IgnoreMessage(Exception):
     pass
 
 class CommonObserver(log.DefaultObserver):
     def _formatMessage(self, params):
-        level = params.get('level', LOG_DEBUG2)
+        level = params.get('level', Severity.DEBUG2)
         time_t = params.get('time', None)
         domain = params.get('domain', 'twisted')
         if 'interface' in params:
@@ -51,21 +57,21 @@ class CommonObserver(log.DefaultObserver):
             time = ctime(time_t)
         else:
             time = ''
-        return "%s [%s] %s: %s" % (time, domain, LEVELS[level], ''.join(params['message']))
+        return "%s [%s] %s: %s" % (time, domain, Severity.getName(level), ''.join(params['message']))
 
 class LogfileObserver(CommonObserver):
-    def __init__(self, f, verbosity=LOG_WARNING):
+    def __init__(self, f, verbosity=Severity.WARNING):
         self.verbosity = verbosity
         self.write = f.write
         self.flush = f.flush
 
     def _emit(self, params):
         try:
-            level = params.get('level', LOG_DEBUG)
+            level = params.get('level', Severity.DEBUG)
             if level > self.verbosity:
                 return
             msg = self._formatMessage(params) + '\r\n'
-            if self.verbosity >= LOG_DEBUG:
+            if self.verbosity >= Severity.DEBUG:
                 msg += traceback.format_exc()
             util.untilConcludes(self.write, msg)
             util.untilConcludes(self.flush)
@@ -73,7 +79,7 @@ class LogfileObserver(CommonObserver):
             pass
 
 class StdoutObserver(CommonObserver):
-    def __init__(self, colorized=False, verbosity=LOG_WARNING):
+    def __init__(self, colorized=False, verbosity=Severity.WARNING):
         self.verbosity = verbosity
         if colorized:
             self.START_RED = '\033[1;31m'
@@ -86,15 +92,15 @@ class StdoutObserver(CommonObserver):
 
     def _emit(self, params):
         try:
-            level = params.get('level', LOG_DEBUG)
+            level = params.get('level', Severity.DEBUG)
             if level > self.verbosity:
                 return
             msg = self._formatMessage(params)
-            if level < LOG_WARNING:
+            if level < Severity.WARNING:
                 print self.START_RED + msg + self.END
-                if self.verbosity >= LOG_DEBUG:
+                if self.verbosity >= Severity.DEBUG:
                     print traceback.format_exc()
-            elif level == LOG_WARNING:
+            elif level == Severity.WARNING:
                 print self.START_YELLOW + msg + self.END
             else:
                 print msg

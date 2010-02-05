@@ -14,7 +14,6 @@ try:
     import Pyrex
     import twisted
     import axiom
-    import genshi
     import gobject
     import dbus
     import avahi
@@ -35,7 +34,7 @@ except Exception, e:
 setup(
     # package description
     name = "Higgins",
-    version = "0.5",
+    version = "0.1.0",
     description="Multi-protocol A/V Server",
     long_description="",
     url="http://www.syntaxjockey.com/higgins",
@@ -45,8 +44,6 @@ setup(
     packages=[
         'higgins',
         'higgins.core',
-        'higgins.core.rest',
-        'higgins.data',
         'higgins.gst',
         'higgins.http',
         'higgins.http.auth',
@@ -61,6 +58,7 @@ setup(
         'higgins.plugins.daap',
         'higgins.plugins.mediaserver',
         #'higgins.plugins.mrss',
+        'higgins.scripts',
         'higgins.upnp',
         ],
     namespace_packages=['higgins', 'higgins.plugins'],
@@ -72,23 +70,11 @@ setup(
         #         ['higgins/platform/inotify.pyx', 'higgins/platform/inotify-internal.c']
         #         )
         ],
-    # declare static data
-    package_data={
-        'higgins.data': [
-            'static/css/*.css',
-            'static/css/smoothness/*.css',
-            'static/css/smoothness/images/*.*',
-            'static/images/*.*',
-            'static/js/*.js',
-            'templates/*.t',
-            ],
-        #'higgins.plugins.mrss': ['templates/*.t',],
-        },
     entry_points={
         # auto-generate scripts
         'console_scripts': [
-            'higgins-media-server=higgins.server:run_application',
-            'higgins-upload=higgins.uploader:run_application',
+            'higgins-media-server=higgins.scripts.server:run_application',
+            'higgins=higgins.scripts.client:run_application',
             ],
         # declare packaged plugins
         'higgins.plugin': [

@@ -4,11 +4,20 @@
 # This program is free software; for license information see
 # the COPYING file.
 
-import sys, pwd, grp, os, signal
+import sys
+from higgins.gst.reactor import installReactor
+installReactor()
+
+import pwd, grp, os, signal
 from twisted.internet.defer import maybeDeferred
 from twisted.python import usage
 from twisted.python.logfile import LogFile
-from higgins import logger, VERSION
+from higgins.settings import settings
+from higgins.db import db
+from higgins.entrypoint import plugins
+from higgins.core import CoreService
+from higgins.logger import Loggable, Severity
+from higgins import VERSION
 
 class ServerException(Exception):
     def __init__(self, reason):
@@ -16,10 +25,10 @@ class ServerException(Exception):
     def __str__(self):
         return str(self.reason)
 
-class Server(object, logger.Loggable):
+class Server(object, Loggable):
     log_domain = "core"
 
-    def __init__(self, env, create=False, debug=False, verbosity=logger.LOG_WARNING):
+    def __init__(self, env, create=False, debug=False, verbosity=Severity.WARNING):
         """
         Initialize the application
         """
@@ -66,22 +75,11 @@ class Server(object, logger.Loggable):
                 self.log_error("Startup failed: another instance is already running with PID %i" % pid)
             raise ServerException("failed to start Higgins")
         # we load conf after parsing options
-        from higgins.settings import settings
         settings.load(os.path.join(env, 'settings.dat'))
-        self._settings = settings
-        # install the GST reactor (really the glib2 reactor)
-        from higgins.gst import installGstReactor
-        installGstReactor()
-        from twisted.internet import reactor
-        self._reactor = reactor
         # open the database
-        from higgins.db import db
         db.open(os.path.join(env, 'database'))
-        self._db = db
         # load the list of plugins
-        from higgins.loader import plugins
         plugins.load([os.path.join(env, 'plugins')])
-        self._plugins = plugins
 
     def _caughtSignal(self, signum, stack):
         self.log_debug("caught signal %i" % signum)
@@ -97,7 +95,6 @@ class Server(object, logger.Loggable):
             self.log_error("failed to create PID file '%s': %s" % (self._pidfile, e))
             raise ServerException("failed to create PID file")
         try:
-            from higgins.core.service import CoreService
             self._coreService = CoreService()
             # register plugins
             for name,plugin in self._plugins:
@@ -107,11 +104,11 @@ class Server(object, logger.Loggable):
             # pass control to reactor
             self.log_info("starting twisted reactor")
             self._oldsignal = signal.signal(signal.SIGINT, self._caughtSignal)
-            self._reactor.run()
+            reactor.run()
             signal.signal(signal.SIGINT, self._oldsignal)
             self.log_debug("returned from twisted reactor")
             # save configuration settings
-            self._settings.flush()
+            settings.flush()
         finally:
             try:
                 os.unlink(self._pidfile)
@@ -122,14 +119,14 @@ class Server(object, logger.Loggable):
     def _doStop(self, result):
         self.log_debug("stopped core service")
         self._coreService = None
-        self._reactor.stop()
+        reactor.stop()
         self.log_info("stopped twisted reactor")
 
     def stop(self):
         """
         Stop the twisted reactor
         """
-        if not self._reactor.running:
+        if not reactor.running:
             raise Exception("Server is not running")
         if not self._coreService.running:
             raise Exception("CoreService is not running")
@@ -146,16 +143,16 @@ class ServerOptions(usage.Options):
     def __init__(self):
         usage.Options.__init__(self)
         self['create'] = False
-        self['verbosity'] = logger.LOG_WARNING 
+        self['verbosity'] = Severity.WARNING 
         self['debug'] = False
 
     def opt_verbose(self):
-        if self['verbosity'] < logger.LOG_DEBUG2:
+        if self['verbosity'] < Severity.DEBUG2:
             self['verbosity'] = self['verbosity'] + 1
     opt_v = opt_verbose
 
     def opt_quiet(self):
-        if self['verbosity'] > logger.LOG_FATAL:
+        if self['verbosity'] > Severity.FATAL:
             self['verbosity'] = self['verbosity'] - 1
     opt_q = opt_quiet
 

@@ -5,21 +5,24 @@
 # the COPYING file.
 
 import os, simplejson
-from higgins.core.logger import logger
 from higgins.http.http_headers import MimeType
 from higgins.http.http import Response
 
 # API Error codes
-NO_ERROR = 0
-ERROR_INTERNAL_SERVER_ERROR = 1
-ERROR_INVALID_INPUT = 2
-
-# API Error reasons
-_APIErrors = [
-    "No Error",
-    "Internal Server Error",
-    "Validation Error"
-    ]
+class Error(object):
+    NONE = 0
+    INTERNAL_SERVER_ERROR = 1
+    INVALID_INPUT = 2
+    _errors = [
+        "No Error",
+        "Internal Server Error",
+        "Validation Error"
+        ]
+    @getString(cls, errno):
+        try:
+            return cls._errors[errno]
+        except:
+            return 'Unknown error'
 
 class RestResponse(Response):
     def __init__(self, data={}, type='json'):
@@ -36,7 +39,7 @@ class RestError(Response):
     def __init__(self, status, extra=None, type='json'):
         headers = {}
         if type == 'json':
-            data = { 'status': status, 'error': _APIErrors[status] }
+            data = { 'status': status, 'error': Error.getString(status) }
             if extra:
                 data['extra'] = extra
             headers['content-type'] = MimeType.fromString('application/json')
@@ -47,8 +50,8 @@ class RestError(Response):
 
 class RestInternalServerError(RestError):
     def __init__(self, extra=None, type='json'):
-        RestError.__init__(self, ERROR_INTERNAL_SERVER_ERROR, extra, type)
+        RestError.__init__(self, Error.INTERNAL_SERVER_ERROR, extra, type)
 
 class RestInvalidInputError(RestError):
     def __init__(self, extra=None, type='json'):
-        RestError.__init__(self, ERROR_INVALID_INPUT, extra, type)
+        RestError.__init__(self, Error.INVALID_INPUT, extra, type)

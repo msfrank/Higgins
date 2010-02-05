@@ -137,3 +137,5 @@ class Dispatcher(BaseDispatcher):
                 toplevels.append((name, root, False))
         vars['topnav'] = toplevels
         return templates.render(template, vars)
+
+__all__ = ['Route', 'RootDispatcher', 'Dispatcher']
