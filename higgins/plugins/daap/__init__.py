@@ -6,13 +6,11 @@
 
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred, DeferredList, maybeDeferred
-from higgins.service import Service
+from higgins.entrypoint import Service
 from higgins.settings import Configurator, StringSetting, IntegerSetting
 from higgins.plugins.daap.logger import logger
 
 class DaapConfig(Configurator):
-    pretty_name = "DAAP"
-    description = "Configure DAAP sharing"
     SHARE_NAME = StringSetting("Share Name", "Higgins DAAP Share",
         "The name of the share which is displayed to all clients"
         )
@@ -27,7 +25,6 @@ from higgins.plugins.daap.commands import DAAPFactory
 class DaapService(Service):
     pretty_name = "DAAP"
     description = "Exposes the Higgins media store as a DAAP (iTunes) share"
-    configs = DaapConfig()
 
     def __init__(self):
         try:

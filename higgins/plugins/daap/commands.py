@@ -39,8 +39,7 @@ class Command(Resource):
 
     def render(self, request):
         """calls the renderDAAP method and returns its result."""
-        logger.log_debug("%s %s" % (request.method, request.path))
-        logger.log_debug(str(request.args))
+        logger.log_debug("%s %s %s" % (request.method, request.path, request.args))
         try:
             return Response(200, { 'content-type': x_dmap_tagged }, self.renderDAAP(request).render())
         except Exception, e:
@@ -151,8 +150,7 @@ class UpdateStream(SimpleStream):
 
 class UpdateCommand(Command):
     def render(self, request):
-        logger.log_debug("%s %s" % (request.method, request.path))
-        logger.log_debug(str(request.args))
+        logger.log_debug("%s %s %s" % (request.method, request.path, request.args))
         try:
             # get session id
             sid = request.args.get('session-id', ['0'])
@@ -281,7 +279,7 @@ class ListItemsCommand(Command):
         return Response(400, { 'content-type': MimeType('text','plain') }, str(failure))
 
     def render(self, request):
-        logger.log_debug("%s %s" % (request.method, request.path))
+        logger.log_debug("%s %s %s" % (request.method, request.path, request.args))
         try:
             meta = ''.join(request.args['meta'])
             #log_debug("[daap] ListItemsCommand requesting metadata fields: %s" % meta)
@@ -393,8 +391,7 @@ class ListPlaylistItemsCommand(Command):
         logger.log_error("ListItemsCommand failed: %s" % failure)
         return Response(400, { 'content-type': MimeType('text','plain') }, str(failure))
     def render(self, request):
-        logger.log_debug("%s %s" % (request.method, request.path))
-        logger.log_debug(str(request.args))
+        logger.log_debug("%s %s %s" % (request.method, request.path, request.args))
         apso = CodeBag("apso")
         apso.add(ContentCode("mstt", 200))      # status code
         apso.add(ContentCode("muty", 1))        # always 1?

@@ -58,8 +58,10 @@ class PluginStore(object, Loggable):
         return eps
 
     def getEntryPoint(self, group, name, type):
-        eps = working_set.iter_entry_points(group, name)
-        ep = eps[0]
+        ep = None
+        for _ep in working_set.iter_entry_points(group, name):
+            if ep == None:
+                ep = _ep
         try:
             cls = ep.load()
         except Exception, e:
