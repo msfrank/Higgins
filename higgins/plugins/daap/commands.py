@@ -13,7 +13,6 @@ from higgins.http.resource import Resource
 from higgins.http.stream import SimpleStream, FileStream
 from higgins.http.http_headers import MimeType
 from higgins.db import db, File, Song, Playlist
-from higgins.plugins.daap import DaapConfig, DaapPrivate
 from higgins.plugins.daap.codebag import CodeBag, ContentCode
 from higgins.plugins.daap.content_codes import content_codes, content_code_str_to_int
 from higgins.plugins.daap.logger import logger
@@ -52,7 +51,7 @@ class ServerInfoCommand(Command):
         msrv.add(ContentCode("mstt", 200))
         msrv.add(ContentCode("mpro", (2,0,0)))  # version 0.2.0.0
         msrv.add(ContentCode("apro", (3,0,0)))  # version 0.3.0.0
-        msrv.add(ContentCode("minm", str(DaapConfig.SHARE_NAME)))
+        msrv.add(ContentCode("minm", str(self.service.SHARE_NAME)))
         msrv.add(ContentCode("msau", 0))        # authentication method
         msrv.add(ContentCode("mslr", 0))        # login required?
         msrv.add(ContentCode("mstm", 300))      # timeout interval
@@ -104,8 +103,8 @@ class UpdateStream(SimpleStream):
         self.deferred = defer.Deferred()
         self.deferred.addCallback(self._render)
         reactor.callLater(2, self._checkForUpdate)
-        self._service = service
-        self._service.streams[self] = self
+        self.service = service
+        self.service.streams[self] = self
     def _setDBChanged(self, unused):
         self._DBChanged = True
         self._signal = None
@@ -115,8 +114,8 @@ class UpdateStream(SimpleStream):
         if not self._DBChanged:
             reactor.callLater(2, self._checkForUpdate)
             return
-        new_revision = DaapPrivate.REVISION_NUMBER + 1
-        DaapPrivate.REVISION_NUMBER = new_revision
+        new_revision = self.service.REVISION_NUMBER + 1
+        self.service.REVISION_NUMBER = new_revision
         self.deferred.callback(new_revision)
     def _render(self, revision):
         if revision > 0:
@@ -131,7 +130,7 @@ class UpdateStream(SimpleStream):
         self.deferred = None
         self.length = 0
         # remove stream from service.streams
-        del self._service.streams[self]
+        del self.service.streams[self]
         # write response
         mupd = CodeBag("mupd")
         mupd.add(ContentCode("mstt", 200))
@@ -156,19 +155,19 @@ class UpdateCommand(Command):
             sid = request.args.get('session-id', ['0'])
             sid = int(sid[0])
             if sid == 0 or not sid in self.service.sessions:
-                raise Exception("session-id %i is invalid" % sid)
+                logger.log_warning("session-id %i is invalid" % sid)
             # get revision number
             rid = request.args.get('revision-number', ['0'])
             rid = int(rid[0])
             logger.log_debug("UpdateCommand: revision-number is %i" % rid)
             # if revision-number is not current revision number
-            if not rid == DaapPrivate.REVISION_NUMBER:
+            if not rid == self.service.REVISION_NUMBER:
                 if rid < 0:
                     raise Exception("invalid revision-number %s" % rid)
                 # return the current revision number
                 mupd = CodeBag("mupd")
                 mupd.add(ContentCode("mstt", 200))
-                mupd.add(ContentCode("musr", int(DaapPrivate.REVISION_NUMBER)))
+                mupd.add(ContentCode("musr", int(self.service.REVISION_NUMBER)))
                 return Response(200, { 'content-type': x_dmap_tagged }, mupd.render())
             # create a new update stream to listen for db-changed signal
             stream = UpdateStream(self.service)
@@ -186,9 +185,9 @@ class DatabaseCommand(Command):
         if len(segments) == 1:
             return None, []
         if segments[1] == "items":
-            return ListItemsCommand(dbid), segments[1:]
+            return ListItemsCommand(self.service, dbid), segments[1:]
         if segments[1] == "containers":
-            return ListPlaylistsCommand(dbid), segments[1:]
+            return ListPlaylistsCommand(self.service, dbid), segments[1:]
         return None, []
     def renderDAAP(self, request):
         avdb = CodeBag("avdb")
@@ -200,7 +199,7 @@ class DatabaseCommand(Command):
         record = CodeBag("mlit")
         record.add(ContentCode("miid", 1))                              # database ID
         record.add(ContentCode("mper", 1))                              # database persistent ID
-        record.add(ContentCode("minm", str(DaapConfig.SHARE_NAME)))     # db name
+        record.add(ContentCode("minm", str(self.service.SHARE_NAME)))   # db name
         record.add(ContentCode("mimc", db.count(Song)))                 # number of db items
         record.add(ContentCode("mctc", 1))                              # container count
         listing.add(record)
@@ -208,7 +207,8 @@ class DatabaseCommand(Command):
         return avdb
 
 class ListItemsCommand(Command):
-    def __init__(self, dbid):
+    def __init__(self, service, dbid):
+        Command.__init__(self, service)
         self.dbid = dbid
     def locateChild(self, request, segments):
         if len(segments) == 1:
@@ -218,7 +218,7 @@ class ListItemsCommand(Command):
             songid = int(s[0])
         except:
             return None, []
-        return StreamSongCommand(songid), []
+        return StreamSongCommand(self.service, songid), []
     def _retrieveSongs(self, d, adbs, listing, songs):
         try:
             logger.log_debug("ListItemsCommand: retrieving 20 song items")
@@ -307,7 +307,8 @@ class ListItemsCommand(Command):
         return d
 
 class StreamSongCommand(Command):
-    def __init__(self, songid):
+    def __init__(self, service, songid):
+        Command.__init__(self, service)
         self.songid = songid
     def render(self, request):
         song = db.get(Song, Song.storeID==int(self.songid))
@@ -324,7 +325,8 @@ class StreamSongCommand(Command):
         return Response(200, {'content-type': x_dmap_tagged}, FileStream(f))
 
 class ListPlaylistsCommand(Command):
-    def __init__(self, dbid):
+    def __init__(self, service, dbid):
+        Command.__init__(self, service)
         self.dbid = dbid
     def locateChild(self, request, segments):
         if len(segments) == 1:
@@ -335,7 +337,7 @@ class ListPlaylistsCommand(Command):
             plsid = int(segments[1])
         except:
             return None, []
-        return ListPlaylistItemsCommand(plsid), []
+        return ListPlaylistItemsCommand(self.service, plsid), []
     def renderDAAP(self, request):
         aply = CodeBag("aply")
         aply.add(ContentCode("mstt", 200))      # status code
@@ -349,7 +351,7 @@ class ListPlaylistsCommand(Command):
         item = CodeBag("mlit")
         item.add(ContentCode("miid", 1))    
         item.add(ContentCode("mper", 1))
-        item.add(ContentCode("minm", str(DaapConfig.SHARE_NAME)))
+        item.add(ContentCode("minm", str(self.service.SHARE_NAME)))
         item.add(ContentCode("mimc", int(songs.count())))
         item.add(ContentCode("abpl", 1))
         listing.add(item)
@@ -364,7 +366,8 @@ class ListPlaylistsCommand(Command):
         return aply
 
 class ListPlaylistItemsCommand(Command):
-    def __init__(self, plsid):
+    def __init__(self, service, plsid):
+        Command.__init__(self, service)
         self.plsid = int(plsid) - 1
     def _retrieveSongs(self, d, apso, listing, songs):
         try:

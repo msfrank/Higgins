@@ -76,7 +76,7 @@ class Server(object, Loggable):
                 self.log_error("Startup failed: another instance is already running with PID %i" % pid)
             raise ServerException("failed to start Higgins")
         # we load conf after parsing options
-        settings.load(os.path.join(env, 'settings.dat'))
+        settings.load(os.path.join(env, 'settings'))
         # open the database
         db.open(os.path.join(env, 'database'))
         # load the list of plugins

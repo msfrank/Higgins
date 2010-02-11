@@ -7,26 +7,17 @@
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred, DeferredList, maybeDeferred
 from higgins.entrypoint import Service
-from higgins.settings import Configurator, StringSetting, IntegerSetting
+from higgins.settings import StringSetting, IntegerSetting
 from higgins.plugins.daap.logger import logger
-
-class DaapConfig(Configurator):
-    SHARE_NAME = StringSetting("Share Name", "Higgins DAAP Share",
-        "The name of the share which is displayed to all clients"
-        )
-
-class DaapPrivate(Configurator):
-    REVISION_NUMBER = IntegerSetting("Revision Number", 1,
-        "Each time an the media library changes, the revision number is incremented by one"
-        )
-
 from higgins.plugins.daap.commands import DAAPFactory
 
 class DaapService(Service):
     pretty_name = "DAAP"
     description = "Exposes the Higgins media store as a DAAP (iTunes) share"
+    SHARE_NAME = StringSetting("share name", "Higgins DAAP Share")
+    REVISION_NUMBER = IntegerSetting("revision", 1)
 
-    def __init__(self):
+    def initService(self, core):
         try:
             import dbus, avahi
         except ImportError, e:
@@ -34,7 +25,6 @@ class DaapService(Service):
         self.dbus = None
         self.sessions = {}
         self.streams = {}
-        Service.__init__(self)
 
     def startService(self):
         import dbus, avahi
@@ -52,14 +42,14 @@ class DaapService(Service):
         self.avahi_group.AddService(avahi.IF_UNSPEC,
                                     avahi.PROTO_UNSPEC,
                                     dbus.UInt32(0),
-                                    DaapConfig.SHARE_NAME,
+                                    self.SHARE_NAME,
                                     "_daap._tcp", 
                                     "",
                                     "",
                                     dbus.UInt16(3689),
                                     avahi.string_array_to_txt_array([
                                         "txtvers=1",
-                                        "Machine Name=%s" % DaapConfig.SHARE_NAME,
+                                        "Machine Name=%s" % self.SHARE_NAME,
                                         "Password=false",
                                         "Media Kinds Shared=1"
                                         ])

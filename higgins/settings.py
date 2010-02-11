@@ -5,7 +5,7 @@
 # the COPYING file.
 
 import os
-import pickle
+from ConfigParser import ConfigParser
 from higgins.platform import netif
 from higgins.logger import Loggable
 
@@ -13,17 +13,18 @@ class SettingsLogger(Loggable):
     log_domain = 'settings'
 logger = SettingsLogger()
 
-class KeyStore(object):
-    log_domain = "conf"
+class ConfigurationError(Exception):
+    pass
 
+class KeyStore(object):
     def __init__(self):
-        self._settings = {}
-        self._isLoaded = False
         self.settingsPath = None
+        self._settings = None
+        self._isLoaded = False
 
     def load(self, path):
         if self._isLoaded:
-            raise Exception("settings have already been loaded")
+            raise ConfigurationError("settings have already been loaded")
         self._isLoaded = True
         self.settingsPath = path
         # check for the existence of a local settings file
@@ -31,7 +32,8 @@ class KeyStore(object):
             # load the local settings
             try:
                 f = open(self.settingsPath, 'r')
-                self._settings = pickle.load(f)
+                self._settings = ConfigParser()
+                self._settings.readfp(f, self.settingsPath)
                 f.close()
             except EOFError, e:
                 # ignore empty file error
@@ -39,94 +41,49 @@ class KeyStore(object):
             except Exception, e:
                 logger.log_error("failed to load settings from %s: %s" % (self.settingsPath,e))
                 raise e
-        # flush the initial settings
-        #self._doFlush()
         logger.log_debug("loaded settings from %s" % self.settingsPath)
 
-    def __getitem__(self, name):
-        if not self._isLoaded:
-            raise Exception("settings have not been loaded")
-        try:
-            return self._settings[name]
-        except:
-            raise Exception('Setting %s not found' % name)
+    def contains(self, section, option):
+        return self._settings.has_option(section, option)
 
-    def __setitem__(self, name, value):
+    def get(self, section, option):
         if not self._isLoaded:
             raise Exception("settings have not been loaded")
-        self._settings[name] = value
+        return self._settings.get(section, option)
 
-    def __iter__(self):
+    def set(self, section, name, value):
         if not self._isLoaded:
             raise Exception("settings have not been loaded")
-        class _SettingsIter:
-            def __init__(self, settings):
-                self.keys = settings.keys()
-            def __iter__(self):
-                return self
-            def next(self):
-                if self.keys == []:
-                    raise StopIteration()
-                return self.keys.pop(0)
-        return _SettingsIter(self._settings)
-
-    def __contains__(self, name):
-        if not self._isLoaded:
-            raise Exception("settings have not been loaded")
-        if name in self._settings:
-            return True
-        return False
-
-    def _doFlush(self):
-        if not self._isLoaded:
-            raise Exception("settings have not been loaded")
-        f = open(self.settingsPath, 'w')
-        pickle.dump(self._settings, f, 0)
-        f.close()
-
-    def get(self, name, default=None):
-        """
-        Returns the value of the named setting.  If there is no such setting,
-        then the default value is returned.
-        """
-        if not self._isLoaded:
-            raise Exception("settings have not been loaded")
-        try:
-            return self._settings[name]
-        except:
-            pass
-        return default
-
-    def set(self, **settings):
-        """Saves one or more settings."""
-        if not self._isLoaded:
-            raise Exception("settings have not been loaded")
-        for key,value in settings.items():
-            self._settings[key] = value
+        self._settings.set(section, option, value)
 
     def flush(self):
-        """Flushes settings to disk."""
+        """
+        Flushes settings to disk.
+        """
         if not self._isLoaded:
             raise Exception("settings have not been loaded")
-        self._doFlush()
         logger.log_debug("flushed settings changes")
 
+settings = KeyStore()
+
 class Setting(object):
-    """Base Setting object which contains common attributes for all settings."""
-
-    def __init__(self, label, default, tooltip):
-        self.label = label
+    """
+    Base Setting object which contains common attributes for all settings.
+    """
+    def __init__(self, name, default):
+        self.name = name
         self.default = default
-        self.tooltip = tooltip
-
-    def validate(self, value):
-        raise Exception('no validator function for this setting')
+    def parse(self, value):
+        raise Exception('no parse() function for setting %s' % self.name)
+    def write(self, value):
+        raise Exception('no write() function for setting %s' % self.name)
 
 class IntegerSetting(Setting):
-    """An integer setting."""
-
-    def __init__(self, label, default, tooltip, **kwds):
-        Setting.__init__(self, label, default, tooltip)
+    """
+    An integer setting.
+    """
+    def __init__(self, name, default=None, **kwds):
+        Setting.__init__(self, name, default)
         self.min = None
         self.max = None
         if 'min' in kwds:
@@ -145,20 +102,36 @@ class IntegerSetting(Setting):
             raise Exception('value is greater than maximum')
         return value
 
-class StringSetting(Setting):
-    """A string setting."""
+    def parse(self, value):
+        return self.validate(int(value))
 
-    def __init__(self, label, default, tooltip, **kwds):
-        Setting.__init__(self, label, default, tooltip)
+    def write(self, value):
+        return str(self.validate(value))
+
+class StringSetting(Setting):
+    """
+    A string setting.
+    """
+    def __init__(self, name, default=None, **kwds):
+        Setting.__init__(self, name, default)
 
     def validate(self, value):
         if not isinstance(value, str):
             raise Exception('value is not a string')
         return value
 
+    def parse(self, value):
+        return self.validate(str(value))
+
+    def write(self, value):
+        return str(self.validate(value))
+
 class NetworkInterfaceSetting(Setting):
-    def __init__(self, label, default, tooltip, allowLocalhost=False, **kwds):
-        Setting.__init__(self, label, default, tooltip)
+    """
+    A network interface setting.
+    """
+    def __init__(self, name, default=None, allowLocalhost=False, **kwds):
+        Setting.__init__(self, name, default)
         self.addresses = {'All Interfaces': '0.0.0.0' }
         for name,iface in netif.list_interfaces().items():
             logger.log_debug("netif: name=%s, iface=%s" % (name,iface))
@@ -171,72 +144,53 @@ class NetworkInterfaceSetting(Setting):
             raise Exception('%s is not a valid interface' % value)
         return value
 
-class ConfiguratorException(Exception):
-    def __init__(self, reason):
-        self.reason = reason
-    def __str__(self):
-        return str(self.reason)
+    def parse(self, value):
+        return self.validate(str(value))
 
-class ConfiguratorDeclarativeParser(type):
-    """
-    The metaclass does the magic of parsing the Configurator subclass
-    and building a configuration form from the supplied settings.
-    """
+    def write(self, value):
+        return str(self.validate(value))
 
+class ConfigurableDeclarativeParser(type):
     def __new__(cls, name, bases, attrs):
-        """Returns the generated Configurator subclass."""
-        attrs['_config_name'] = name
-        config_fields = {}
-        for key, object in attrs.items():
-            if isinstance(object, Setting):
-                config_fields[key] = object
+        options = {}
+        for key,obj in attrs.items():
+            if isinstance(obj, Setting):
+                options[key] = obj
                 del attrs[key]
-                # For each field, set the default value if it hasn't already been set.
-                full_key = 'CFG__' + name + '__' + key
-                if not full_key in settings:
-                    try:
-                        settings[full_key] = object.default
-                        logger.log_debug("set initial value for %s.%s to '%s'" % (name, key, object.default))
-                    except Exception, e:
-                        logger.log_warning("failed to set initial value: %s" % e)
-        attrs['_config_fields'] = config_fields
-        return super(ConfiguratorDeclarativeParser,cls).__new__(cls, name, bases, attrs)
+        attrs['__options__'] = options
+        return type.__new__(cls, name, bases, attrs)
 
-    def __getattr__(cls, name):
-        """
-        if 'name' is a setting, then return the setting value from the
-        configuration store.  otherwise, return an AttributeError exception.
-        Note that this method will only be called if 'name' *doesn't* exist
-        as a class attribute.
-        """
-        if name in cls._config_fields:
-            value = settings['CFG__' + cls._config_name + '__' + name]
-            #logger.log_debug("%s: %s == %s" % (cls._config_name, name, value))
-            return value
-        raise AttributeError("Configurator is missing config field %s" % name)
+class Configurable(object):
+    __metaclass__ = ConfigurableDeclarativeParser
 
-    def __setattr__(cls, name, value):
-        """
-        if 'name' is a setting, then set its value in the configuration
-        store.  Otherwise try to set the class attribute to 'value'.
-        """
+    def __init__(self, name):
+        self.__section__ = name
+        for key,obj in getattr(self, '__options__').items():
+            if settings.contains(name, key):
+                try:
+                    opt.parse(settings.get(name, key))
+                except Exception, e:
+                    raise ConfigurationError("failed to parse %s/%s: %s" % (name, key, str(e)))
+            elif obj.default == None:
+                raise ConfigurationError("missing required setting %s/%s" % (name, key))
+
+    def __getattr__(self, name):
         try:
-            field = cls._config_fields[name]
-            settings['CFG__' + cls._config_name + '__' + name] = field.validate(value)
-            logger.log_debug("%s: %s => %s" % (cls._config_name, name, value))
-        except:
-            type.__setattr__(cls, name, value)
+            section = getattr(self, '__section__')
+            options = getattr(self, '__options__')
+            opt = options[name]
+            if settings.contains(section, opt.name):
+                return opt.parse(settings.get(section, opt.name))
+            return opt.default
+        except Exception, e:
+            raise AttributeError("failed to get %s" % name)
 
-class Configurator(object):
-    """
-    Holds one or more configuration settings, and provides a method for
-    getting and setting these settings.
-    """
-    __metaclass__ = ConfiguratorDeclarativeParser
-    pretty_name = None
-    description = None
-
-
-settings = KeyStore()
-
-__all__ = ['settings', 'Configurator', 'IntegerSetting', 'StringSetting']
+    def __setattr__(self, name, value):
+        if not name in self.__options__:
+            object.__setattr__(self, name, value)
+        else:
+            try:
+                opt = self.__options__[name]
+                settings.set(self.__section__, opt.name, opt.write(value))
+            except Exception, e:
+                logger.log_warning("failed to set %s/%s: %s" % (self.__section__, opt.name, str(e)))
