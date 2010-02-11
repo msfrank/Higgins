@@ -24,7 +24,7 @@ class SongMethods(Dispatcher, Loggable):
         self.addRoute('update$', self.updateSong, allowedMethods=('POST'))
         self.addRoute('delete$', self.deleteSong, allowedMethods=('POST'))
 
-    def acceptSongItem(request, mimetype, subheaders):
+    def acceptSongItem(self, request, mimetype, subheaders):
         """
         Determine whether to accept an uploaded song.  Returning None means to
         reject the upload and stop reading the POST input, otherwise returning
@@ -32,7 +32,7 @@ class SongMethods(Dispatcher, Loggable):
         """
         return None
 
-    def listSongs(request):
+    def listSongs(self, request):
         """
         List songs in the database.  if offset is specified, then list songs
         starting at the offset.  if limit is specified, return at most limit songs.
@@ -65,7 +65,7 @@ class SongMethods(Dispatcher, Loggable):
             self.log_debug(error)
             return RestInternalServerError(error)
     
-    def addSong(request):
+    def addSong(self, request):
         """
         Add a song to the database.  Requires that title, file, mimetype, and length
         be specified.  optionally, artist, genre, album, track-number, and volume-number
@@ -77,21 +77,21 @@ class SongMethods(Dispatcher, Loggable):
             ####################################################################
             title = request.post.get('title', None)
             if title == None:
-                return RestErrorResponse(ERROR_INVALID_INPUT, "Missing required form item 'title'")
+                return RestInvalidInputError("Missing required form item 'title'")
             if 'file' in request.post:
                 path = request.post.get('file')
             elif 'file' in request.files:
                 path = request.files[0]
             else:
-                return RestErrorResponse(ERROR_INVALID_INPUT, "Missing required form item 'file'")
+                return RestInvalidInputError("Missing required form item 'file'")
             self.log_debug("referencing %s" % request.post['file'])
             if not os.access(path, os.R_OK):
-                return RestErrorResponse(ERROR_INVALID_INPUT, "higgins doesn't have permission to read file")
+                return RestInvalidInputError("higgins doesn't have permission to read file")
             if not 'mimetype' in request.post:
-                return RestErrorResponse(ERROR_INVALID_INPUT, "Missing required form item 'mimetype'")
+                return RestInvalidInputError("Missing required form item 'mimetype'")
             size = int(os.stat(path).st_size)
             if not 'length' in request.post:
-                return RestErrorResponse(ERROR_INVALID_INPUT, "Missing required form item 'length'")
+                return RestInvalidInputError("Missing required form item 'length'")
             duration = int(request.post.get('length'))
             # create the file object
             file = db.create(File, path=path, size=size, MIMEType=request.post.get('mimetype'))
@@ -128,10 +128,10 @@ class SongMethods(Dispatcher, Loggable):
             self.log_debug("failed to add song: %s" % e)
             return RestInternalServerError()
     
-    def getSong(request):
+    def getSong(self, request):
         return RestInternalServerError("not yet implemented")
         
-    def updateSong(request):
+    def updateSong(self, request):
         """
         change metadata about a song.  Requires songID be specified.  Any other
         keyvalue will be interpreted as song metadata which should be updated.
@@ -139,7 +139,7 @@ class SongMethods(Dispatcher, Loggable):
         """
         return RestInternalServerError("not yet implemented")
     
-    def deleteSong(request):
+    def deleteSong(self, request):
         """
         delete a song.  Requires songID be specified.
         """

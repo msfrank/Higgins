@@ -29,7 +29,7 @@ class RestResponse(Response):
     def __init__(self, data={}, type='json'):
         headers = {}
         if type == 'json':
-            data['status'] = NO_ERROR
+            data['status'] = Error.NONE
             headers['content-type'] = MimeType.fromString('application/json')
             stream = simplejson.dumps(data)
         else:

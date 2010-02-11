@@ -19,7 +19,7 @@ class AlbumMethods(Dispatcher, Loggable):
         self.addRoute('update$', self.updateAlbum, allowedMethods=('POST'))
         self.addRoute('delete$', self.deleteAlbum, allowedMethods=('POST'))
 
-    def updateAlbum(request):
+    def updateAlbum(self, request):
         """
         change metadata about an album.  Requires albumID be specified.  Any other
         keyvalue will be interpreted as album metadata which should be updated.
@@ -58,11 +58,11 @@ class AlbumMethods(Dispatcher, Loggable):
             self.log_debug("failed to update Album: %s" % e)
             return RestInternalServerError()
     
-    def listAlbums(request):
+    def listAlbums(self, request):
         return RestInternalServerError("not yet implemented")
     
-    def getAlbum(request):
+    def getAlbum(self, request):
         return RestInternalServerError("not yet implemented")
     
-    def deleteAlbum(request):
+    def deleteAlbum(self, request):
         return RestInternalServerError("not yet implemented")

@@ -72,6 +72,7 @@ setup(
         # auto-generate scripts
         'console_scripts': [
             'higgins-media-server=higgins.server:run_application',
+            'higgins-uploader=higgins.uploader:run_application',
             ],
         # declare packaged plugins
         'higgins.plugin': [

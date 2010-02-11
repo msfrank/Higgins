@@ -28,7 +28,7 @@ class PlaylistMethods(Dispatcher, Loggable):
         self.addRoute('reorderItems$', self.reorderPlaylistItems, allowedMethods=('POST'))
         self.addRoute('deleteItems$', self.deletePlaylistItems, allowedMethods=('POST'))
 
-    def listPlaylists(request):
+    def listPlaylists(self, request):
         """
         List songs in the database.  if offset is specified, then list songs
         starting at the offset.  if limit is specified, return at most limit songs.
@@ -50,7 +50,7 @@ class PlaylistMethods(Dispatcher, Loggable):
             self.log_debug("failed to list playlists: %s" % e)
             return RestInternalServerError()
     
-    def addPlaylist(request):
+    def addPlaylist(self, request):
         """
         Add a playlist to the database.  Requires that title be specified.
         """
@@ -70,7 +70,7 @@ class PlaylistMethods(Dispatcher, Loggable):
             self.log_debug("failed to add playlist: %s" % e)
             return RestInternalServerError()
     
-    def getPlaylist(request):
+    def getPlaylist(self, request):
         """
         Gets metadata associated with a playlist.  Requires that playlistID be
         specified.
@@ -90,7 +90,7 @@ class PlaylistMethods(Dispatcher, Loggable):
             self.log_debug("failed to get playlist: %s" % e)
             return RestInternalServerError()
     
-    def updatePlaylist(request):
+    def updatePlaylist(self, request):
         """
         change metadata about a playlist.  Requires playlistID be specified.  Any
         other keyvalue will be interpreted as playlist metadata which should be updated.
@@ -111,9 +111,9 @@ class PlaylistMethods(Dispatcher, Loggable):
             return RestResponse(response)
         except Exception, e:
             self.log_debug("failed to add playlist: %s" % e)
-            return RestErrorResponse(ERROR_INTERNAL_SERVER_ERROR)
+            return RestInternalServerError()
     
-    def deletePlaylist(request):
+    def deletePlaylist(self, request):
         """
         delete a playlist.  Requires playlistID be specified.
         """
@@ -131,7 +131,7 @@ class PlaylistMethods(Dispatcher, Loggable):
             self.log_debug("failed to add playlist: %s" % e)
             return RestInternalServerError()
     
-    def addPlaylistItems(request):
+    def addPlaylistItems(self, request):
         try:
             # check for required params
             playlistID = request.post.get('playlistID', [None])[0]
@@ -152,13 +152,13 @@ class PlaylistMethods(Dispatcher, Loggable):
             self.log_debug("failed to add playlist: %s" % e)
             return RestInternalServerError()
     
-    def reorderPlaylistItems(request):
+    def reorderPlaylistItems(self, request):
         """
         change the item ordering in a playlist.
         """
         return RestInternalServerError("not yet implemented")
     
-    def deletePlaylistItems(request):
+    def deletePlaylistItems(self, request):
         """
         remove items from a playlist.
         """

@@ -19,7 +19,7 @@ class ArtistMethods(Dispatcher, Loggable):
         self.addRoute('update$', self.updateArtist, allowedMethods=('POST'))
         self.addRoute('delete$', self.deleteArtist, allowedMethods=('POST'))
 
-    def updateArtist(request):
+    def updateArtist(self, request):
         """
         change metadata about an artist.  Requires artistID be specified.  Any other
         keyvalue will be interpreted as artist metadata which should be updated.
@@ -43,11 +43,11 @@ class ArtistMethods(Dispatcher, Loggable):
             self.log_debug("failed to update Artist: %s" % e)
             return RestInternalServerError()
     
-    def listArtists(request):
+    def listArtists(self, request):
         return RestInternalServerError("not yet implemented")
     
-    def getArtist(request):
+    def getArtist(self, request):
         return RestInternalServerError("not yet implemented")
     
-    def deleteArtist(request):
+    def deleteArtist(self, request):
         return RestInternalServerError("not yet implemented")
