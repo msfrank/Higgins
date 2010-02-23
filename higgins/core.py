@@ -30,13 +30,13 @@ class CoreService(MultiService, Configurable, Loggable):
     def __init__(self):
         MultiService.__init__(self)
         Configurable.__init__(self, 'core')
-        root = RootDispatcher()
-        root.addRoute('/api/1.0/artist/', ArtistMethods())
-        root.addRoute('/api/1.0/album/', AlbumMethods())
-        root.addRoute('/api/1.0/song/', SongMethods())
-        root.addRoute('/api/1.0/playlist/', PlaylistMethods())
-        root.addRoute('/api/1.0/content/', ContentMethods())
-        self._site = Site(root)
+        self.root = RootDispatcher()
+        self.root.addRoute('/api/1.0/artist/', ArtistMethods())
+        self.root.addRoute('/api/1.0/album/', AlbumMethods())
+        self.root.addRoute('/api/1.0/song/', SongMethods())
+        self.root.addRoute('/api/1.0/playlist/', PlaylistMethods())
+        self.root.addRoute('/api/1.0/content/', ContentMethods())
+        self._site = Site(self.root)
 
     def startService(self):
         MultiService.startService(self)
@@ -48,8 +48,7 @@ class CoreService(MultiService, Configurable, Loggable):
         # load enabled services
         for name in [s.strip() for s in self.SERVICES.split(',')]:
             try:
-                _Service = plugins.findEntryPoint('higgins.plugin', name, Service)
-                service = _Service(name)
+                service = plugins.loadEntryPoint('higgins.plugin', name, Service)
                 service.initService(self)
                 service.setServiceParent(self)
                 self.log_info("enabled service '%s'" % name)

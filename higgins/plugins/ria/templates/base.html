@@ -1,0 +1,38 @@
+<html>
+
+    <head>
+        <link href="/ria/static/css/base.css" rel="stylesheet" type="text/css" media="screen" />
+        ${next.head()}
+    </head>
+
+    <body>
+        <div id="higgins-enclosure">
+            <div id="higgins-title">Higgins</div>
+        
+            ${self.navigation()}
+
+            <div id="higgins-content">
+
+            ${next.body()}
+
+            </div>
+        </div>
+    </body>
+
+</html>
+
+<%def name="navigation()">
+    <ul id="higgins-topnav">
+    %for url,name,selected in ria.getSections():
+        %if selected:
+            <li class="higgins-topnav-selected">
+                <a class="higgins-topnav-link-selected" href="${url}">${name}</a>
+            </li>
+        %else:
+            <li class="higgins-topnav-normal">
+                <a class="higgins-topnav-link-normal" href="${url}">${name}</a>
+            </li>
+        %endif
+    %endfor
+    </ul>
+</%def>

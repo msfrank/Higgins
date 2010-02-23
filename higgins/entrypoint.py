@@ -10,9 +10,13 @@ from twisted.application.service import Service as _Service
 from higgins.settings import Configurable
 from higgins.logger import Loggable
 
-class Service(_Service, Configurable):
+class EntryPoint(Configurable):
     def __init__(self, name):
         Configurable.__init__(self, name)
+
+class Service(EntryPoint, _Service):
+    def __init__(self, name):
+        EntryPoint.__init__(self, name)
     def initService(self, core):
         pass
     def cleanupService(self):
@@ -47,17 +51,17 @@ class PluginStore(object, Loggable):
         """
         List all discovered entry points in the named group of the specified type
         """
-        eps = []
+        classes = []
         for ep in working_set.iter_entry_points(group):
             try:
-                cls = ep.load()
-                if not issubclass(cls, type):
+                Class = ep.load()
+                if not issubclass(Class, type):
                     self.log_warning("ignoring plugin '%s': entry point has the wrong type" % ep.name)
                 else:
-                    eps.append((ep.name, cls))
+                    classes.append((ep.name, Class))
             except Exception, e:
                 self.log_error("failed to load plugin '%s': %s" % (ep.name, e))
-        return eps
+        return classes
 
     def findEntryPoint(self, group, name, type):
         ep = None
@@ -65,18 +69,18 @@ class PluginStore(object, Loggable):
             if ep == None:
                 ep = _ep
         try:
-            cls = ep.load()
+            Class = ep.load()
         except Exception, e:
             self.log_error("failed to load plugin '%s': %s" % (ep.name, e))
             return None
-        if not issubclass(cls, type):
+        if not issubclass(Class, type):
             self.log_warning("ignoring plugin '%s': entry point has the wrong type" % ep.name)
             return None
-        return cls
+        return Class
 
     def loadEntryPoint(self, group, name, type):
-        cls = self.findEntryPoint(group, name, type)
-        return cls()
+        Class = self.findEntryPoint(group, name, type)
+        return Class(name)
 
 plugins = PluginStore()
 

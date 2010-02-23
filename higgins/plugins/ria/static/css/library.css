@@ -1,0 +1,10 @@
+#browse-subnav {
+    padding: 0;
+    width: 100%;
+    margin: 0;
+    border-bottom: 1px solid black;
+}
+#browse-subnav li { display: inline; }
+#browse-subnav li a { padding: 3px 18px; font-size: 10pt; }
+#latest-title { font-weight: bold; }
+#latest { width: 60%; padding: 10px; }

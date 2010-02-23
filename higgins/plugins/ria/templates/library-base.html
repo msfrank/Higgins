@@ -1,0 +1,18 @@
+<%inherit file="/templates/base.html"/>
+
+<%def name="head()">
+    <link href="/ria/static/css/library.css" rel="stylesheet" type="text/css" media="screen" />
+    ${next.head()}
+</%def>
+
+<ul id="browse-subnav">
+    <li><a href="/ria/library/music">Music</a></li>
+    <li><a href="/ria/library/shows">TV Shows</a></li>
+    <li><a href="/ria/library/movies">Movies</a></li>
+    <li><a href="/ria/library/photos">Photos</a></li>
+    <li><a href="/ria/library/playlists">Playlists</a></li>
+    <li><a href="/ria/library/genres">Genres</a></li>
+    <li><a href="/ria/library/tags">Tags</a></li>
+</ul>
+
+${next.body()}

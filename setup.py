@@ -18,6 +18,7 @@ try:
     import dbus
     import avahi
     import pygst
+    import mako
     try:
         pygst.require('0.10')
     except pygst.RequiredVersionError, e:
@@ -55,6 +56,7 @@ setup(
         'higgins.platform',
         'higgins.plugins',
         'higgins.plugins.daap',
+        'higgins.plugins.ria',
         #'higgins.plugins.mediaserver',
         #'higgins.plugins.mrss',
         #'higgins.plugins.upnp',
@@ -77,9 +79,24 @@ setup(
         # declare packaged plugins
         'higgins.plugin': [
             'daap=higgins.plugins.daap:DaapService',
+            'ria=higgins.plugins.ria:RiaService',
             #'mediaserver=higgins.plugins.mediaserver:MediaserverDevice',
             #'mrss=higgins.plugins.mrss:MRSSService',
             ],
+        },
+    package_data={
+        'higgins.plugins.ria': [
+            'templates/*'
+            'static/css/*',
+            'static/js/*',
+            'static/ext/*',
+            'static/ext/resources/*',
+            'static/ext/resources/css/*'
+            'static/ext/resources/css/*/*'
+            'static/ext/resources/images/*',
+            'static/ext/resources/images/*/*',
+            'static/ext/resources/images/*/*/*',
+            ]
         },
     test_suite="tests",
 )

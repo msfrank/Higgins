@@ -54,6 +54,8 @@ class KeyStore(object):
     def set(self, section, name, value):
         if not self._isLoaded:
             raise Exception("settings have not been loaded")
+        if not self._settings.has_section(section):
+            self._settings.add_section(section)
         self._settings.set(section, option, value)
 
     def flush(self):
