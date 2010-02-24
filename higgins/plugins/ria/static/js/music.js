@@ -20,6 +20,7 @@ Ext.onReady(function() {
         viewConfig: {
             headersDisabled: true,
             autoFill: true,
+            forceFit: true,
             scrollOffset: 0
         },
         tbar: new Ext.PagingToolbar({
@@ -51,6 +52,7 @@ Ext.onReady(function() {
         viewConfig: {
             headersDisabled: true,
             autoFill: true,
+            forceFit: true,
             scrollOffset: 0
         },
         tbar: new Ext.PagingToolbar({
@@ -82,6 +84,7 @@ Ext.onReady(function() {
         viewConfig: {
             headersDisabled: true,
             autoFill: true,
+            forceFit: true,
             scrollOffset: 0
         },
         tbar: new Ext.PagingToolbar({
