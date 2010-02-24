@@ -1,8 +1,8 @@
 #music-description { padding: 10px; font-size: 18pt; }
-#music-artist-table { padding: 10px; }
-#music-artist-table .x-grid3-row { border: 0; }
-#music-artist-table .x-grid3-cell { font-size: 10pt; }
-#music-artist-table .x-toolbar {
+#music-layout { padding: 10px; }
+#music-layout .x-grid3-row { border: 0; }
+#music-layout .x-grid3-cell { font-size: 10pt; }
+#music-layout .x-toolbar {
     background-image: none;
     background-color: white;
     border-color: white;

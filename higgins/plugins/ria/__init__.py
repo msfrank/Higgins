@@ -9,7 +9,7 @@ from pkg_resources import resource_string
 from higgins.entrypoint import Service
 from higgins.http.routes import Dispatcher
 from higgins.http.http import Response
-from higgins.db import db, Artist
+from higgins.db import db, Artist, Album, Song
 from higgins.plugins.ria.lookup import TemplateLookup
 from higgins.plugins.ria.logger import logger
 
@@ -17,6 +17,8 @@ class AjaxMethods(Dispatcher):
     def __init__(self):
         Dispatcher.__init__(self)
         self.addRoute("getArtists", self.getArtists)
+        self.addRoute("getAlbums", self.getAlbums)
+        self.addRoute("getSongs", self.getSongs)
     def getArtists(self, request):
         # check for required params before updating anything in the database
         start = int(request.post.get('start', [0])[0])
@@ -27,6 +29,32 @@ class AjaxMethods(Dispatcher):
             artists.append({'name':artist.name, 'id':artist.storeID})
         response['artists'] = artists
         response['total'] = db.count(Artist)
+        return Response(200, stream=simplejson.dumps(response))
+    def getAlbums(self, request):
+        # check for required params before updating anything in the database
+        id = int(request.post.get('id', [None])[0])
+        artist = db.get(Artist, Artist.storeID==id)
+        start = int(request.post.get('start', [0])[0])
+        limit = int(request.post.get('limit', [25])[0])
+        response = {}
+        albums = []
+        for album in db.query(Album, Album.artist==artist, offset=start, limit=limit, sort=Album.name.ascending):
+            albums.append({'name':album.name, 'id':album.storeID})
+        response['albums'] = albums
+        response['total'] = db.count(Album, Album.artist==artist)
+        return Response(200, stream=simplejson.dumps(response))
+    def getSongs(self, request):
+        # check for required params before updating anything in the database
+        id = int(request.post.get('id', [None])[0])
+        album = db.get(Album, Album.storeID==id)
+        start = int(request.post.get('start', [0])[0])
+        limit = int(request.post.get('limit', [25])[0])
+        response = {}
+        songs = []
+        for song in db.query(Song, Song.album==album, offset=start, limit=limit, sort=Song.name.ascending):
+            songs.append({'name':song.name, 'id':song.storeID})
+        response['songs'] = songs
+        response['total'] = db.count(Song, Song.album==album)
         return Response(200, stream=simplejson.dumps(response))
 
 class RiaService(Service):
