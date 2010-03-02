@@ -103,28 +103,62 @@ Ext.onReady(function() {
         activeItem: 0,
         border: false,
         items: [ artists, albums, songs ],
-        renderTo: 'music-layout'
+        renderTo: 'music-body'
     });
+
+    var crumbs = new Array({method: loadArtists, id: 0, prev: '', curr: 'Artists'});
+
+    function loadArtists() {
+        artistStore.setBaseParam('id', crumbs[0].id);
+        artistStore.load({params:{start: 0, limit: 10}});
+        artists.hide();
+        layout.layout.setActiveItem('artists-grid');
+        Ext.get('music-crumbs').update('');
+        Ext.get('music-info').update(crumbs[0].curr);
+        artists.getEl().slideIn('l', {stopFX: true, duration: .3});
+    }
+
+    function loadArtist() {
+        albumStore.setBaseParam('id', crumbs[0].id);
+        albumStore.load({params:{start: 0, limit: 10}});
+        albums.hide();
+        layout.layout.setActiveItem('albums-grid');
+        Ext.get('music-crumbs').update('<a href="#" id="music-prev-link">&#171; ' + crumbs[0].prev + '</a>');
+        Ext.get('music-info').update(crumbs[0].curr);
+        albums.getEl().slideIn('l', {stopFX: true, duration: .3});
+    };
+
+    function loadAlbum() {
+        songStore.setBaseParam('id', crumbs[0].id);
+        songStore.load({params:{start: 0, limit: 10}});
+        songs.hide();
+        layout.layout.setActiveItem('songs-grid');
+        Ext.get('music-crumbs').update('<a href="#" id="music-prev-link">&#171; ' + crumbs[0].prev + '</a>');
+        Ext.get('music-info').update(crumbs[0].curr);
+        songs.getEl().slideIn('l', {stopFX: true, duration: .3});
+    };
 
     artists.on('cellclick', function(grid, rowIndex, columnIndex, e) {
         var record = grid.getStore().getAt(rowIndex);
         var id = record.get('id');
-        albumStore.setBaseParam('id', id);
-        albumStore.load({params:{start: 0, limit: 10}});
-        albums.hide();
-        layout.layout.setActiveItem('albums-grid');
-        albums.getEl().slideIn('l', {stopFX: true, duration: .3});
+        var name = record.get('name');
+        crumbs.unshift({method: loadArtist, id: id, prev: crumbs[0].curr, curr: name});
+        loadArtist();
     });
 
     albums.on('cellclick', function(grid, rowIndex, columnIndex, e) {
         var record = grid.getStore().getAt(rowIndex);
         var id = record.get('id');
-        songStore.setBaseParam('id', id);
-        songStore.load({params:{start: 0, limit: 10}});
-        songs.hide();
-        layout.layout.setActiveItem('songs-grid');
-        songs.getEl().slideIn('l', {stopFX: true, duration: .3});
+        var name = record.get('name');
+        crumbs.unshift({method: loadAlbum, id: id, prev: crumbs[0].curr, curr: name});
+        loadAlbum();
     });
 
-    artistStore.load({params:{start:0, limit:10}});
+    Ext.get('music-crumbs').on('click', function(ev, el, options) {
+        crumbs.shift();
+        crumbs[0].method();
+    });
+
+    loadArtists();
+    artists.show();
 });

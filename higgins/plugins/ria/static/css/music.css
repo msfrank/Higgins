@@ -1,8 +1,10 @@
-#music-description { padding: 10px; font-size: 18pt; }
-#music-layout { padding: 10px; }
-#music-layout .x-grid3-row { border: 0; }
-#music-layout .x-grid3-cell { font-size: 10pt; }
-#music-layout .x-toolbar {
+#music-header { border-bottom: 1px dashed #dfdfdf; }
+#music-crumbs { padding: 10px 10px 4px 10px; font-size: 10pt; }
+#music-info { padding: 0px 10px 10px 10px; font-size: 18pt; }
+#music-body { padding: 10px; }
+#music-body .x-grid3-row { border: 0; }
+#music-body .x-grid3-cell { font-size: 10pt; }
+#music-body .x-toolbar {
     background-image: none;
     background-color: white;
     border-color: white;
